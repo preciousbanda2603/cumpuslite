@@ -107,3 +107,9 @@ export const rooms = [
     { id: 'r-5', name: 'Library' },
     { id: 'r-6', name: 'Auditorium' },
 ];
+
+export const classes = [
+    { id: 'c-1', name: 'Grade 1A', roomId: 'r-1' },
+    { id: 'c-2', name: 'Grade 1B', roomId: 'r-2' },
+    { id: 'c-3', name: 'Grade 2A', roomId: 'r-1' },
+];

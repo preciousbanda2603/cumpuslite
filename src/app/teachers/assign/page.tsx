@@ -18,7 +18,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { teachers, grades } from '@/lib/mock-data';
+import { teachers, classes } from '@/lib/mock-data';
 
 
 export default function AssignClassTeacherPage() {
@@ -40,7 +40,7 @@ export default function AssignClassTeacherPage() {
         <CardHeader>
           <CardTitle>Assign Class Teacher</CardTitle>
           <CardDescription>
-            Select a teacher to manage a grade's attendance and final results.
+            Select a teacher to manage a class's attendance and final results.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -61,15 +61,15 @@ export default function AssignClassTeacherPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="grade">Grade</Label>
-               <Select name="grade">
-                <SelectTrigger id="grade">
-                  <SelectValue placeholder="Select a grade" />
+              <Label htmlFor="class">Class</Label>
+               <Select name="class">
+                <SelectTrigger id="class">
+                  <SelectValue placeholder="Select a class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {grades.map((grade) => (
-                    <SelectItem key={grade.id} value={grade.id}>
-                      {grade.name}
+                  {classes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
