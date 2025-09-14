@@ -98,3 +98,12 @@ export const grades = [
     { id: 'g-11', name: 'Grade 11' },
     { id: 'g-12', name: 'Grade 12' },
 ];
+
+export const rooms = [
+    { id: 'r-1', name: 'Room 101' },
+    { id: 'r-2', name: 'Room 102' },
+    { id: 'r-3', name: 'Science Lab' },
+    { id: 'r-4', name: 'Art Studio' },
+    { id: 'r-5', name: 'Library' },
+    { id: 'r-6', name: 'Auditorium' },
+];
