@@ -16,10 +16,10 @@ import { Textarea } from "@/components/ui/textarea"
 export default function RegisterPage() {
   return (
      <div className="flex flex-col items-center justify-center min-h-screen py-12">
-        <div className="mb-6 flex items-center gap-2 text-lg font-semibold">
+        <Link href="/" className="mb-6 flex items-center gap-2 text-lg font-semibold">
           <GraduationCap className="h-7 w-7 text-primary" />
           <span className="text-2xl font-bold">Campus.ZM</span>
-       </div>
+       </Link>
         <Card className="mx-auto max-w-lg w-full">
         <CardHeader>
             <CardTitle className="text-xl">Register Your School</CardTitle>

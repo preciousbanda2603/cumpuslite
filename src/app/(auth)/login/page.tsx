@@ -22,10 +22,10 @@ import { schools } from "@/lib/mock-data"
 export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
-       <div className="mb-6 flex items-center gap-2 text-lg font-semibold">
+       <Link href="/" className="mb-6 flex items-center gap-2 text-lg font-semibold">
           <GraduationCap className="h-7 w-7 text-primary" />
           <span className="text-2xl font-bold">Campus.ZM</span>
-       </div>
+       </Link>
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
