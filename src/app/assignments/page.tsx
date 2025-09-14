@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -26,41 +26,106 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { teachers, subjects as initialSubjects } from '@/lib/mock-data';
 import { BookCopy } from 'lucide-react';
+import { auth, database } from '@/lib/firebase';
+import { ref, onValue, set, get } from 'firebase/database';
+import type { User } from 'firebase/auth';
 
-// Mocking subject assignments
-const initialSubjectAssignments = initialSubjects.map(subject => ({
-    subjectId: subject.id,
-    subjectName: subject.name,
-    grade: subject.grade,
-    teacherId: teachers.length > 0 ? teachers[Math.floor(Math.random() * teachers.length)].id : '',
-}));
-
+type Teacher = { id: string; name: string };
+type Subject = { id: string; name: string; grade: number };
+type Assignment = { subjectId: string; subjectName: string; grade: number; teacherId: string | null };
 
 export default function SubjectAssignmentsPage() {
-  const [assignments, setAssignments] = useState(initialSubjectAssignments);
+  const [user, setUser] = useState<User | null>(null);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  useEffect(() => {
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+
+    const schoolUid = user.uid;
+    const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
+    const subjectsRef = ref(database, `schools/${schoolUid}/subjects`);
+    const assignmentsRef = ref(database, `schools/${schoolUid}/assignments`);
+
+    const unsubscribeTeachers = onValue(teachersRef, (snapshot) => {
+      const data = snapshot.val();
+      const list = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
+      setTeachers(list);
+    });
+
+    const fetchInitialData = async () => {
+      try {
+        const [subjectsSnapshot, assignmentsSnapshot] = await Promise.all([
+          get(subjectsRef),
+          get(assignmentsRef),
+        ]);
+        
+        const subjectsData = subjectsSnapshot.val();
+        const assignmentsData = assignmentsSnapshot.val() || {};
+
+        if (subjectsData) {
+          const subjectsList: Subject[] = Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] }));
+          const newAssignments: Assignment[] = subjectsList.map(subject => ({
+            subjectId: subject.id,
+            subjectName: subject.name,
+            grade: subject.grade,
+            teacherId: assignmentsData[subject.id]?.teacherId || null,
+          }));
+          setAssignments(newAssignments);
+        } else {
+          setAssignments([]);
+        }
+      } catch (error) {
+        console.error("Error fetching initial data:", error);
+        toast({ title: 'Error', description: 'Could not fetch initial subject and assignment data.', variant: 'destructive' });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInitialData();
+
+    return () => {
+      unsubscribeTeachers();
+    };
+  }, [user, toast]);
+
   const handleTeacherChange = (subjectId: string, newTeacherId: string) => {
-    setAssignments(prevAssignments =>
-      prevAssignments.map(assignment =>
-        assignment.subjectId === subjectId
-          ? { ...assignment, teacherId: newTeacherId }
-          : assignment
-      )
+    setAssignments(prev =>
+      prev.map(a => (a.subjectId === subjectId ? { ...a, teacherId: newTeacherId } : a))
     );
   };
 
-  const handleSaveChanges = () => {
-    console.log('Saving updated subject assignments:', assignments);
-    toast({
-      title: 'Success!',
-      description: 'Subject assignments have been updated.',
-    });
-  };
+  const handleSaveChanges = async () => {
+    if (!user) {
+      toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
+      return;
+    }
 
-  const getTeacherById = (id: string) => teachers.find(t => t.id === id);
+    const assignmentsRef = ref(database, `schools/${user.uid}/assignments`);
+    try {
+      const updates: { [key: string]: { teacherId: string | null } } = {};
+      assignments.forEach(a => {
+        updates[a.subjectId] = { teacherId: a.teacherId };
+      });
+      await set(assignmentsRef, updates);
+      toast({ title: 'Success!', description: 'Subject assignments have been updated.' });
+    } catch (error: any) {
+      console.error("Failed to save assignments:", error);
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,9 +139,7 @@ export default function SubjectAssignmentsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Manage Subject Teachers</CardTitle>
-          <CardDescription>
-            Assign or re-assign teachers to different subjects. Click 'Save Changes' to apply.
-          </CardDescription>
+          <CardDescription>Assign or re-assign teachers to different subjects. Click 'Save Changes' to apply.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -89,47 +152,39 @@ export default function SubjectAssignmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assignments.length > 0 ? (
-                  assignments.sort((a, b) => a.grade - b.grade).map(({ subjectId, subjectName, grade, teacherId }) => {
-                    const teacher = getTeacherById(teacherId);
-                    return (
-                      <TableRow key={subjectId}>
-                        <TableCell className="font-medium">{subjectName}</TableCell>
-                        <TableCell>Grade {grade}</TableCell>
-                        <TableCell>
-                          <Select
-                            value={teacherId}
-                            onValueChange={(newTeacherId) => handleTeacherChange(subjectId, newTeacherId)}
-                          >
-                            <SelectTrigger className="w-[250px]">
-                              <SelectValue placeholder="Select a teacher">
-                                {teacher ? teacher.name : 'Unassigned'}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {teachers.map(t => (
-                                <SelectItem key={t.id} value={t.id}>
-                                  {t.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
+                {loading ? (
+                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">Loading...</TableCell></TableRow>
+                ) : assignments.length > 0 ? (
+                  assignments.sort((a, b) => a.grade - b.grade).map(({ subjectId, subjectName, grade, teacherId }) => (
+                    <TableRow key={subjectId}>
+                      <TableCell className="font-medium">{subjectName}</TableCell>
+                      <TableCell>Grade {grade}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={teacherId || ''}
+                          onValueChange={(newTeacherId) => handleTeacherChange(subjectId, newTeacherId)}
+                        >
+                          <SelectTrigger className="w-[250px]">
+                            <SelectValue placeholder="Select a teacher">
+                              {teachers.find(t => t.id === teacherId)?.name || 'Unassigned'}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Unassigned</SelectItem>
+                            {teachers.map(t => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center">
-                      No subjects available to assign.
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={3} className="text-center">No subjects available to assign.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
           <div className="flex justify-end mt-6">
-            <Button onClick={handleSaveChanges}>Save Changes</Button>
+            <Button onClick={handleSaveChanges} disabled={loading}>Save Changes</Button>
           </div>
         </CardContent>
       </Card>

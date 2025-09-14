@@ -1,4 +1,8 @@
+
+'use client';
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -15,11 +19,60 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { students } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
+import { auth, database } from "@/lib/firebase";
+import { onValue, ref } from "firebase/database";
+import type { User } from "firebase/auth";
+
+type Student = {
+  id: string;
+  name: string;
+  startingGrade: number;
+  enrollmentDate: string;
+  status: 'Active' | 'Inactive';
+};
 
 export default function StudentsPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const studentsRef = ref(database, `schools/${user.uid}/students`);
+    const unsubscribe = onValue(
+      studentsRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const studentsData = snapshot.val();
+          const studentsList: Student[] = Object.keys(studentsData).map((key) => ({
+            id: key,
+            ...studentsData[key],
+          }));
+          setStudents(studentsList);
+        } else {
+          setStudents([]);
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching students:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
+
   const getStudentCurrentGrade = (enrollmentDate: string, startingGrade: number) => {
     const enrollmentYear = new Date(enrollmentDate).getFullYear();
     const currentYear = new Date().getFullYear();
@@ -27,7 +80,7 @@ export default function StudentsPage() {
     const currentGrade = startingGrade + yearsPassed;
     // Cap grade at 12
     return Math.min(currentGrade, 12);
-  }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,7 +108,13 @@ export default function StudentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.length > 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    Loading students...
+                  </TableCell>
+                </TableRow>
+              ) : students.length > 0 ? (
                 students.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell>{student.name}</TableCell>
@@ -67,7 +126,7 @@ export default function StudentsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center">
-                    No students found.
+                    No students found. Add one to get started.
                   </TableCell>
                 </TableRow>
               )}
