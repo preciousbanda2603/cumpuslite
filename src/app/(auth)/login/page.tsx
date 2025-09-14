@@ -25,7 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { auth, database } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { ref, get, child, query, orderByChild, equalTo } from "firebase/database";
+import { ref, get, child } from "firebase/database";
 
 type School = {
   uid: string;
@@ -98,13 +98,17 @@ export default function LoginPage() {
 
       // Check 2: If not admin, is the user a teacher for that school?
       const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
-      const teachersQuery = query(teachersRef, orderByChild('uid'), equalTo(loggedInUserUid));
-      const teacherSnapshot = await get(teachersQuery);
+      const teacherSnapshot = await get(teachersRef);
 
       if (teacherSnapshot.exists()) {
-        toast({ title: "Success!", description: "Teacher logged in." });
-        router.push('/dashboard');
-        return;
+        const teachersData = teacherSnapshot.val();
+        const isTeacherForSchool = Object.values(teachersData).some((teacher: any) => teacher.uid === loggedInUserUid);
+        
+        if (isTeacherForSchool) {
+            toast({ title: "Success!", description: "Teacher logged in." });
+            router.push('/dashboard');
+            return;
+        }
       }
 
       // If neither, then it's an invalid login for this school
