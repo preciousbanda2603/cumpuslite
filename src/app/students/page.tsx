@@ -15,12 +15,13 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { students } from "@/lib/mock-data";
-import { differenceInYears } from 'date-fns';
 
 export default function StudentsPage() {
   const getStudentCurrentGrade = (enrollmentDate: string, startingGrade: number) => {
-    const yearsSinceEnrollment = differenceInYears(new Date(), new Date(enrollmentDate));
-    const currentGrade = startingGrade + yearsSinceEnrollment;
+    const enrollmentYear = new Date(enrollmentDate).getFullYear();
+    const currentYear = new Date().getFullYear();
+    const yearsPassed = currentYear - enrollmentYear;
+    const currentGrade = startingGrade + yearsPassed;
     // Cap grade at 12
     return Math.min(currentGrade, 12);
   }
