@@ -10,6 +10,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { GraduationCap } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { schools } from "@/lib/mock-data"
 
 export default function LoginPage() {
   return (
@@ -22,11 +30,26 @@ export default function LoginPage() {
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            Enter your credentials below to login to your account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
+            <div className="grid gap-2">
+                <Label htmlFor="school">School</Label>
+                <Select name="school" required>
+                    <SelectTrigger id="school">
+                        <SelectValue placeholder="Select your school" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {schools.map((school) => (
+                        <SelectItem key={school.id} value={school.id}>
+                            {school.name}
+                        </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input

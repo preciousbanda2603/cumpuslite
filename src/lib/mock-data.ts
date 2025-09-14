@@ -113,3 +113,9 @@ export const classes = [
     { id: 'c-2', name: 'Grade 1B', roomId: 'r-2' },
     { id: 'c-3', name: 'Grade 2A', roomId: 'r-1' },
 ];
+
+export const schools = [
+    { id: 'sch-1', name: 'Northwood High School' },
+    { id: 'sch-2', name: 'Westside Elementary' },
+    { id: 'sch-3', name: 'Oakridge Middle School' },
+];
