@@ -30,6 +30,7 @@ export default function AddStudentPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [grade, setGrade] = useState('');
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -49,7 +50,7 @@ export default function AddStudentPage() {
 
     const formData = new FormData(event.currentTarget);
     const name = formData.get('name') as string;
-    const startingGrade = parseInt(formData.get('grade') as string, 10);
+    const startingGrade = parseInt(grade, 10);
     const enrollmentDate = formData.get('enrollment-date') as string;
     const parentName = formData.get('parent-name') as string;
     const parentPhone = formData.get('parent-phone') as string;
@@ -118,7 +119,7 @@ export default function AddStudentPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="grade">Starting Grade</Label>
-                <Select name="grade" required>
+                <Select name="grade" required value={grade} onValueChange={setGrade}>
                   <SelectTrigger id="grade">
                     <SelectValue placeholder="Select a grade" />
                   </SelectTrigger>
