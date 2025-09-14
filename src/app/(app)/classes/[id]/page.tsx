@@ -86,7 +86,7 @@ export default function ViewClassPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch All Teachers
+        // Fetch All Teachers first
         const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
         const teachersSnap = await get(teachersRef);
         const teachersData = teachersSnap.val() || {};
@@ -103,7 +103,7 @@ export default function ViewClassPage() {
         }
         const classData = { id: classId, ...classSnap.val() };
         setClassInfo(classData);
-
+        
         if (classData.classTeacherId) {
           setClassTeacher(teachersList.find(t => t.id === classData.classTeacherId) || null);
         }
@@ -115,28 +115,29 @@ export default function ViewClassPage() {
         const allStudentsList: Student[] = Object.keys(allStudentsData).map(id => ({ id, ...allStudentsData[id] }));
         setStudents(allStudentsList.filter(s => s.classId === classId));
 
-
         // Fetch Subjects and their Assignments for the class grade
-        const subjectsQuery = query(ref(database, `schools/${schoolUid}/subjects`), orderByChild('grade'), equalTo(classData.grade));
-        const subjectsSnap = await get(subjectsQuery);
-        const subjectsData = subjectsSnap.val() || {};
-        const subjectIds = Object.keys(subjectsData);
+        if (classData.grade) {
+          const subjectsQuery = query(ref(database, `schools/${schoolUid}/subjects`), orderByChild('grade'), equalTo(classData.grade));
+          const subjectsSnap = await get(subjectsQuery);
+          const subjectsData = subjectsSnap.val() || {};
+          const subjectIds = Object.keys(subjectsData);
 
-        const assignmentsRef = ref(database, `schools/${schoolUid}/assignments`);
-        const assignmentsSnap = await get(assignmentsRef);
-        const assignmentsData = assignmentsSnap.val() || {};
+          const assignmentsRef = ref(database, `schools/${schoolUid}/assignments`);
+          const assignmentsSnap = await get(assignmentsRef);
+          const assignmentsData = assignmentsSnap.val() || {};
 
-        const assignments: SubjectAssignment[] = subjectIds.map(subId => {
-          const assignment = Object.values(assignmentsData).find((a: any) => a.subjectId === subId && a.classId === classId) as any;
-          const teacher = teachersList.find(t => t.id === assignment?.teacherId);
-          return {
-            subjectId: subId,
-            subjectName: subjectsData[subId].name,
-            teacherId: assignment?.teacherId || null,
-            teacherName: teacher?.name || 'Unassigned',
-          };
-        });
-        setSubjectAssignments(assignments);
+          const assignments: SubjectAssignment[] = subjectIds.map(subId => {
+            const assignment = Object.values(assignmentsData).find((a: any) => a.subjectId === subId && a.classId === classId) as any;
+            const teacher = teachersList.find(t => t.id === assignment?.teacherId);
+            return {
+              subjectId: subId,
+              subjectName: subjectsData[subId].name,
+              teacherId: assignment?.teacherId || null,
+              teacherName: teacher?.name || 'Unassigned',
+            };
+          });
+          setSubjectAssignments(assignments);
+        }
 
       } catch (error) {
         console.error("Error fetching class details:", error);
@@ -157,7 +158,12 @@ export default function ViewClassPage() {
   const closeDialog = () => setDialogState({ isOpen: false, type: null, data: null });
 
   const handleSaveChanges = async () => {
-    if (!user || !dialogState.type || !selectedTeacherId) {
+    if (!user || !dialogState.type) {
+      toast({ title: 'Error', description: 'An error occurred.', variant: 'destructive' });
+      return;
+    }
+
+    if (!selectedTeacherId) {
       toast({ title: 'Error', description: 'Please select a teacher.', variant: 'destructive' });
       return;
     }
@@ -165,10 +171,12 @@ export default function ViewClassPage() {
     
     try {
       if (dialogState.type === 'classTeacher' && classInfo) {
-        const classRef = ref(database, `schools/${schoolUid}/classes/${classInfo.id}`);
-        await set(ref(database, `schools/${schoolUid}/classes/${classInfo.id}`), { ...classInfo, classTeacherId: selectedTeacherId });
+        // Create a copy of classInfo to avoid potential circular references or read-only issues
+        const updatedClassInfo = { ...classInfo };
+        await set(ref(database, `schools/${schoolUid}/classes/${classInfo.id}`), { ...updatedClassInfo, classTeacherId: selectedTeacherId });
 
         setClassTeacher(allTeachers.find(t => t.id === selectedTeacherId) || null);
+        setClassInfo(prev => prev ? { ...prev, classTeacherId: selectedTeacherId } : null);
         toast({ title: 'Success', description: 'Class teacher updated.' });
       } else if (dialogState.type === 'subjectTeacher') {
         const assignmentRef = ref(database, `schools/${schoolUid}/assignments/${classId}_${dialogState.data.subjectId}`);
@@ -190,9 +198,11 @@ export default function ViewClassPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Skeleton className="h-40" />
           <Skeleton className="h-40" />
-          <Skeleton className="h-40" />
         </div>
-        <Skeleton className="h-96" />
+        <div className="grid gap-6 lg:grid-cols-2">
+            <Skeleton className="h-96" />
+            <Skeleton className="h-96" />
+        </div>
       </div>
     );
   }
