@@ -18,11 +18,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
 import { navLinks } from '@/lib/nav-links';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -47,25 +48,32 @@ export function AppHeader() {
                 <span>Campus.ZM</span>
               </Link>
             </SheetTitle>
+            <SheetDescription>
+              A modern school management system.
+            </SheetDescription>
           </SheetHeader>
-          <nav className="grid gap-2 text-lg font-medium pt-4">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className={cn(
-                    'mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground',
-                    isActive && 'bg-muted text-foreground'
-                  )}
-                >
-                  <link.icon className="h-5 w-5" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <nav className="grid gap-2 text-lg font-medium pt-4 pr-4">
+                {navLinks.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.label}
+                      href={link.href}
+                      className={cn(
+                        'mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground',
+                        isActive && 'bg-muted text-foreground'
+                      )}
+                    >
+                      <link.icon className="h-5 w-5" />
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </ScrollArea>
+          </div>
         </SheetContent>
       </Sheet>
 

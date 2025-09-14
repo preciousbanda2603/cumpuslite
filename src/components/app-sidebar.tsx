@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { GraduationCap, Settings } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 import { navLinks } from '@/lib/nav-links';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -26,25 +27,27 @@ export function AppSidebar() {
             <span className="">Campus.ZM</span>
           </Link>
         </div>
-        <div className="flex-1">
-          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
-                    isActive && 'bg-muted text-primary'
-                  )}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
+        <div className="flex-1 overflow-auto">
+          <ScrollArea className="h-full">
+            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
+                      isActive && 'bg-muted text-primary'
+                    )}
+                  >
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </ScrollArea>
         </div>
         <div className="mt-auto p-4">
           <Card>
