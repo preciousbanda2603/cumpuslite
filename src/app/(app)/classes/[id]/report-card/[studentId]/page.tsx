@@ -91,10 +91,13 @@ export default function ReportCardPage() {
                 if (teacherSnap.exists()) setClassTeacher(teacherSnap.val());
             }
 
-            const subjectsQuery = query(ref(database, `schools/${schoolId}/subjects`), orderByChild('grade'), equalTo(classData.grade));
-            const subjectsSnap = await get(subjectsQuery);
-            const subjectsData = subjectsSnap.val() || {};
-            const subjects: Subject[] = Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] }));
+            let subjects: Subject[] = [];
+            if (classData.grade !== undefined && classData.grade !== null) {
+              const subjectsQuery = query(ref(database, `schools/${schoolId}/subjects`), orderByChild('grade'), equalTo(classData.grade));
+              const subjectsSnap = await get(subjectsQuery);
+              const subjectsData = subjectsSnap.val() || {};
+              subjects = Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] }));
+            }
 
             const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
             const resultsSnap = await get(resultsRef);
