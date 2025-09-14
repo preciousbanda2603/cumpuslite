@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -18,20 +19,93 @@ import {
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { teachers, classes } from '@/lib/mock-data';
+import { useEffect, useState } from 'react';
+import type { User } from 'firebase/auth';
+import { auth, database } from '@/lib/firebase';
+import { ref, onValue, set, get } from 'firebase/database';
 
+type Teacher = { id: string; name: string };
+type Class = { id: string; name: string };
 
 export default function AssignClassTeacherPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    toast({
-      title: 'Success!',
-      description: 'Class teacher has been assigned.',
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
     });
-    router.push('/teachers');
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    const schoolUid = user.uid;
+    const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
+    const classesRef = ref(database, `schools/${schoolUid}/classes`);
+
+    const unsubscribeTeachers = onValue(teachersRef, (snapshot) => {
+      const data = snapshot.val();
+      const list = data ? Object.keys(data).map((id) => ({ id, ...data[id] })) : [];
+      setTeachers(list);
+    });
+
+    const unsubscribeClasses = onValue(classesRef, (snapshot) => {
+      const data = snapshot.val();
+      const list = data ? Object.keys(data).map((id) => ({ id, ...data[id] })) : [];
+      setClasses(list);
+    });
+
+    Promise.all([
+        new Promise(res => onValue(teachersRef, res, { onlyOnce: true })),
+        new Promise(res => onValue(classesRef, res, { onlyOnce: true }))
+    ]).finally(() => setLoading(false));
+
+    return () => {
+      unsubscribeTeachers();
+      unsubscribeClasses();
+    };
+  }, [user]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) {
+        toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
+        return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    const teacherId = formData.get('teacher') as string;
+    const classId = formData.get('class') as string;
+
+    if (!teacherId || !classId) {
+        toast({ title: 'Error', description: 'Please select both a teacher and a class.', variant: 'destructive' });
+        return;
+    }
+
+    try {
+        const classRef = ref(database, `schools/${user.uid}/classes/${classId}`);
+        const snapshot = await get(classRef);
+        if (snapshot.exists()) {
+            const classData = snapshot.val();
+            await set(classRef, { ...classData, classTeacherId: teacherId });
+            toast({
+                title: 'Success!',
+                description: 'Class teacher has been assigned.',
+            });
+            router.push('/teachers');
+        } else {
+             throw new Error("Class not found.");
+        }
+    } catch (error: any) {
+        console.error("Failed to assign class teacher:", error);
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
   };
 
   return (
@@ -47,12 +121,14 @@ export default function AssignClassTeacherPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="teacher">Teacher</Label>
-              <Select name="teacher">
+              <Select name="teacher" required>
                 <SelectTrigger id="teacher">
                   <SelectValue placeholder="Select a teacher" />
                 </SelectTrigger>
                 <SelectContent>
-                  {teachers.length > 0 ? (
+                  {loading ? (
+                     <SelectItem value="loading" disabled>Loading teachers...</SelectItem>
+                  ) : teachers.length > 0 ? (
                     teachers.map((teacher) => (
                       <SelectItem key={teacher.id} value={teacher.id}>
                         {teacher.name}
@@ -68,12 +144,14 @@ export default function AssignClassTeacherPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="class">Class</Label>
-               <Select name="class">
+               <Select name="class" required>
                 <SelectTrigger id="class">
                   <SelectValue placeholder="Select a class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classes.length > 0 ? (
+                   {loading ? (
+                     <SelectItem value="loading" disabled>Loading classes...</SelectItem>
+                  ) : classes.length > 0 ? (
                     classes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
@@ -91,7 +169,7 @@ export default function AssignClassTeacherPage() {
                <Button type="button" variant="outline" onClick={() => router.back()}>
                 Cancel
               </Button>
-              <Button type="submit">Assign Class Teacher</Button>
+              <Button type="submit" disabled={loading}>Assign Class Teacher</Button>
             </div>
           </form>
         </CardContent>
