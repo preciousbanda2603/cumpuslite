@@ -87,8 +87,13 @@ export default function LoginPage() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // You can add logic here to verify if the logged-in user (userCredential.user.uid)
-      // matches the selected school (schoolUid) if needed.
+      
+      // Verify that the logged-in user's UID matches the selected school's UID
+      if (userCredential.user.uid !== schoolUid) {
+        // Log the user out to prevent unauthorized access
+        await auth.signOut();
+        throw new Error("The selected school does not match your credentials.");
+      }
       
       toast({
         title: "Success!",
@@ -99,10 +104,12 @@ export default function LoginPage() {
 
     } catch (error: any) {
        console.error("Login failed:", error);
-       let errorMessage = "Invalid email or password. Please try again.";
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+       let errorMessage = "Invalid credentials or school mismatch. Please try again.";
+       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
             errorMessage = "Invalid email or password. Please try again.";
-        }
+       } else if (error.message) {
+            errorMessage = error.message;
+       }
       
       toast({
         title: "Login Failed",
