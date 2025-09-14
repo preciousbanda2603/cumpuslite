@@ -28,25 +28,17 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSchoolId } from '@/hooks/use-school-id';
-import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 
 type Student = { id: string; name: string; classId: string; };
 type Subject = { id: string; name: string; grade: number; };
-type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; } };
+type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; grade?: string; comment?: string; } };
 type ReportCardExtras = {
     attendance?: { totalDays?: string; daysPresent?: string; daysAbsent?: string; punctuality?: string; };
     development?: { participation?: string; homework?: string; sports?: string; behaviour?: string; };
     comments?: { strengths?: string; improvements?: string; };
 };
 type UserRole = 'admin' | 'class_teacher' | 'subject_teacher' | 'other';
-
-const assessmentTypes = [
-    { key: 'test1', label: 'Test 1' },
-    { key: 'test2', label: 'Test 2' },
-    { key: 'midTerm', label: 'Mid-Term' },
-    { key: 'finalExam', label: 'Final Exam' },
-];
 
 export default function StudentResultsPage() {
   const params = useParams();
@@ -157,18 +149,21 @@ export default function StudentResultsPage() {
     fetchData();
   }, [user, schoolId, classId, studentId, router, toast]);
 
-  const handleScoreChange = (subjectId: string, assessment: string, value: string) => {
-    const score = value === '' ? undefined : parseInt(value, 10);
-     if (score !== undefined && (isNaN(score) || score < 0 || score > 100)) {
-        toast({ title: 'Invalid Score', description: 'Score must be between 0 and 100.', variant: 'destructive'});
-        return;
+  const handleResultChange = (subjectId: string, field: string, value: string) => {
+    let finalValue: string | number | undefined = value;
+    if (['test1', 'test2', 'midTerm', 'finalExam'].includes(field)) {
+      finalValue = value === '' ? undefined : parseInt(value, 10);
+      if (finalValue !== undefined && (isNaN(finalValue) || finalValue < 0 || finalValue > 100)) {
+          toast({ title: 'Invalid Score', description: 'Score must be between 0 and 100.', variant: 'destructive'});
+          return;
+      }
     }
-
+    
     setResults(prev => ({
       ...prev,
       [subjectId]: {
         ...prev[subjectId],
-        [assessment]: score,
+        [field]: finalValue,
       },
     }));
   };
@@ -182,16 +177,6 @@ export default function StudentResultsPage() {
         }
     }));
   };
-
-  const getGradeAndComment = (total: number) => {
-      if (total >= 90) return { grade: 'A', comment: 'Excellent progress' };
-      if (total >= 80) return { grade: 'B+', comment: 'Very good work' };
-      if (total >= 70) return { grade: 'B', comment: 'Good understanding' };
-      if (total >= 60) return { grade: 'C+', comment: 'Satisfactory' };
-      if (total >= 50) return { grade: 'C', comment: 'Needs improvement' };
-      if (total >= 40) return { grade: 'D', comment: 'Work harder' };
-      return { grade: 'F', comment: 'Unsatisfactory' };
-  };
   
   const calculatePerformance = (subjectId: string) => {
     const subjectResults = results[subjectId] || {};
@@ -203,16 +188,10 @@ export default function StudentResultsPage() {
     const allScores = [...caScores, examScore].filter(s => typeof s === 'number') as number[];
     const total = allScores.length > 0 ? (allScores.reduce((a,b) => a + b, 0) / allScores.length) : 'N/A';
 
-    let grade = 'N/A';
-    if(typeof total === 'number') {
-        grade = getGradeAndComment(total).grade;
-    }
-
     return {
         continuousAssessment: typeof caAvg === 'number' ? caAvg.toFixed(1) : caAvg,
         examMarks: typeof examScore === 'number' ? examScore : 'N/A',
         total: typeof total === 'number' ? total.toFixed(1) : total,
-        grade,
     };
   };
 
@@ -265,7 +244,7 @@ export default function StudentResultsPage() {
         <Card>
             <CardHeader>
                 <CardTitle>Academic Performance</CardTitle>
-                <CardDescription>Enter scores for each subject (0-100). Averages and grades are calculated automatically.</CardDescription>
+                <CardDescription>Enter scores for each subject (0-100). Averages are calculated automatically.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="overflow-x-auto">
@@ -279,7 +258,8 @@ export default function StudentResultsPage() {
                             <TableHead className="text-center font-bold bg-muted/50">CA (Avg)</TableHead>
                             <TableHead className="text-center">Final Exam</TableHead>
                             <TableHead className="text-center font-bold bg-muted/50">Total (Avg)</TableHead>
-                            <TableHead className="text-center font-bold bg-muted/50">Grade</TableHead>
+                            <TableHead className="text-center">Grade</TableHead>
+                            <TableHead className="text-center min-w-[200px]">Comment</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -294,7 +274,7 @@ export default function StudentResultsPage() {
                                         type="number"
                                         className="w-20 text-center mx-auto"
                                         value={results[subject.id]?.[assessment as keyof Results[string]] ?? ''}
-                                        onChange={(e) => handleScoreChange(subject.id, assessment, e.target.value)}
+                                        onChange={(e) => handleResultChange(subject.id, assessment, e.target.value)}
                                         min={0}
                                         max={100}
                                         disabled={!canPerformActions}
@@ -307,14 +287,29 @@ export default function StudentResultsPage() {
                                     type="number"
                                     className="w-20 text-center mx-auto"
                                     value={results[subject.id]?.finalExam ?? ''}
-                                    onChange={(e) => handleScoreChange(subject.id, 'finalExam', e.target.value)}
+                                    onChange={(e) => handleResultChange(subject.id, 'finalExam', e.target.value)}
                                     min={0}
                                     max={100}
                                     disabled={!canPerformActions}
                                 />
                             </TableCell>
                             <TableCell className="text-center font-bold bg-muted/50">{performance.total}</TableCell>
-                            <TableCell className="text-center font-bold bg-muted/50">{performance.grade}</TableCell>
+                            <TableCell>
+                                <Input 
+                                    className="w-20 text-center mx-auto"
+                                    value={results[subject.id]?.grade ?? ''}
+                                    onChange={(e) => handleResultChange(subject.id, 'grade', e.target.value)}
+                                    disabled={!canPerformActions}
+                                />
+                            </TableCell>
+                            <TableCell>
+                                <Input 
+                                    className="w-full text-center mx-auto"
+                                    value={results[subject.id]?.comment ?? ''}
+                                    onChange={(e) => handleResultChange(subject.id, 'comment', e.target.value)}
+                                    disabled={!canPerformActions}
+                                />
+                            </TableCell>
                         </TableRow>
                        )})}
                     </TableBody>

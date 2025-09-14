@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { auth, database } from '@/lib/firebase';
-import { ref, get, query, orderByChild, equalTo } from 'firebase/database';
+import { ref, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +17,7 @@ type Student = { id: string; name: string; classId: string; admissionNo?: string
 type Class = { name: string, grade: number, classTeacherId?: string };
 type Teacher = { name: string };
 type Subject = { id: string; name: string; grade: number; };
-type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; } };
+type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; grade?: string; comment?: string; } };
 type ReportCardExtras = {
     attendance?: { totalDays?: string; daysPresent?: string; daysAbsent?: string; punctuality?: string; };
     development?: { participation?: string; homework?: string; sports?: string; behaviour?: string; };
@@ -53,16 +53,6 @@ export default function ReportCardPage() {
     const unsubscribe = auth.onAuthStateChanged((user) => setUser(user));
     return () => unsubscribe();
   }, []);
-
-  const getGradeAndComment = (total: number) => {
-      if (total >= 90) return { grade: 'A', comment: 'Excellent progress' };
-      if (total >= 80) return { grade: 'B+', comment: 'Very good work' };
-      if (total >= 70) return { grade: 'B', comment: 'Good understanding' };
-      if (total >= 60) return { grade: 'C+', comment: 'Satisfactory' };
-      if (total >= 50) return { grade: 'C', comment: 'Needs improvement' };
-      if (total >= 40) return { grade: 'D', comment: 'Work harder' };
-      return { grade: 'F', comment: 'Unsatisfactory' };
-  };
 
   useEffect(() => {
     if (!user || !schoolId || !studentId) return;
@@ -126,20 +116,13 @@ export default function ReportCardPage() {
                 const allScores = [...caScores, examScore].filter(s => typeof s === 'number') as number[];
                 const total = allScores.length > 0 ? (allScores.reduce((a,b) => a + b, 0) / allScores.length) : 'N/A';
 
-                let grade = 'N/A', comment = 'N/A';
-                if(typeof total === 'number') {
-                    const gradeInfo = getGradeAndComment(total);
-                    grade = gradeInfo.grade;
-                    comment = gradeInfo.comment;
-                }
-
                 return {
                     subjectName: subject.name,
                     continuousAssessment: typeof caAvg === 'number' ? caAvg.toFixed(1) : caAvg,
                     examMarks: typeof examScore === 'number' ? examScore : 'N/A',
                     total: typeof total === 'number' ? total.toFixed(1) : total,
-                    grade,
-                    comment,
+                    grade: subjectResults.grade || 'N/A',
+                    comment: subjectResults.comment || 'N/A',
                 };
             });
             setPerformanceData(perfData);
@@ -313,5 +296,3 @@ export default function ReportCardPage() {
     </>
   );
 }
-
-    
