@@ -7,7 +7,6 @@ import {
   Menu,
   Search,
   School,
-  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -57,8 +56,9 @@ export function AppHeader() {
     }
   }, [user]);
 
-  const mainLinks = navLinks.filter(link => !link.isSettings);
-  const settingsLinks = navLinks.filter(link => link.isSettings);
+  const visibleLinks = navLinks.filter(link => !link.isHidden);
+  const mainLinks = visibleLinks.filter(link => !link.isSettings);
+  const settingsLinks = visibleLinks.filter(link => link.isSettings);
 
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">

@@ -6,22 +6,15 @@ import { usePathname } from 'next/navigation';
 import { GraduationCap } from 'lucide-react';
 import { navLinks } from '@/lib/nav-links';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from './ui/separator';
 
 export function AppSidebar() {
   const pathname = usePathname();
 
-  const mainLinks = navLinks.filter(link => !link.isSettings);
-  const settingsLinks = navLinks.filter(link => link.isSettings);
+  const visibleLinks = navLinks.filter(link => !link.isHidden);
+  const mainLinks = visibleLinks.filter(link => !link.isSettings);
+  const settingsLinks = visibleLinks.filter(link => link.isSettings);
 
   return (
     <div className="hidden border-r bg-muted/40 md:block">
@@ -36,7 +29,7 @@ export function AppSidebar() {
           <ScrollArea className="h-full">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
               {mainLinks.map((link) => {
-                const isActive = pathname === link.href;
+                const isActive = pathname.startsWith(link.href);
                 return (
                   <Link
                     key={link.label}
