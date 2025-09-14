@@ -135,7 +135,7 @@ export default function SettingsPage() {
                             id={`${title}-hue`}
                             type="number"
                             value={hue}
-                            onChange={(e) => setHue(parseInt(e.target.value, 10))}
+                            onChange={(e) => setHue(parseInt(e.target.value, 10) || 0)}
                             max={360}
                             min={0}
                         />
@@ -146,7 +146,7 @@ export default function SettingsPage() {
                             id={`${title}-saturation`}
                             type="number"
                             value={saturation}
-                            onChange={(e) => setSaturation(parseInt(e.target.value, 10))}
+                            onChange={(e) => setSaturation(parseInt(e.target.value, 10) || 0)}
                             max={100}
                             min={0}
                         />
@@ -157,7 +157,7 @@ export default function SettingsPage() {
                             id={`${title}-lightness`}
                             type="number"
                             value={lightness}
-                            onChange={(e) => setLightness(parseInt(e.target.value, 10))}
+                            onChange={(e) => setLightness(parseInt(e.target.value, 10) || 0)}
                             max={100}
                             min={0}
                         />
