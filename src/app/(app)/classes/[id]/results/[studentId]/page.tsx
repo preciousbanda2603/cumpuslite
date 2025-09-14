@@ -28,10 +28,17 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSchoolId } from '@/hooks/use-school-id';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 
 type Student = { id: string; name: string; classId: string; };
 type Subject = { id: string; name: string; grade: number; };
 type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; } };
+type ReportCardExtras = {
+    attendance?: { totalDays?: string; daysPresent?: string; daysAbsent?: string; punctuality?: string; };
+    development?: { participation?: string; homework?: string; sports?: string; behaviour?: string; };
+    comments?: { strengths?: string; improvements?: string; };
+};
 type UserRole = 'admin' | 'class_teacher' | 'subject_teacher' | 'other';
 
 const assessmentTypes = [
@@ -53,6 +60,7 @@ export default function StudentResultsPage() {
   const [student, setStudent] = useState<Student | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [results, setResults] = useState<Results>({});
+  const [extras, setExtras] = useState<ReportCardExtras>({});
   const [loading, setLoading] = useState(true);
   
   const canPerformActions = userRole === 'admin' || userRole === 'class_teacher';
@@ -131,6 +139,13 @@ export default function StudentResultsPage() {
         if (resultsSnap.exists()) {
           setResults(resultsSnap.val());
         }
+        
+        // Fetch existing extra report card data
+        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}`);
+        const extrasSnap = await get(extrasRef);
+        if (extrasSnap.exists()) {
+          setExtras(extrasSnap.val());
+        }
 
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -157,6 +172,16 @@ export default function StudentResultsPage() {
       },
     }));
   };
+  
+  const handleExtrasChange = (section: keyof ReportCardExtras, field: string, value: string) => {
+    setExtras(prev => ({
+        ...prev,
+        [section]: {
+            ...prev[section],
+            [field]: value
+        }
+    }));
+  };
 
   const calculateTotal = (subjectId: string) => {
     const subjectScores = results[subjectId];
@@ -172,7 +197,11 @@ export default function StudentResultsPage() {
     try {
         const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
         await set(resultsRef, results);
-        toast({ title: 'Success', description: "Student's results have been saved." });
+
+        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}`);
+        await set(extrasRef, extras);
+
+        toast({ title: 'Success', description: "Student's results and report data have been saved." });
     } catch (error) {
         console.error("Error saving results:", error);
         toast({ title: 'Error', description: 'Failed to save results.', variant: 'destructive' });
@@ -203,13 +232,13 @@ export default function StudentResultsPage() {
                 Back to Class
             </Button>
             <h1 className="text-3xl font-bold tracking-tight">
-                Manage Results
+                Manage Results & Report Data
             </h1>
-            <p className="text-muted-foreground">Editing term results for <span className="font-semibold text-primary">{student.name}</span>.</p>
+            <p className="text-muted-foreground">Editing term information for <span className="font-semibold text-primary">{student.name}</span>.</p>
         </div>
         <Card>
             <CardHeader>
-                <CardTitle>Results Entry Sheet</CardTitle>
+                <CardTitle>Academic Performance</CardTitle>
                 <CardDescription>Enter scores for each subject. Scores should be between 0 and 100.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -251,6 +280,79 @@ export default function StudentResultsPage() {
                 </div>
             </CardContent>
         </Card>
+        
+        <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Attendance</CardTitle>
+                    <CardDescription>Enter student's term attendance record.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label>Total Days</Label>
+                            <Input type="number" value={extras.attendance?.totalDays || ''} onChange={e => handleExtrasChange('attendance', 'totalDays', e.target.value)} disabled={!canPerformActions} />
+                        </div>
+                         <div className="grid gap-2">
+                            <Label>Days Present</Label>
+                            <Input type="number" value={extras.attendance?.daysPresent || ''} onChange={e => handleExtrasChange('attendance', 'daysPresent', e.target.value)} disabled={!canPerformActions} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label>Days Absent</Label>
+                            <Input type="number" value={extras.attendance?.daysAbsent || ''} onChange={e => handleExtrasChange('attendance', 'daysAbsent', e.target.value)} disabled={!canPerformActions} />
+                        </div>
+                         <div className="grid gap-2">
+                            <Label>Punctuality</Label>
+                            <Input value={extras.attendance?.punctuality || ''} onChange={e => handleExtrasChange('attendance', 'punctuality', e.target.value)} placeholder="e.g. Good" disabled={!canPerformActions} />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Personal Development</CardTitle>
+                    <CardDescription>Enter remarks on student's development.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <div className="grid gap-2">
+                        <Label>Class Participation</Label>
+                        <Input value={extras.development?.participation || ''} onChange={e => handleExtrasChange('development', 'participation', e.target.value)} disabled={!canPerformActions} />
+                    </div>
+                     <div className="grid gap-2">
+                        <Label>Homework & Assignments</Label>
+                        <Input value={extras.development?.homework || ''} onChange={e => handleExtrasChange('development', 'homework', e.target.value)} disabled={!canPerformActions} />
+                    </div>
+                     <div className="grid gap-2">
+                        <Label>Sports & Games</Label>
+                        <Input value={extras.development?.sports || ''} onChange={e => handleExtrasChange('development', 'sports', e.target.value)} disabled={!canPerformActions} />
+                    </div>
+                     <div className="grid gap-2">
+                        <Label>Behaviour / Social Skills</Label>
+                        <Input value={extras.development?.behaviour || ''} onChange={e => handleExtrasChange('development', 'behaviour', e.target.value)} disabled={!canPerformActions} />
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Comments & Next Steps</CardTitle>
+                <CardDescription>Provide overall comments for the student.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                    <Label>Strengths</Label>
+                    <Textarea value={extras.comments?.strengths || ''} onChange={e => handleExtrasChange('comments', 'strengths', e.target.value)} disabled={!canPerformActions} />
+                </div>
+                 <div className="grid gap-2">
+                    <Label>Areas for Improvement</Label>
+                    <Textarea value={extras.comments?.improvements || ''} onChange={e => handleExtrasChange('comments', 'improvements', e.target.value)} disabled={!canPerformActions} />
+                </div>
+            </CardContent>
+        </Card>
+
         {canPerformActions && (
              <div className="flex justify-end mt-4">
                 <Button size="lg" onClick={handleSaveChanges} disabled={loading}>

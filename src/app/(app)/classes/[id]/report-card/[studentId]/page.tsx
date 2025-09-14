@@ -18,6 +18,11 @@ type Class = { name: string, grade: number, classTeacherId?: string };
 type Teacher = { name: string };
 type Subject = { id: string; name: string; grade: number; };
 type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; } };
+type ReportCardExtras = {
+    attendance?: { totalDays?: string; daysPresent?: string; daysAbsent?: string; punctuality?: string; };
+    development?: { participation?: string; homework?: string; sports?: string; behaviour?: string; };
+    comments?: { strengths?: string; improvements?: string; };
+};
 
 type PerformanceData = {
   subjectName: string;
@@ -41,6 +46,7 @@ export default function ReportCardPage() {
   const [classInfo, setClassInfo] = useState<Class | null>(null);
   const [classTeacher, setClassTeacher] = useState<Teacher | null>(null);
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
+  const [extras, setExtras] = useState<ReportCardExtras>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,8 +72,9 @@ export default function ReportCardPage() {
       try {
         const schoolRef = ref(database, `schools/${schoolId}`);
         const studentRef = ref(database, `schools/${schoolId}/students/${studentId}`);
+        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}`);
         
-        const [schoolSnap, studentSnap] = await Promise.all([get(schoolRef), get(studentRef)]);
+        const [schoolSnap, studentSnap, extrasSnap] = await Promise.all([get(schoolRef), get(studentRef), get(extrasRef)]);
         
         if (!schoolSnap.exists() || !studentSnap.exists()) {
             toast({ title: 'Error', description: 'Required data not found.', variant: 'destructive' });
@@ -78,6 +85,10 @@ export default function ReportCardPage() {
         setSchool(schoolSnap.val());
         const studentData = { id: studentId, ...studentSnap.val() };
         setStudent(studentData);
+
+        if (extrasSnap.exists()) {
+            setExtras(extrasSnap.val());
+        }
 
         const classRef = ref(database, `schools/${schoolId}/classes/${studentData.classId}`);
         const classSnap = await get(classRef);
@@ -218,10 +229,10 @@ export default function ReportCardPage() {
                 </thead>
                 <tbody>
                     <tr>
-                        <td>-</td>
-                        <td>-</td>
-                        <td>-</td>
-                        <td>-</td>
+                        <td>{extras.attendance?.totalDays || '-'}</td>
+                        <td>{extras.attendance?.daysPresent || '-'}</td>
+                        <td>{extras.attendance?.daysAbsent || '-'}</td>
+                        <td>{extras.attendance?.punctuality || '-'}</td>
                     </tr>
                 </tbody>
                 </table>
@@ -265,18 +276,18 @@ export default function ReportCardPage() {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td>Class Participation</td><td>-</td></tr>
-                    <tr><td>Homework & Assignments</td><td>-</td></tr>
-                    <tr><td>Sports & Games</td><td>-</td></tr>
-                    <tr><td>Behaviour / Social Skills</td><td>-</td></tr>
+                    <tr><td>Class Participation</td><td>{extras.development?.participation || '-'}</td></tr>
+                    <tr><td>Homework & Assignments</td><td>{extras.development?.homework || '-'}</td></tr>
+                    <tr><td>Sports & Games</td><td>{extras.development?.sports || '-'}</td></tr>
+                    <tr><td>Behaviour / Social Skills</td><td>{extras.development?.behaviour || '-'}</td></tr>
                 </tbody>
                 </table>
             </div>
 
             <div className="comments">
                 <div className="section-title">Comments & Next Steps</div>
-                <p><strong>Strengths:</strong></p>
-                <p><strong>Areas for Improvement:</strong></p>
+                <p><strong>Strengths:</strong> {extras.comments?.strengths || ''}</p>
+                <p><strong>Areas for Improvement:</strong> {extras.comments?.improvements || ''}</p>
             </div>
 
             <div className="signatures">
