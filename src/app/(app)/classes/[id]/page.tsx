@@ -45,7 +45,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type ClassInfo = { id: string; name: string; classTeacherId?: string; grade: number };
 type Teacher = { id: string; name: string };
-type Student = { id: string; name: string };
+type Student = { id: string; name: string; classId: string; };
 type SubjectAssignment = {
   subjectId: string;
   subjectName: string;
@@ -108,11 +108,13 @@ export default function ViewClassPage() {
           setClassTeacher(teachersList.find(t => t.id === classData.classTeacherId) || null);
         }
 
-        // Fetch Students in Class
-        const studentsQuery = query(ref(database, `schools/${schoolUid}/students`), orderByChild('classId'), equalTo(classId));
-        const studentsSnap = await get(studentsQuery);
-        const studentsData = studentsSnap.val() || {};
-        setStudents(Object.keys(studentsData).map(id => ({ id, ...studentsData[id] })));
+        // Fetch All Students and filter for the class
+        const allStudentsRef = ref(database, `schools/${schoolUid}/students`);
+        const allStudentsSnap = await get(allStudentsRef);
+        const allStudentsData = allStudentsSnap.val() || {};
+        const allStudentsList: Student[] = Object.keys(allStudentsData).map(id => ({ id, ...allStudentsData[id] }));
+        setStudents(allStudentsList.filter(s => s.classId === classId));
+
 
         // Fetch Subjects and their Assignments for the class grade
         const subjectsQuery = query(ref(database, `schools/${schoolUid}/subjects`), orderByChild('grade'), equalTo(classData.grade));
@@ -164,12 +166,13 @@ export default function ViewClassPage() {
     try {
       if (dialogState.type === 'classTeacher' && classInfo) {
         const classRef = ref(database, `schools/${schoolUid}/classes/${classInfo.id}`);
-        await set({ ...classInfo, classTeacherId: selectedTeacherId });
+        await set(ref(database, `schools/${schoolUid}/classes/${classInfo.id}`), { ...classInfo, classTeacherId: selectedTeacherId });
+
         setClassTeacher(allTeachers.find(t => t.id === selectedTeacherId) || null);
         toast({ title: 'Success', description: 'Class teacher updated.' });
       } else if (dialogState.type === 'subjectTeacher') {
         const assignmentRef = ref(database, `schools/${schoolUid}/assignments/${classId}_${dialogState.data.subjectId}`);
-        await set({ classId: classId, subjectId: dialogState.data.subjectId, teacherId: selectedTeacherId });
+        await set(assignmentRef, { classId: classId, subjectId: dialogState.data.subjectId, teacherId: selectedTeacherId });
         setSubjectAssignments(prev => prev.map(sa => sa.subjectId === dialogState.data.subjectId ? { ...sa, teacherId: selectedTeacherId, teacherName: allTeachers.find(t => t.id === selectedTeacherId)?.name || 'Unassigned' } : sa));
         toast({ title: 'Success', description: 'Subject teacher updated.' });
       }
@@ -343,5 +346,3 @@ export default function ViewClassPage() {
     </div>
   );
 }
-
-    
