@@ -42,8 +42,9 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 type Class = { id: string; name: string };
-type Student = { id: string; name: string };
-type AttendanceRecord = { [studentId: string]: 'present' | 'absent' | 'late' };
+type Student = { id: string; name: string; classId: string; };
+type AttendanceStatus = 'present' | 'absent' | 'late' | 'sick' | 'unmarked';
+type AttendanceRecord = { [studentId: string]: AttendanceStatus };
 
 export default function AttendancePage() {
   const [user, setUser] = useState<User | null>(null);
@@ -85,10 +86,9 @@ export default function AttendancePage() {
       const classStudents = allStudents.filter(s => s.classId === selectedClassId);
       setStudents(classStudents);
       
-      // Reset attendance when students load for a new class
       const initialAttendance: AttendanceRecord = {};
       classStudents.forEach(student => {
-        initialAttendance[student.id] = 'present'; 
+        initialAttendance[student.id] = 'unmarked'; 
       });
       setAttendance(initialAttendance);
     });
@@ -106,10 +106,9 @@ export default function AttendancePage() {
       if (snapshot.exists()) {
         setAttendance(snapshot.val());
       } else {
-        // If no record exists, initialize with default values ('present')
         const initialAttendance: AttendanceRecord = {};
         students.forEach(student => {
-          initialAttendance[student.id] = 'present';
+          initialAttendance[student.id] = 'unmarked';
         });
         setAttendance(initialAttendance);
       }
@@ -117,7 +116,7 @@ export default function AttendancePage() {
   }, [selectedClassId, date, user, students]);
 
 
-  const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'late') => {
+  const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
     setAttendance(prev => ({ ...prev, [studentId]: status }));
   };
 
@@ -192,36 +191,44 @@ export default function AttendancePage() {
                     <TableHeader>
                         <TableRow>
                         <TableHead>Student Name</TableHead>
-                        <TableHead className="text-center w-[120px]">Present</TableHead>
-                        <TableHead className="text-center w-[120px]">Absent</TableHead>
-                        <TableHead className="text-center w-[120px]">Late</TableHead>
+                        <TableHead className="text-center w-[100px]">Present</TableHead>
+                        <TableHead className="text-center w-[100px]">Absent</TableHead>
+                        <TableHead className="text-center w-[100px]">Late</TableHead>
+                        <TableHead className="text-center w-[100px]">Sick</TableHead>
+                        <TableHead className="text-center w-[100px]">Unmarked</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {students.length > 0 ? students.map(student => (
                             <TableRow key={student.id}>
                                 <TableCell className="font-medium">{student.name}</TableCell>
-                                <TableCell colSpan={3}>
+                                <TableCell colSpan={5}>
                                     <RadioGroup
-                                    value={attendance[student.id] || 'present'}
+                                    value={attendance[student.id] || 'unmarked'}
                                     onValueChange={(value) => handleStatusChange(student.id, value as any)}
                                     className="flex justify-around"
                                     >
-                                    <div className="flex items-center justify-center w-1/3">
+                                    <div className="flex items-center justify-center w-1/5">
                                         <RadioGroupItem value="present" id={`p-${student.id}`} />
                                     </div>
-                                    <div className="flex items-center justify-center w-1/3">
+                                    <div className="flex items-center justify-center w-1/5">
                                         <RadioGroupItem value="absent" id={`a-${student.id}`} />
                                     </div>
-                                    <div className="flex items-center justify-center w-1/3">
+                                    <div className="flex items-center justify-center w-1/5">
                                         <RadioGroupItem value="late" id={`l-${student.id}`} />
+                                    </div>
+                                    <div className="flex items-center justify-center w-1/5">
+                                        <RadioGroupItem value="sick" id={`s-${student.id}`} />
+                                    </div>
+                                    <div className="flex items-center justify-center w-1/5">
+                                        <RadioGroupItem value="unmarked" id={`u-${student.id}`} />
                                     </div>
                                     </RadioGroup>
                                 </TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                <TableCell colSpan={6} className="text-center text-muted-foreground">
                                     No students enrolled in this class.
                                 </TableCell>
                             </TableRow>
