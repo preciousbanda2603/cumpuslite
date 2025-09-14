@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -28,8 +29,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { rooms as initialRooms } from '@/lib/mock-data';
 import { DoorOpen, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { auth, database } from '@/lib/firebase';
+import { ref, onValue, push, set, remove } from 'firebase/database';
+import type { User } from 'firebase/auth';
 
 type Room = {
   id: string;
@@ -37,13 +40,55 @@ type Room = {
 };
 
 export default function RoomsPage() {
-  const [rooms, setRooms] = useState<Room[]>(initialRooms);
+  const [user, setUser] = useState<User | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [newRoomName, setNewRoomName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleAddOrUpdateRoom = () => {
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const roomsRef = ref(database, `schools/${user.uid}/rooms`);
+    const unsubscribe = onValue(
+      roomsRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const roomsData = snapshot.val();
+          const roomsList = Object.keys(roomsData).map((key) => ({
+            id: key,
+            ...roomsData[key],
+          }));
+          setRooms(roomsList);
+        } else {
+          setRooms([]);
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error fetching rooms:', error);
+        toast({
+          title: 'Error',
+          description: 'Could not fetch rooms.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user, toast]);
+
+  const handleAddOrUpdateRoom = async () => {
     if (!newRoomName.trim()) {
       toast({
         title: 'Error',
@@ -52,40 +97,44 @@ export default function RoomsPage() {
       });
       return;
     }
-
-    if (editingRoom) {
-      // Update existing room
-      setRooms(
-        rooms.map((r) =>
-          r.id === editingRoom.id ? { ...r, name: newRoomName } : r
-        )
-      );
-      toast({
-        title: 'Success!',
-        description: 'Room has been updated.',
-      });
-    } else {
-      // Add new room
-      const newRoom = {
-        id: `room-${Date.now()}`,
-        name: newRoomName,
-      };
-      setRooms([...rooms, newRoom]);
-      toast({
-        title: 'Success!',
-        description: 'New room has been added.',
-      });
+    if (!user) {
+        toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
+        return;
     }
 
-    closeDialog();
+    try {
+        if (editingRoom) {
+            // Update existing room
+            const roomRef = ref(database, `schools/${user.uid}/rooms/${editingRoom.id}`);
+            await set(roomRef, { name: newRoomName });
+            toast({ title: 'Success!', description: 'Room has been updated.' });
+        } else {
+            // Add new room
+            const roomsRef = ref(database, `schools/${user.uid}/rooms`);
+            const newRoomRef = push(roomsRef);
+            await set(newRoomRef, { name: newRoomName });
+            toast({ title: 'Success!', description: 'New room has been added.' });
+        }
+        closeDialog();
+    } catch(error: any) {
+        console.error("Failed to save room:", error);
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
   };
 
-  const handleDeleteRoom = (roomId: string) => {
-    setRooms(rooms.filter((r) => r.id !== roomId));
-    toast({
-      title: 'Success!',
-      description: 'Room has been deleted.',
-    });
+  const handleDeleteRoom = async (roomId: string) => {
+    if (!user) {
+        toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
+        return;
+    }
+    try {
+        const roomRef = ref(database, `schools/${user.uid}/rooms/${roomId}`);
+        await remove(roomRef);
+        toast({ title: 'Success!', description: 'Room has been deleted.' });
+    } catch(error: any) {
+        console.error("Failed to delete room:", error);
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
   };
 
   const openDialog = (room: Room | null = null) => {
@@ -134,27 +183,41 @@ export default function RoomsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rooms.map((room) => (
-                <TableRow key={room.id}>
-                  <TableCell className="font-medium">{room.name}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openDialog(room)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDeleteRoom(room.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {loading ? (
+                 <TableRow>
+                    <TableCell colSpan={2} className="text-center text-muted-foreground">
+                      Loading rooms...
+                    </TableCell>
+                  </TableRow>
+              ) : rooms.length > 0 ? (
+                rooms.map((room) => (
+                  <TableRow key={room.id}>
+                    <TableCell className="font-medium">{room.name}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openDialog(room)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleDeleteRoom(room.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                 <TableRow>
+                    <TableCell colSpan={2} className="text-center text-muted-foreground">
+                      No rooms found. Add one to get started.
+                    </TableCell>
+                  </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
