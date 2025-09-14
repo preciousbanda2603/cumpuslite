@@ -39,7 +39,7 @@ export default function FeesPage() {
             <TableRow>
               <TableCell>Alex Johnson</TableCell>
               <TableCell>INV-001</TableCell>
-              <TableCell>$500.00</TableCell>
+              <TableCell>ZMW 500.00</TableCell>
               <TableCell>2024-12-15</TableCell>
               <TableCell><Badge>Paid</Badge></TableCell>
               <TableCell><Button variant="outline" size="sm">View Receipt</Button></TableCell>
@@ -47,7 +47,7 @@ export default function FeesPage() {
             <TableRow>
               <TableCell>Maria Garcia</TableCell>
               <TableCell>INV-002</TableCell>
-              <TableCell>$500.00</TableCell>
+              <TableCell>ZMW 500.00</TableCell>
               <TableCell>2024-12-15</TableCell>
               <TableCell><Badge variant="destructive">Overdue</Badge></TableCell>
               <TableCell><Button variant="outline" size="sm">Send Reminder</Button></TableCell>
@@ -55,7 +55,7 @@ export default function FeesPage() {
             <TableRow>
               <TableCell>Sam Lee</TableCell>
               <TableCell>INV-003</TableCell>
-              <TableCell>$500.00</TableCell>
+              <TableCell>ZMW 500.00</TableCell>
               <TableCell>2024-12-15</TableCell>
               <TableCell><Badge variant="secondary">Pending</Badge></TableCell>
               <TableCell><Button variant="outline" size="sm">Send Reminder</Button></TableCell>

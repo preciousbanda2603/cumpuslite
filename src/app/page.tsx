@@ -1,5 +1,6 @@
 'use client';
 
+import type { Metadata } from 'next';
 import {
   Card,
   CardContent,
@@ -92,7 +93,7 @@ export default function Dashboard() {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$125,430</div>
+            <div className="text-2xl font-bold">ZMW 125,430</div>
             <p className="text-xs text-muted-foreground">85% of total fees</p>
           </CardContent>
         </Card>
