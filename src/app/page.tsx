@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Card,
   CardContent,
@@ -24,16 +26,10 @@ import {
   Clock,
   BookOpen,
 } from "lucide-react";
-import type { Metadata } from 'next';
 import { AnnouncementsWidget } from "@/components/announcements-widget";
 import { Progress } from "@/components/ui/progress";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
-
-export const metadata: Metadata = {
-  title: 'Dashboard | Campus.ZM',
-  description: 'Overview of your school activities.',
-};
 
 const chartData = [
   { month: "January", desktop: 186 },
