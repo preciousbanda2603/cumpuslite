@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { navLinks } from '@/lib/nav-links';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,6 +32,7 @@ import { Separator } from './ui/separator';
 
 export function AppHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [schoolName, setSchoolName] = useState('Your School');
   
@@ -55,6 +56,15 @@ export function AppHeader() {
       return () => unsubscribe();
     }
   }, [user]);
+
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error("Failed to log out:", error);
+    }
+  };
 
   const visibleLinks = navLinks.filter(link => !link.isHidden);
   const mainLinks = visibleLinks.filter(link => !link.isSettings);
@@ -166,10 +176,10 @@ export function AppHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Settings</DropdownMenuItem>
-          <DropdownMenuItem>Support</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push('/settings')}>Settings</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push('#')}>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Logout</DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleLogout}>Logout</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
