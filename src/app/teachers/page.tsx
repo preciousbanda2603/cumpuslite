@@ -1,3 +1,6 @@
+
+'use client';
+
 import Link from "next/link";
 import {
   Card,
@@ -9,10 +12,60 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { PlusCircle, Search, UserPlus } from "lucide-react";
-import { teachers } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { auth, database } from "@/lib/firebase";
+import { onValue, ref } from "firebase/database";
+import type { User } from "firebase/auth";
+
+type Teacher = {
+  id: string;
+  name: string;
+  subject: string;
+  email: string;
+  qualifications: string;
+  avatar: string;
+};
+
 
 export default function TeachersPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const teachersRef = ref(database, `schools/${user.uid}/teachers`);
+    const unsubscribe = onValue(teachersRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const teachersData = snapshot.val();
+        const teachersList = Object.keys(teachersData).map(key => ({
+          id: key,
+          ...teachersData[key],
+          avatar: `https://picsum.photos/seed/${key}/100/100`, // Generate consistent avatar
+        }));
+        setTeachers(teachersList);
+      } else {
+        setTeachers([]);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching teachers:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -44,7 +97,11 @@ export default function TeachersPage() {
           />
         </div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {teachers.length > 0 ? (
+        {loading ? (
+            <div className="col-span-full text-center text-muted-foreground py-12">
+                Loading teachers...
+            </div>
+        ) : teachers.length > 0 ? (
             teachers.map(teacher => (
                 <Card key={teacher.id}>
                     <CardHeader className="items-center">
@@ -64,7 +121,7 @@ export default function TeachersPage() {
             ))
         ) : (
             <div className="col-span-full text-center text-muted-foreground py-12">
-                No teachers found.
+                No teachers found. Click "Add Teacher" to get started.
             </div>
         )}
       </div>
