@@ -24,12 +24,21 @@ import { auth, database } from '@/lib/firebase';
 import { ref, push, set, onValue } from 'firebase/database';
 import { useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 type Subject = {
   id: string;
   name: string;
   grade: number;
 };
+
+// Create a secondary auth instance for creating teacher accounts
+// This prevents the admin from being logged out
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+const secondaryApp = getApps().length > 1 ? getApp("secondary") : initializeApp(auth.app.options, "secondary");
+const secondaryAuth = getAuth(secondaryApp);
+
 
 export default function AddTeacherPage() {
   const { toast } = useToast();
@@ -73,6 +82,7 @@ export default function AddTeacherPage() {
     const formData = new FormData(event.currentTarget);
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
     const qualifications = formData.get('qualifications') as string;
     
     if (!user) {
@@ -95,11 +105,27 @@ export default function AddTeacherPage() {
         setLoading(false);
         return;
     }
+     if (!password || password.length < 6) {
+        toast({
+            title: 'Invalid Password',
+            description: 'Password must be at least 6 characters long.',
+            variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+    }
+
 
     try {
+      // 1. Create teacher auth account without logging out the admin
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      const teacherUser = userCredential.user;
+
+      // 2. Save teacher profile to Realtime Database
       const teachersRef = ref(database, `schools/${user.uid}/teachers`);
       const newTeacherRef = push(teachersRef);
       await set(newTeacherRef, {
+        uid: teacherUser.uid, // Store the auth UID
         name,
         subject: selectedSubject,
         email,
@@ -116,9 +142,13 @@ export default function AddTeacherPage() {
 
     } catch (error: any) {
       console.error('Failed to add teacher:', error);
+       let errorMessage = 'An unexpected error occurred.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already in use by another teacher or administrator.';
+      }
       toast({
         title: 'Error',
-        description: error.message || 'An unexpected error occurred.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -141,6 +171,26 @@ export default function AddTeacherPage() {
               <Label htmlFor="name">Full Name</Label>
               <Input id="name" name="name" placeholder="e.g. Jane Doe" required />
             </div>
+             <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="e.g. j.doe@campus.zm"
+                required
+              />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Set a temporary password"
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="subject">Primary Subject</Label>
               <Select name="subject" required value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -159,16 +209,6 @@ export default function AddTeacherPage() {
                     )}
                   </SelectContent>
                 </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="e.g. j.doe@campus.zm"
-                required
-              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="qualifications">Qualifications</Label>
