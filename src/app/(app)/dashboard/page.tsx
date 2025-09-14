@@ -14,8 +14,8 @@ import {
   CalendarDays,
   Clapperboard,
   BookUser,
-  FileText,
   Megaphone,
+  UserPlus,
 } from 'lucide-react';
 import {
   ChartContainer,
@@ -24,21 +24,13 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import { auth, database } from '@/lib/firebase';
-import { onValue, ref } from 'firebase/database';
+import { onValue, ref, query, orderByChild, limitToLast } from 'firebase/database';
 import type { User } from 'firebase/auth';
-
-const chartData = [
-  { month: 'January', desktop: 186 },
-  { month: 'February', desktop: 305 },
-  { month: 'March', desktop: 237 },
-  { month: 'April', desktop: 73 },
-  { month: 'May', desktop: 209 },
-  { month: 'June', desktop: 214 },
-];
+import { format, subMonths } from 'date-fns';
 
 const chartConfig = {
-  desktop: {
-    label: 'Desktop',
+  enrollments: {
+    label: 'Students',
     color: 'hsl(var(--primary))',
   },
 };
@@ -50,6 +42,10 @@ type DashboardStats = {
   events: number;
 };
 
+type Student = { name: string; enrollmentDate: string; createdAt: string; };
+type Teacher = { name: string; createdAt: string; };
+type Activity = { id: string, type: 'student' | 'teacher', text: string, time: string };
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
@@ -58,12 +54,13 @@ export default function DashboardPage() {
     teachers: 0,
     events: 0,
   });
+  const [chartData, setChartData] = useState<{ month: string, enrollments: number }[]>([]);
+  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setUser(user);
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -71,6 +68,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
 
+    setLoading(true);
     const schoolUid = user.uid;
     const statsToFetch = [
       { key: 'students', path: `schools/${schoolUid}/students` },
@@ -82,16 +80,89 @@ export default function DashboardPage() {
     const listeners = statsToFetch.map(({ key, path }) => {
       const dbRef = ref(database, path);
       return onValue(dbRef, (snapshot) => {
-        const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+        const data = snapshot.val();
+        const count = snapshot.exists() ? Object.keys(data).length : 0;
         setStats((prevStats) => ({ ...prevStats, [key]: count }));
-      }, (error) => {
-        console.error(`Error fetching ${key}:`, error);
+
+        if (key === 'students' && data) {
+           processStudentDataForChart(data);
+        }
       });
     });
 
-    // Cleanup listeners on component unmount
+    const studentsRef = query(ref(database, `schools/${schoolUid}/students`), orderByChild('createdAt'), limitToLast(3));
+    const teachersRef = query(ref(database, `schools/${schoolUid}/teachers`), orderByChild('createdAt'), limitToLast(2));
+
+    const unsubscribeStudentsActivity = onValue(studentsRef, (snapshot) => {
+        const newActivities: Activity[] = [];
+        if (snapshot.exists()) {
+            snapshot.forEach(childSnapshot => {
+                const student = childSnapshot.val() as Student;
+                newActivities.push({
+                    id: `student-${childSnapshot.key}`,
+                    type: 'student',
+                    text: `${student.name} was enrolled.`,
+                    time: student.createdAt,
+                });
+            });
+        }
+        setRecentActivity(prev => [...prev.filter(a => a.type !== 'student'), ...newActivities].sort((a,b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
+    });
+    
+    const unsubscribeTeachersActivity = onValue(teachersRef, (snapshot) => {
+        const newActivities: Activity[] = [];
+        if (snapshot.exists()) {
+             snapshot.forEach(childSnapshot => {
+                const teacher = childSnapshot.val() as Teacher;
+                newActivities.push({
+                    id: `teacher-${childSnapshot.key}`,
+                    type: 'teacher',
+                    text: `${teacher.name} joined the staff.`,
+                    time: teacher.createdAt,
+                });
+            });
+        }
+        setRecentActivity(prev => [...prev.filter(a => a.type !== 'teacher'), ...newActivities].sort((a,b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
+    });
+
+
+    const processStudentDataForChart = (studentsData: { [key: string]: Student }) => {
+      const enrollmentsByMonth: { [key: string]: number } = {};
+      const today = new Date();
+      const last6Months: { month: string, enrollments: number }[] = [];
+
+      for (let i = 5; i >= 0; i--) {
+        const monthDate = subMonths(today, i);
+        const monthKey = format(monthDate, 'yyyy-MM');
+        enrollmentsByMonth[monthKey] = 0;
+        last6Months.push({ month: format(monthDate, 'MMMM'), enrollments: 0 });
+      }
+
+      Object.values(studentsData).forEach(student => {
+        if (student.enrollmentDate) {
+          const enrollmentMonth = format(new Date(student.enrollmentDate), 'yyyy-MM');
+          if (enrollmentsByMonth.hasOwnProperty(enrollmentMonth)) {
+            enrollmentsByMonth[enrollmentMonth]++;
+          }
+        }
+      });
+      
+      const updatedChartData = last6Months.map(data => {
+        const yearMonthKey = format(subMonths(today, 5 - last6Months.findIndex(m => m.month === data.month)), 'yyyy-MM');
+         return {
+            ...data,
+            enrollments: enrollmentsByMonth[yearMonthKey] || 0,
+         };
+      });
+
+      setChartData(updatedChartData);
+      setLoading(false);
+    };
+
     return () => {
       listeners.forEach((unsubscribe) => unsubscribe());
+      unsubscribeStudentsActivity();
+      unsubscribeTeachersActivity();
     };
   }, [user]);
 
@@ -120,7 +191,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Online Classes
+              Classes
             </CardTitle>
             <Clapperboard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -181,7 +252,7 @@ export default function DashboardPage() {
                   cursor={false}
                   content={<ChartTooltipContent />}
                 />
-                <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
+                <Bar dataKey="enrollments" fill="var(--color-enrollments)" radius={4} />
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -194,9 +265,25 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-             <div className="text-center text-muted-foreground pt-8">
-                No recent activity.
-             </div>
+             {loading ? (
+                <div className="text-center text-muted-foreground pt-8">Loading activity...</div>
+             ) : recentActivity.length > 0 ? (
+                recentActivity.map(activity => (
+                    <div key={activity.id} className="flex items-start gap-3">
+                       <div className="bg-muted rounded-full p-2">
+                            {activity.type === 'student' ? <Users className="h-4 w-4 text-muted-foreground"/> : <BookUser className="h-4 w-4 text-muted-foreground"/>}
+                       </div>
+                       <div>
+                            <p className="text-sm">{activity.text}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(activity.time), "PPp")}</p>
+                       </div>
+                    </div>
+                ))
+             ) : (
+                <div className="text-center text-muted-foreground pt-8">
+                    No recent activity.
+                </div>
+             )}
           </CardContent>
         </Card>
       </div>
