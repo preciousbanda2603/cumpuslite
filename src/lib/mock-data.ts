@@ -91,3 +91,18 @@ export const subjects = [
     { id: 'sub-6', name: 'Art', grade: 9 },
     { id: 'sub-7', name: 'Physical Education', grade: 9 },
 ];
+
+export const grades = [
+    { id: 'g-1', name: 'Grade 1' },
+    { id: 'g-2', name: 'Grade 2' },
+    { id: 'g-3', name: 'Grade 3' },
+    { id: 'g-4', name: 'Grade 4' },
+    { id: 'g-5', name: 'Grade 5' },
+    { id: 'g-6', name: 'Grade 6' },
+    { id: 'g-7', name: 'Grade 7' },
+    { id: 'g-8', name: 'Grade 8' },
+    { id: 'g-9', name: 'Grade 9' },
+    { id: 'g-10', name: 'Grade 10' },
+    { id: 'g-11', name: 'Grade 11' },
+    { id: 'g-12', name: 'Grade 12' },
+];

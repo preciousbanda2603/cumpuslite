@@ -13,12 +13,14 @@ import {
   FileText,
   BookCopy,
   BookText,
+  GraduationCap,
 } from 'lucide-react';
 
 export const navLinks = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/students", label: "Student Profiles", icon: Users },
   { href: "/teachers", label: "Teacher Directory", icon: BookUser },
+  { href: "/grades", label: "Grades", icon: GraduationCap },
   { href: "/subjects", label: "Subjects", icon: BookText },
   { href: "/assignments", label: "Class Assignments", icon: BookCopy },
   { href: "/timetables", label: "Timetables", icon: CalendarDays },
