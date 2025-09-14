@@ -40,7 +40,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Users, BookUser, Edit, ArrowLeft } from 'lucide-react';
+import { Users, BookUser, Edit, ArrowLeft, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSchoolId } from '@/hooks/use-school-id';
 
@@ -312,8 +312,8 @@ export default function ViewClassPage() {
             </Card>
              <Card>
                 <CardHeader>
-                    <CardTitle>Results Sheet</CardTitle>
-                    <CardDescription>Enter and view student performance.</CardDescription>
+                    <CardTitle>Results & Reports</CardTitle>
+                    <CardDescription>Enter scores and view student report cards.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -327,7 +327,7 @@ export default function ViewClassPage() {
                            {students.map(student => (
                             <TableRow key={student.id}>
                                 <TableCell>{student.name}</TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-right space-x-2">
                                     <Button 
                                         variant="outline" 
                                         size="sm"
@@ -335,7 +335,16 @@ export default function ViewClassPage() {
                                         disabled={!canPerformActions}
                                         title={!canPerformActions ? "Only Admins or Class Teachers can manage results" : ""}
                                     >
+                                        <Edit className="mr-2 h-4 w-4" />
                                         Manage Results
+                                    </Button>
+                                     <Button 
+                                        variant="secondary" 
+                                        size="sm"
+                                        onClick={() => router.push(`/classes/${classId}/report-card/${student.id}`)}
+                                    >
+                                        <FileText className="mr-2 h-4 w-4" />
+                                        View Report
                                     </Button>
                                 </TableCell>
                             </TableRow>

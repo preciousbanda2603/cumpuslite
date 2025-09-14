@@ -38,4 +38,6 @@ export const navLinks = [
   { href: "/fees", label: "Fee Collection", icon: CreditCard },
   { href: "/timetables/configure", label: "Time Slots", icon: Settings, isSettings: true, isHidden: true },
   { href: "/settings", label: "Theme Settings", icon: Palette, isSettings: true },
+  // This is a new link that should be hidden from the sidebar
+  { href: "/classes/[id]/report-card/[studentId]", label: "Report Card", icon: FileText, isHidden: true },
 ];
