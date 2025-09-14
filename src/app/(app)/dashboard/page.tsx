@@ -68,6 +68,39 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
 
+    const processStudentDataForChart = (studentsData: { [key: string]: Student }) => {
+      const enrollmentsByMonth: { [key: string]: number } = {};
+      const today = new Date();
+      const last6Months: { month: string, enrollments: number }[] = [];
+
+      for (let i = 5; i >= 0; i--) {
+        const monthDate = subMonths(today, i);
+        const monthKey = format(monthDate, 'yyyy-MM');
+        enrollmentsByMonth[monthKey] = 0;
+        last6Months.push({ month: format(monthDate, 'MMMM'), enrollments: 0 });
+      }
+
+      Object.values(studentsData).forEach(student => {
+        if (student.enrollmentDate) {
+          const enrollmentMonth = format(new Date(student.enrollmentDate), 'yyyy-MM');
+          if (enrollmentsByMonth.hasOwnProperty(enrollmentMonth)) {
+            enrollmentsByMonth[enrollmentMonth]++;
+          }
+        }
+      });
+      
+      const updatedChartData = last6Months.map(data => {
+        const yearMonthKey = format(subMonths(today, 5 - last6Months.findIndex(m => m.month === data.month)), 'yyyy-MM');
+         return {
+            ...data,
+            enrollments: enrollmentsByMonth[yearMonthKey] || 0,
+         };
+      });
+
+      setChartData(updatedChartData);
+      setLoading(false);
+    };
+
     setLoading(true);
     const schoolUid = user.uid;
     const statsToFetch = [
@@ -124,40 +157,6 @@ export default function DashboardPage() {
         }
         setRecentActivity(prev => [...prev.filter(a => a.type !== 'teacher'), ...newActivities].sort((a,b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
     });
-
-
-    const processStudentDataForChart = (studentsData: { [key: string]: Student }) => {
-      const enrollmentsByMonth: { [key: string]: number } = {};
-      const today = new Date();
-      const last6Months: { month: string, enrollments: number }[] = [];
-
-      for (let i = 5; i >= 0; i--) {
-        const monthDate = subMonths(today, i);
-        const monthKey = format(monthDate, 'yyyy-MM');
-        enrollmentsByMonth[monthKey] = 0;
-        last6Months.push({ month: format(monthDate, 'MMMM'), enrollments: 0 });
-      }
-
-      Object.values(studentsData).forEach(student => {
-        if (student.enrollmentDate) {
-          const enrollmentMonth = format(new Date(student.enrollmentDate), 'yyyy-MM');
-          if (enrollmentsByMonth.hasOwnProperty(enrollmentMonth)) {
-            enrollmentsByMonth[enrollmentMonth]++;
-          }
-        }
-      });
-      
-      const updatedChartData = last6Months.map(data => {
-        const yearMonthKey = format(subMonths(today, 5 - last6Months.findIndex(m => m.month === data.month)), 'yyyy-MM');
-         return {
-            ...data,
-            enrollments: enrollmentsByMonth[yearMonthKey] || 0,
-         };
-      });
-
-      setChartData(updatedChartData);
-      setLoading(false);
-    };
 
     return () => {
       listeners.forEach((unsubscribe) => unsubscribe());
