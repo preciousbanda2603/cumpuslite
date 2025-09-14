@@ -31,6 +31,7 @@ export default function SettingsPage() {
   const schoolId = useSchoolId();
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // State for Primary Color
   const [primaryHue, setPrimaryHue] = useState(212);
@@ -51,6 +52,12 @@ export default function SettingsPage() {
     const unsubscribeAuth = auth.onAuthStateChanged(setUser);
     return () => unsubscribeAuth();
   }, []);
+
+  useEffect(() => {
+    if (user && schoolId) {
+      setIsAdmin(user.uid === schoolId);
+    }
+  }, [user, schoolId]);
 
   useEffect(() => {
     if (!user || !schoolId) return;
@@ -122,7 +129,7 @@ export default function SettingsPage() {
   const backgroundPreviewColor = `hsl(${backgroundHue}, ${backgroundSaturation}%, ${backgroundLightness}%)`;
   const secondaryPreviewColor = `hsl(${secondaryHue}, ${secondarySaturation}%, ${secondaryLightness}%)`;
 
-  const ColorEditor = ({ title, description, hue, setHue, saturation, setSaturation, lightness, setLightness, previewColor }: any) => (
+  const ColorEditor = ({ title, description, hue, setHue, saturation, setSaturation, lightness, setLightness, previewColor, disabled }: any) => (
      <Card>
         <CardHeader>
           <CardTitle>{title}</CardTitle>
@@ -140,6 +147,7 @@ export default function SettingsPage() {
                             onChange={(e) => setHue(parseInt(e.target.value, 10) || 0)}
                             max={360}
                             min={0}
+                            disabled={disabled}
                         />
                     </div>
                      <div className="grid gap-2">
@@ -151,6 +159,7 @@ export default function SettingsPage() {
                             onChange={(e) => setSaturation(parseInt(e.target.value, 10) || 0)}
                             max={100}
                             min={0}
+                            disabled={disabled}
                         />
                     </div>
                      <div className="grid gap-2">
@@ -162,6 +171,7 @@ export default function SettingsPage() {
                             onChange={(e) => setLightness(parseInt(e.target.value, 10) || 0)}
                             max={100}
                             min={0}
+                            disabled={disabled}
                         />
                     </div>
                 </div>
@@ -202,6 +212,7 @@ export default function SettingsPage() {
             saturation={primarySaturation} setSaturation={setPrimarySaturation}
             lightness={primaryLightness} setLightness={setPrimaryLightness}
             previewColor={primaryPreviewColor}
+            disabled={!isAdmin}
         />
         <ColorEditor 
             title="Background Color"
@@ -210,6 +221,7 @@ export default function SettingsPage() {
             saturation={backgroundSaturation} setSaturation={setBackgroundSaturation}
             lightness={backgroundLightness} setLightness={setBackgroundLightness}
             previewColor={backgroundPreviewColor}
+            disabled={!isAdmin}
         />
         <ColorEditor 
             title="Secondary Color"
@@ -218,14 +230,17 @@ export default function SettingsPage() {
             saturation={secondarySaturation} setSaturation={setSecondarySaturation}
             lightness={secondaryLightness} setLightness={setSecondaryLightness}
             previewColor={secondaryPreviewColor}
+            disabled={!isAdmin}
         />
       </div>
 
-       <div className="flex justify-end mt-6">
+       {isAdmin && (
+        <div className="flex justify-end mt-6">
             <Button onClick={handleSaveChanges} disabled={loading} size="lg">
                 {loading ? 'Saving...' : 'Save All Changes'}
             </Button>
         </div>
+       )}
     </div>
   );
 }
