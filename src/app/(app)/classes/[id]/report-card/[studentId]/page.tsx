@@ -113,7 +113,7 @@ export default function ReportCardPage() {
 
                 const caAvg = caScores.length > 0 ? (caScores.reduce((a, b) => a + b, 0) / caScores.length) : 'N/A';
                 
-                const allScores = [...caScores, examScore].filter(s => typeof s === 'number') as number[];
+                const allScores = [subjectResults.test1, subjectResults.test2, subjectResults.midTerm, examScore].filter(s => typeof s === 'number') as number[];
                 const total = allScores.length > 0 ? (allScores.reduce((a,b) => a + b, 0) / allScores.length) : 'N/A';
 
                 return {
