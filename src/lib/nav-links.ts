@@ -16,6 +16,7 @@ import {
   GraduationCap,
   UserCheck,
   DoorOpen,
+  Settings,
 } from 'lucide-react';
 
 export const navLinks = [
@@ -35,4 +36,5 @@ export const navLinks = [
   { href: "/calendar", label: "Events Calendar", icon: Calendar },
   { href: "/communication", label: "Communication", icon: MessagesSquare },
   { href: "/fees", label: "Fee Collection", icon: CreditCard },
+  { href: "/timetables/configure", label: "Time Slots", icon: Settings, isSettings: true },
 ];

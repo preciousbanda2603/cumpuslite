@@ -15,9 +15,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from './ui/separator';
 
 export function AppSidebar() {
   const pathname = usePathname();
+
+  const mainLinks = navLinks.filter(link => !link.isSettings);
+  const settingsLinks = navLinks.filter(link => link.isSettings);
 
   return (
     <div className="hidden border-r bg-muted/40 md:block">
@@ -31,7 +35,7 @@ export function AppSidebar() {
         <div className="flex-1 overflow-auto">
           <ScrollArea className="h-full">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-              {navLinks.map((link) => {
+              {mainLinks.map((link) => {
                 const isActive = pathname === link.href;
                 return (
                   <Link
@@ -48,6 +52,30 @@ export function AppSidebar() {
                 );
               })}
             </nav>
+            {settingsLinks.length > 0 && (
+                <div className="mt-4">
+                    <Separator />
+                    <p className="px-4 pt-4 text-xs font-semibold uppercase text-muted-foreground tracking-wider">Settings</p>
+                     <nav className="grid items-start px-2 text-sm font-medium lg:px-4 mt-2">
+                        {settingsLinks.map((link) => {
+                            const isActive = pathname.startsWith(link.href);
+                            return (
+                            <Link
+                                key={link.label}
+                                href={link.href}
+                                className={cn(
+                                'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
+                                isActive && 'bg-muted text-primary'
+                                )}
+                            >
+                                <link.icon className="h-4 w-4" />
+                                {link.label}
+                            </Link>
+                            );
+                        })}
+                    </nav>
+                </div>
+            )}
           </ScrollArea>
         </div>
       </div>

@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -35,32 +36,25 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarDays, PlusCircle } from 'lucide-react';
+import { CalendarDays, PlusCircle, Settings } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, set, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
 
 type Class = { id: string; name: string };
 type Subject = { id: string; name: string, grade: number };
+type TimeSlot = { id: string; time: string };
 type TimetableSlot = { subjectId: string | null };
 type TimetableDay = { [time: string]: TimetableSlot };
 type TimetableData = { [day: string]: TimetableDay };
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const timeSlots = [
-  '08:00 - 09:00',
-  '09:00 - 10:00',
-  '10:00 - 11:00',
-  '11:00 - 12:00',
-  '12:00 - 13:00',
-  '13:00 - 14:00',
-  '14:00 - 15:00',
-];
 
 export default function TimetablesPage() {
   const [user, setUser] = useState<User | null>(null);
   const [classes, setClasses] = useState<Class[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [timetable, setTimetable] = useState<TimetableData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +72,7 @@ export default function TimetablesPage() {
     const schoolUid = user.uid;
     const classesRef = ref(database, `schools/${schoolUid}/classes`);
     const subjectsRef = ref(database, `schools/${schoolUid}/subjects`);
+    const timeSlotsRef = ref(database, `schools/${schoolUid}/settings/timeSlots`);
 
     const unsubscribeClasses = onValue(classesRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -88,12 +83,19 @@ export default function TimetablesPage() {
       const data = snapshot.val() || {};
       setSubjects(Object.keys(data).map(id => ({ id, ...data[id] })));
     });
+
+    const unsubscribeTimeSlots = onValue(timeSlotsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const list = Object.keys(data).map(id => ({ id, ...data[id] }));
+      setTimeSlots(list);
+    });
     
     setLoading(false);
 
     return () => {
       unsubscribeClasses();
       unsubscribeSubjects();
+      unsubscribeTimeSlots();
     };
   }, [user]);
 
@@ -119,6 +121,14 @@ export default function TimetablesPage() {
   };
 
   const handleOpenDialog = () => {
+    if (timeSlots.length === 0) {
+        toast({
+            title: "Configuration Needed",
+            description: "Please configure time slots before managing a timetable.",
+            variant: "destructive"
+        });
+        return;
+    }
     setEditingTimetable(timetable || {});
     setIsDialogOpen(true);
   };
@@ -162,12 +172,20 @@ export default function TimetablesPage() {
                  <CardTitle>View Timetable</CardTitle>
                  <CardDescription>Select a class to see its weekly schedule.</CardDescription>
             </div>
-            {selectedClassId && (
-                <Button onClick={handleOpenDialog}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Manage Timetable
-                </Button>
-            )}
+             <div className="flex items-center gap-2">
+              <Link href="/timetables/configure">
+                  <Button variant="outline">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Configure Time Slots
+                  </Button>
+              </Link>
+              {selectedClassId && (
+                  <Button onClick={handleOpenDialog}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Manage Timetable
+                  </Button>
+              )}
+            </div>
           </div>
           <div className="pt-4">
               <Label htmlFor="class-select">Class</Label>
@@ -184,7 +202,7 @@ export default function TimetablesPage() {
         </CardHeader>
         <CardContent>
           {selectedClassId ? (
-            timetable ? (
+            timetable && timeSlots.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -193,12 +211,12 @@ export default function TimetablesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {timeSlots.map(time => (
-                    <TableRow key={time}>
-                      <TableCell>{time}</TableCell>
+                  {timeSlots.map(slot => (
+                    <TableRow key={slot.id}>
+                      <TableCell>{slot.time}</TableCell>
                       {daysOfWeek.map(day => (
                         <TableCell key={day}>
-                            {getSubjectName(timetable[day]?.[time]?.subjectId)}
+                            {getSubjectName(timetable[day]?.[slot.time]?.subjectId)}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -207,7 +225,7 @@ export default function TimetablesPage() {
               </Table>
             ) : (
                 <div className="text-center text-muted-foreground py-12">
-                    No timetable has been created for this class yet.
+                   {timeSlots.length === 0 ? "No time slots configured. Please configure them first." : "No timetable has been created for this class yet."}
                 </div>
             )
           ) : (
@@ -235,14 +253,14 @@ export default function TimetablesPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {timeSlots.map(time => (
-                            <TableRow key={time}>
-                                <TableCell className="font-medium">{time}</TableCell>
+                        {timeSlots.map(slot => (
+                            <TableRow key={slot.id}>
+                                <TableCell className="font-medium">{slot.time}</TableCell>
                                 {daysOfWeek.map(day => (
                                     <TableCell key={day}>
                                         <Select
-                                          value={editingTimetable?.[day]?.[time]?.subjectId || 'none'}
-                                          onValueChange={(subjectId) => handleTimetableChange(day, time, subjectId)}
+                                          value={editingTimetable?.[day]?.[slot.time]?.subjectId || 'none'}
+                                          onValueChange={(subjectId) => handleTimetableChange(day, slot.time, subjectId)}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select Subject" />

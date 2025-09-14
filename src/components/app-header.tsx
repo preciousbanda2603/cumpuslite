@@ -29,6 +29,7 @@ import { useEffect, useState } from 'react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import type { User } from 'firebase/auth';
+import { Separator } from './ui/separator';
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -55,6 +56,9 @@ export function AppHeader() {
       return () => unsubscribe();
     }
   }, [user]);
+
+  const mainLinks = navLinks.filter(link => !link.isSettings);
+  const settingsLinks = navLinks.filter(link => link.isSettings);
 
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
@@ -83,7 +87,7 @@ export function AppHeader() {
           <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-full">
               <nav className="grid gap-2 text-lg font-medium pt-4 pr-4">
-                {navLinks.map((link) => {
+                {mainLinks.map((link) => {
                   const isActive = pathname === link.href;
                   return (
                     <Link
@@ -100,6 +104,30 @@ export function AppHeader() {
                   );
                 })}
               </nav>
+               {settingsLinks.length > 0 && (
+                <div className="mt-4 pr-4">
+                    <Separator />
+                    <p className="px-2 pt-4 text-sm font-semibold uppercase text-muted-foreground tracking-wider">Settings</p>
+                     <nav className="grid gap-2 text-lg font-medium mt-2">
+                        {settingsLinks.map((link) => {
+                            const isActive = pathname.startsWith(link.href);
+                            return (
+                            <Link
+                                key={link.label}
+                                href={link.href}
+                                className={cn(
+                                'mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground',
+                                isActive && 'bg-muted text-foreground'
+                                )}
+                            >
+                                <link.icon className="h-5 w-5" />
+                                {link.label}
+                            </Link>
+                            );
+                        })}
+                    </nav>
+                </div>
+            )}
             </ScrollArea>
           </div>
         </SheetContent>
