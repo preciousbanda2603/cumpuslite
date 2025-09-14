@@ -11,22 +11,60 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { auth, database } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { ref, push, set } from 'firebase/database';
-import { useState } from 'react';
+import { ref, push, set, onValue } from 'firebase/database';
+import { useState, useEffect } from 'react';
+import type { User } from 'firebase/auth';
 
-// A simple function to generate a random password
-const generateTempPassword = () => {
-  return Math.random().toString(36).slice(-8);
+type Subject = {
+  id: string;
+  name: string;
+  grade: number;
 };
 
 export default function AddTeacherPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState('');
+
+  useEffect(() => {
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const subjectsRef = ref(database, `schools/${user.uid}/subjects`);
+    const unsubscribeSubjects = onValue(subjectsRef, (snapshot) => {
+      const subjectsData = snapshot.val();
+      const subjectsList = subjectsData
+        ? Object.keys(subjectsData).map((id) => ({ id, ...subjectsData[id] }))
+        : [];
+      // Get unique subject names
+      const uniqueSubjects = Array.from(new Set(subjectsList.map(s => s.name)))
+        .map(name => {
+            return subjectsList.find(s => s.name === name)!
+        });
+      setSubjects(uniqueSubjects);
+    });
+
+    return () => unsubscribeSubjects();
+  }, [user]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -34,12 +72,10 @@ export default function AddTeacherPage() {
 
     const formData = new FormData(event.currentTarget);
     const name = formData.get('name') as string;
-    const subject = formData.get('subject') as string;
     const email = formData.get('email') as string;
     const qualifications = formData.get('qualifications') as string;
     
-    const schoolAdmin = auth.currentUser;
-    if (!schoolAdmin) {
+    if (!user) {
         toast({
             title: 'Error',
             description: 'You must be logged in as a school administrator to add teachers.',
@@ -50,18 +86,22 @@ export default function AddTeacherPage() {
         return;
     }
 
-    const tempPassword = generateTempPassword();
+    if (!selectedSubject) {
+        toast({
+            title: 'Missing Information',
+            description: 'Please select a primary subject.',
+            variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+    }
 
     try {
-      // We can't create a user from the client-side without re-authenticating the admin.
-      // For this prototype, we'll store the teacher info and assume an admin will create the user in the Firebase console.
-      // In a real app, this would be a server-side function.
-
-      const teachersRef = ref(database, `schools/${schoolAdmin.uid}/teachers`);
+      const teachersRef = ref(database, `schools/${user.uid}/teachers`);
       const newTeacherRef = push(teachersRef);
       await set(newTeacherRef, {
         name,
-        subject,
+        subject: selectedSubject,
         email,
         qualifications,
         createdAt: new Date().toISOString(),
@@ -103,7 +143,22 @@ export default function AddTeacherPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="subject">Primary Subject</Label>
-              <Input id="subject" name="subject" placeholder="e.g. History" required />
+              <Select name="subject" required value={selectedSubject} onValueChange={setSelectedSubject}>
+                  <SelectTrigger id="subject">
+                    <SelectValue placeholder="Select a subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.length > 0 ? (
+                       subjects.map((subject) => (
+                        <SelectItem key={subject.id} value={subject.name}>
+                          {subject.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-subjects" disabled>No subjects configured</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
