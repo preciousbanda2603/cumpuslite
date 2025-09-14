@@ -14,8 +14,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { students } from "@/lib/mock-data";
+import { differenceInYears } from 'date-fns';
 
 export default function StudentsPage() {
+  const getStudentCurrentGrade = (enrollmentDate: string, startingGrade: number) => {
+    const yearsSinceEnrollment = differenceInYears(new Date(), new Date(enrollmentDate));
+    const currentGrade = startingGrade + yearsSinceEnrollment;
+    // Cap grade at 12
+    return Math.min(currentGrade, 12);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -33,24 +42,14 @@ export default function StudentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow>
-              <TableCell>Alex Johnson</TableCell>
-              <TableCell>10</TableCell>
-              <TableCell><Badge>Active</Badge></TableCell>
-              <TableCell>2022-09-01</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>Maria Garcia</TableCell>
-              <TableCell>11</TableCell>
-              <TableCell><Badge>Active</Badge></TableCell>
-              <TableCell>2021-09-01</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell>Sam Lee</TableCell>
-              <TableCell>9</TableCell>
-              <TableCell><Badge variant="secondary">Withdrawn</Badge></TableCell>
-              <TableCell>2023-09-01</TableCell>
-            </TableRow>
+            {students.map((student) => (
+              <TableRow key={student.id}>
+                <TableCell>{student.name}</TableCell>
+                <TableCell>{getStudentCurrentGrade(student.enrollmentDate, student.startingGrade)}</TableCell>
+                <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
+                <TableCell>{student.enrollmentDate}</TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </CardContent>

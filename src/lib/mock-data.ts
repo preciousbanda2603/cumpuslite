@@ -4,18 +4,27 @@ export const students = [
     name: 'Alex Johnson',
     interests: ['Soccer', 'Computer Science', 'Chess'],
     activities: ['Soccer Team', 'Coding Club'],
+    enrollmentDate: '2022-09-01',
+    startingGrade: 8,
+    status: 'Active',
   },
   {
     id: 's2',
     name: 'Maria Garcia',
     interests: ['Art', 'Theater', 'History'],
     activities: ['Drama Club', 'School Newspaper'],
+    enrollmentDate: '2021-09-01',
+    startingGrade: 9,
+    status: 'Active',
   },
   {
     id: 's3',
     name: 'Sam Lee',
     interests: ['Basketball', 'Mathematics', 'Music'],
     activities: ['Basketball Team', 'Mathletes', 'School Band'],
+    enrollmentDate: '2023-09-01',
+    startingGrade: 9,
+    status: 'Withdrawn',
   },
 ];
 
