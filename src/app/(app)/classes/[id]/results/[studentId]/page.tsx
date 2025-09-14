@@ -78,18 +78,23 @@ export default function StudentResultsPage() {
         // Fetch Class Info to get grade
         const classRef = ref(database, `schools/${schoolUid}/classes/${studentData.classId}`);
         const classSnap = await get(classRef);
-        if (!classSnap.exists() || !classSnap.val()?.grade) {
-           toast({ title: 'Error', description: 'Class data or grade is missing.', variant: 'destructive' });
+        if (!classSnap.exists()) {
+           toast({ title: 'Error', description: 'Class data is missing for this student.', variant: 'destructive' });
            setLoading(false);
            return;
         }
         const classData = classSnap.val();
 
-        // Fetch Subjects for the class's grade
-        const subjectsQuery = query(ref(database, `schools/${schoolUid}/subjects`), orderByChild('grade'), equalTo(classData.grade));
-        const subjectsSnap = await get(subjectsQuery);
-        const subjectsData = subjectsSnap.val() || {};
-        setSubjects(Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] })));
+        // Fetch Subjects for the class's grade, only if grade exists
+        if (classData && classData.grade) {
+            const subjectsQuery = query(ref(database, `schools/${schoolUid}/subjects`), orderByChild('grade'), equalTo(classData.grade));
+            const subjectsSnap = await get(subjectsQuery);
+            const subjectsData = subjectsSnap.val() || {};
+            setSubjects(Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] })));
+        } else {
+             toast({ title: 'Warning', description: 'No grade is set for this class. Cannot load subjects.', variant: 'destructive' });
+        }
+
 
         // Fetch existing results
         const resultsRef = ref(database, `schools/${schoolUid}/results/${studentId}`);
