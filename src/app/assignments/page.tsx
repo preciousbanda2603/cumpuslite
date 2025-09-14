@@ -103,7 +103,7 @@ export default function SubjectAssignmentsPage() {
 
   const handleTeacherChange = (subjectId: string, newTeacherId: string) => {
     setAssignments(prev =>
-      prev.map(a => (a.subjectId === subjectId ? { ...a, teacherId: newTeacherId } : a))
+      prev.map(a => (a.subjectId === subjectId ? { ...a, teacherId: newTeacherId === 'unassigned' ? null : newTeacherId } : a))
     );
   };
 
@@ -161,7 +161,7 @@ export default function SubjectAssignmentsPage() {
                       <TableCell>Grade {grade}</TableCell>
                       <TableCell>
                         <Select
-                          value={teacherId || ''}
+                          value={teacherId || 'unassigned'}
                           onValueChange={(newTeacherId) => handleTeacherChange(subjectId, newTeacherId)}
                         >
                           <SelectTrigger className="w-[250px]">
@@ -170,7 +170,7 @@ export default function SubjectAssignmentsPage() {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Unassigned</SelectItem>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
                             {teachers.map(t => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
                           </SelectContent>
                         </Select>
