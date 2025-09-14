@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, set, get } from 'firebase/database';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Teacher = { id: string; name: string };
 type Class = { id: string; name: string };
@@ -31,6 +32,7 @@ export default function AssignClassTeacherPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,11 +45,11 @@ export default function AssignClassTeacherPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     setLoading(true);
-    const schoolUid = user.uid;
-    const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
-    const classesRef = ref(database, `schools/${schoolUid}/classes`);
+
+    const teachersRef = ref(database, `schools/${schoolId}/teachers`);
+    const classesRef = ref(database, `schools/${schoolId}/classes`);
 
     const unsubscribeTeachers = onValue(teachersRef, (snapshot) => {
       const data = snapshot.val();
@@ -70,11 +72,11 @@ export default function AssignClassTeacherPage() {
       unsubscribeTeachers();
       unsubscribeClasses();
     };
-  }, [user]);
+  }, [user, schoolId]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!user) {
+    if (!user || !schoolId) {
         toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
         return;
     }
@@ -89,7 +91,7 @@ export default function AssignClassTeacherPage() {
     }
 
     try {
-        const classRef = ref(database, `schools/${user.uid}/classes/${classId}`);
+        const classRef = ref(database, `schools/${schoolId}/classes/${classId}`);
         const snapshot = await get(classRef);
         if (snapshot.exists()) {
             const classData = snapshot.val();

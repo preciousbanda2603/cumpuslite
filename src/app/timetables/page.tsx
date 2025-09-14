@@ -40,6 +40,7 @@ import { CalendarDays, PlusCircle, Settings } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, set, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Class = { id: string; name: string };
 type Subject = { id: string; name: string, grade: number };
@@ -52,6 +53,7 @@ const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 export default function TimetablesPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [classes, setClasses] = useState<Class[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
@@ -68,11 +70,10 @@ export default function TimetablesPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    const schoolUid = user.uid;
-    const classesRef = ref(database, `schools/${schoolUid}/classes`);
-    const subjectsRef = ref(database, `schools/${schoolUid}/subjects`);
-    const timeSlotsRef = ref(database, `schools/${schoolUid}/settings/timeSlots`);
+    if (!user || !schoolId) return;
+    const classesRef = ref(database, `schools/${schoolId}/classes`);
+    const subjectsRef = ref(database, `schools/${schoolId}/subjects`);
+    const timeSlotsRef = ref(database, `schools/${schoolId}/settings/timeSlots`);
 
     const unsubscribeClasses = onValue(classesRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -97,15 +98,15 @@ export default function TimetablesPage() {
       unsubscribeSubjects();
       unsubscribeTimeSlots();
     };
-  }, [user]);
+  }, [user, schoolId]);
 
   useEffect(() => {
-    if (!selectedClassId || !user) {
+    if (!selectedClassId || !user || !schoolId) {
         setTimetable(null);
         return;
     };
 
-    const timetableRef = ref(database, `schools/${user.uid}/timetables/${selectedClassId}`);
+    const timetableRef = ref(database, `schools/${schoolId}/timetables/${selectedClassId}`);
     get(timetableRef).then((snapshot) => {
       if (snapshot.exists()) {
         setTimetable(snapshot.val());
@@ -113,7 +114,7 @@ export default function TimetablesPage() {
         setTimetable(null);
       }
     });
-  }, [selectedClassId, user]);
+  }, [selectedClassId, user, schoolId]);
   
   const getSubjectName = (subjectId: string | null) => {
     if (!subjectId) return '';
@@ -138,14 +139,14 @@ export default function TimetablesPage() {
         const newTimetable = { ...prev };
         if (!newTimetable[day]) newTimetable[day] = {};
         newTimetable[day][time] = { subjectId: subjectId === 'none' ? null : subjectId };
-        return newTimetable;
+        return newTimetable as TimetableData;
     });
   };
 
   const handleSaveChanges = async () => {
-    if (!user || !selectedClassId || !editingTimetable) return;
+    if (!user || !schoolId || !selectedClassId || !editingTimetable) return;
 
-    const timetableRef = ref(database, `schools/${user.uid}/timetables/${selectedClassId}`);
+    const timetableRef = ref(database, `schools/${schoolId}/timetables/${selectedClassId}`);
     try {
         await set(timetableRef, editingTimetable);
         setTimetable(editingTimetable);

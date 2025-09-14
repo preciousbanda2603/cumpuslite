@@ -26,6 +26,7 @@ import type { User } from 'firebase/auth';
 import { auth, database } from '@/lib/firebase';
 import { ref, push, set, onValue } from 'firebase/database';
 import { Textarea } from '@/components/ui/textarea';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Class = {
   id: string;
@@ -36,6 +37,7 @@ export default function AddStudentPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [loading, setLoading] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [classes, setClasses] = useState<Class[]>([]);
@@ -48,9 +50,9 @@ export default function AddStudentPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
-    const classesRef = ref(database, `schools/${user.uid}/classes`);
+    const classesRef = ref(database, `schools/${schoolId}/classes`);
     const unsubscribeClasses = onValue(classesRef, (snapshot) => {
       const classesData = snapshot.val();
       const classesList = classesData ? Object.keys(classesData).map(id => ({ id, ...classesData[id] })) : [];
@@ -58,13 +60,13 @@ export default function AddStudentPage() {
     });
 
     return () => unsubscribeClasses();
-  }, [user]);
+  }, [user, schoolId]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
 
-    if (!user) {
+    if (!user || !schoolId) {
       toast({
         title: 'Authentication Error',
         description: 'You must be logged in to add a student.',
@@ -96,7 +98,7 @@ export default function AddStudentPage() {
     }
 
     try {
-      const studentsRef = ref(database, `schools/${user.uid}/students`);
+      const studentsRef = ref(database, `schools/${schoolId}/students`);
       const newStudentRef = push(studentsRef);
       await set(newStudentRef, {
         name,

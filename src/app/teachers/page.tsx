@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { auth, database } from "@/lib/firebase";
 import { onValue, ref } from "firebase/database";
 import type { User } from "firebase/auth";
+import { useSchoolId } from "@/hooks/use-school-id";
 
 type Teacher = {
   id: string;
@@ -30,6 +31,7 @@ type Teacher = {
 
 export default function TeachersPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,9 +43,9 @@ export default function TeachersPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
-    const teachersRef = ref(database, `schools/${user.uid}/teachers`);
+    const teachersRef = ref(database, `schools/${schoolId}/teachers`);
     const unsubscribe = onValue(teachersRef, (snapshot) => {
       if (snapshot.exists()) {
         const teachersData = snapshot.val();
@@ -63,7 +65,7 @@ export default function TeachersPage() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, schoolId]);
 
 
   return (

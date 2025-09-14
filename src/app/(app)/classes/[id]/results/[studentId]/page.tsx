@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Student = { id: string; name: string; classId: string; };
 type Subject = { id: string; name: string; grade: number; };
@@ -44,6 +45,7 @@ export default function StudentResultsPage() {
   const { id: classId, studentId } = params as { id: string; studentId: string };
   const router = useRouter();
   const { toast } = useToast();
+  const schoolId = useSchoolId();
 
   const [user, setUser] = useState<User | null>(null);
   const [student, setStudent] = useState<Student | null>(null);
@@ -57,15 +59,14 @@ export default function StudentResultsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user || !classId || !studentId) return;
+    if (!user || !schoolId || !classId || !studentId) return;
 
     const fetchData = async () => {
       setLoading(true);
       try {
-        const schoolUid = user.uid;
 
         // Fetch Student Info
-        const studentRef = ref(database, `schools/${schoolUid}/students/${studentId}`);
+        const studentRef = ref(database, `schools/${schoolId}/students/${studentId}`);
         const studentSnap = await get(studentRef);
         if (!studentSnap.exists()) {
           toast({ title: 'Error', description: 'Student not found.', variant: 'destructive' });
@@ -76,7 +77,7 @@ export default function StudentResultsPage() {
         setStudent(studentData);
         
         // Fetch Class Info to get grade
-        const classRef = ref(database, `schools/${schoolUid}/classes/${studentData.classId}`);
+        const classRef = ref(database, `schools/${schoolId}/classes/${studentData.classId}`);
         const classSnap = await get(classRef);
         if (!classSnap.exists()) {
            toast({ title: 'Error', description: 'Class data is missing for this student.', variant: 'destructive' });
@@ -87,14 +88,13 @@ export default function StudentResultsPage() {
 
         // Fetch Subjects for the class's grade, only if grade exists
         if (classData && typeof classData.grade !== 'undefined') {
-            const subjectsQuery = query(ref(database, `schools/${schoolUid}/subjects`), orderByChild('grade'), equalTo(classData.grade));
+            const subjectsQuery = query(ref(database, `schools/${schoolId}/subjects`), orderByChild('grade'), equalTo(classData.grade));
             const subjectsSnap = await get(subjectsQuery);
             const subjectsData = subjectsSnap.val() || {};
             setSubjects(Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] })));
         } else {
-             toast({ title: 'Warning', description: 'No grade is set for this class. Consider setting one to filter subjects correctly.', variant: 'default' });
-             // Fallback to loading all subjects if grade is not set
-             const allSubjectsRef = ref(database, `schools/${schoolUid}/subjects`);
+             // Fallback to loading all subjects if grade is not set on the class
+             const allSubjectsRef = ref(database, `schools/${schoolId}/subjects`);
              const allSubjectsSnap = await get(allSubjectsRef);
              const allSubjectsData = allSubjectsSnap.val() || {};
              setSubjects(Object.keys(allSubjectsData).map(id => ({ id, ...allSubjectsData[id] })));
@@ -102,7 +102,7 @@ export default function StudentResultsPage() {
 
 
         // Fetch existing results
-        const resultsRef = ref(database, `schools/${schoolUid}/results/${studentId}`);
+        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
         const resultsSnap = await get(resultsRef);
         if (resultsSnap.exists()) {
           setResults(resultsSnap.val());
@@ -116,7 +116,7 @@ export default function StudentResultsPage() {
       }
     };
     fetchData();
-  }, [user, classId, studentId, router, toast]);
+  }, [user, schoolId, classId, studentId, router, toast]);
 
   const handleScoreChange = (subjectId: string, assessment: string, value: string) => {
     const score = value === '' ? undefined : parseInt(value, 10);
@@ -143,10 +143,10 @@ export default function StudentResultsPage() {
   };
   
   const handleSaveChanges = async () => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     setLoading(true);
     try {
-        const resultsRef = ref(database, `schools/${user.uid}/results/${studentId}`);
+        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
         await set(resultsRef, results);
         toast({ title: 'Success', description: "Student's results have been saved." });
     } catch (error) {

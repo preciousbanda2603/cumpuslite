@@ -34,6 +34,7 @@ import { ref, onValue, push, set, remove } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type SchoolEvent = {
   id: string;
@@ -44,6 +45,7 @@ type SchoolEvent = {
 
 export default function CalendarPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [events, setEvents] = useState<SchoolEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -62,9 +64,9 @@ export default function CalendarPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     setLoading(true);
-    const eventsRef = ref(database, `schools/${user.uid}/events`);
+    const eventsRef = ref(database, `schools/${schoolId}/events`);
     const unsubscribeEvents = onValue(eventsRef, (snapshot) => {
       const data = snapshot.val() || {};
       const list: SchoolEvent[] = Object.keys(data)
@@ -75,7 +77,7 @@ export default function CalendarPage() {
     });
 
     return () => unsubscribeEvents();
-  }, [user]);
+  }, [user, schoolId]);
   
   const openDialog = (event: Partial<SchoolEvent> | null = null) => {
     setEditingEvent(event);
@@ -94,7 +96,7 @@ export default function CalendarPage() {
   };
 
   const handleSubmit = async () => {
-    if (!user || !title || !description || !date) {
+    if (!user || !schoolId || !title || !description || !date) {
       toast({ title: 'Error', description: 'Please fill all fields.', variant: 'destructive' });
       return;
     }
@@ -107,11 +109,11 @@ export default function CalendarPage() {
 
     try {
       if (editingEvent?.id) {
-        const eventRef = ref(database, `schools/${user.uid}/events/${editingEvent.id}`);
+        const eventRef = ref(database, `schools/${schoolId}/events/${editingEvent.id}`);
         await set(eventRef, eventData);
         toast({ title: 'Success!', description: 'Event updated successfully.' });
       } else {
-        const eventsRef = ref(database, `schools/${user.uid}/events`);
+        const eventsRef = ref(database, `schools/${schoolId}/events`);
         const newEventRef = push(eventsRef);
         await set(newEventRef, eventData);
         toast({ title: 'Success!', description: 'Event added successfully.' });
@@ -124,9 +126,9 @@ export default function CalendarPage() {
   };
 
   const handleDelete = async (eventId: string) => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     try {
-      const eventRef = ref(database, `schools/${user.uid}/events/${eventId}`);
+      const eventRef = ref(database, `schools/${schoolId}/events/${eventId}`);
       await remove(eventRef);
       toast({ title: 'Success!', description: 'Event deleted.' });
     } catch (error) {

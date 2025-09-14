@@ -25,6 +25,7 @@ import { PlusCircle } from "lucide-react";
 import { auth, database } from "@/lib/firebase";
 import { onValue, ref } from "firebase/database";
 import type { User } from "firebase/auth";
+import { useSchoolId } from "@/hooks/use-school-id";
 
 type Student = {
   id: string;
@@ -36,6 +37,7 @@ type Student = {
 
 export default function StudentsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,9 +49,9 @@ export default function StudentsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
-    const studentsRef = ref(database, `schools/${user.uid}/students`);
+    const studentsRef = ref(database, `schools/${schoolId}/students`);
     const unsubscribe = onValue(
       studentsRef,
       (snapshot) => {
@@ -72,7 +74,7 @@ export default function StudentsPage() {
     );
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, schoolId]);
 
   return (
     <div className="flex flex-col gap-6">

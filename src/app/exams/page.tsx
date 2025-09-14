@@ -42,6 +42,7 @@ import { ref, onValue, push, set, remove } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Exam = {
   id: string;
@@ -59,6 +60,7 @@ type Class = { id: string; name: string };
 
 export default function ExamsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [exams, setExams] = useState<Exam[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,11 +84,11 @@ export default function ExamsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     setLoading(true);
-    const schoolUid = user.uid;
-    const examsRef = ref(database, `schools/${schoolUid}/exams`);
-    const classesRef = ref(database, `schools/${schoolUid}/classes`);
+
+    const examsRef = ref(database, `schools/${schoolId}/exams`);
+    const classesRef = ref(database, `schools/${schoolId}/classes`);
 
     const unsubscribeExams = onValue(examsRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -104,7 +106,7 @@ export default function ExamsPage() {
       unsubscribeExams();
       unsubscribeClasses();
     };
-  }, [user]);
+  }, [user, schoolId]);
 
   const openDialog = (exam: Partial<Exam> | null = null) => {
     setEditingExam(exam);
@@ -134,7 +136,7 @@ export default function ExamsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!user || !title || !selectedClassId || !subjectName || !dueDate || !duration || !questionCount) {
+    if (!user || !schoolId || !title || !selectedClassId || !subjectName || !dueDate || !duration || !questionCount) {
       toast({ title: 'Error', description: 'Please fill all required fields.', variant: 'destructive' });
       return;
     }
@@ -160,11 +162,11 @@ export default function ExamsPage() {
     
     try {
       if (editingExam?.id) {
-        const examRef = ref(database, `schools/${user.uid}/exams/${editingExam.id}`);
+        const examRef = ref(database, `schools/${schoolId}/exams/${editingExam.id}`);
         await set(examRef, examData);
         toast({ title: 'Success!', description: 'Exam updated successfully.' });
       } else {
-        const examsRef = ref(database, `schools/${user.uid}/exams`);
+        const examsRef = ref(database, `schools/${schoolId}/exams`);
         const newExamRef = push(examsRef);
         await set(newExamRef, examData);
         toast({ title: 'Success!', description: 'Exam added successfully.' });
@@ -177,9 +179,9 @@ export default function ExamsPage() {
   };
   
   const handleDelete = async (examId: string) => {
-      if (!user) return;
+      if (!user || !schoolId) return;
       try {
-          const examRef = ref(database, `schools/${user.uid}/exams/${examId}`);
+          const examRef = ref(database, `schools/${schoolId}/exams/${examId}`);
           await remove(examRef);
           toast({ title: 'Success!', description: 'Exam deleted.' });
       } catch (error) {
@@ -310,5 +312,3 @@ export default function ExamsPage() {
     </div>
   );
 }
-
-    

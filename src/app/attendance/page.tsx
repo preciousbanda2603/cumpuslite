@@ -40,6 +40,7 @@ import { ref, onValue, set, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Class = { id: string; name: string };
 type Student = { id: string; name: string; classId: string; };
@@ -48,6 +49,7 @@ type AttendanceRecord = { [studentId: string]: AttendanceStatus };
 
 export default function AttendancePage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -62,8 +64,8 @@ export default function AttendancePage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    const classesRef = ref(database, `schools/${user.uid}/classes`);
+    if (!user || !schoolId) return;
+    const classesRef = ref(database, `schools/${schoolId}/classes`);
     const unsubscribeClasses = onValue(classesRef, (snapshot) => {
       const data = snapshot.val();
       const list = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
@@ -71,15 +73,15 @@ export default function AttendancePage() {
       setLoading(false);
     });
     return () => unsubscribeClasses();
-  }, [user]);
+  }, [user, schoolId]);
 
   useEffect(() => {
-    if (!selectedClassId || !user) {
+    if (!selectedClassId || !user || !schoolId) {
       setStudents([]);
       return;
     }
 
-    const studentsRef = ref(database, `schools/${user.uid}/students`);
+    const studentsRef = ref(database, `schools/${schoolId}/students`);
     const unsubscribeStudents = onValue(studentsRef, (snapshot) => {
       const data = snapshot.val();
       const allStudents = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
@@ -94,13 +96,13 @@ export default function AttendancePage() {
     });
 
     return () => unsubscribeStudents();
-  }, [selectedClassId, user]);
+  }, [selectedClassId, user, schoolId]);
   
   useEffect(() => {
-    if (!selectedClassId || !date || !user) return;
+    if (!selectedClassId || !date || !user || !schoolId) return;
 
     const formattedDate = format(date, 'yyyy-MM-dd');
-    const attendanceRef = ref(database, `schools/${user.uid}/attendance/${selectedClassId}/${formattedDate}`);
+    const attendanceRef = ref(database, `schools/${schoolId}/attendance/${selectedClassId}/${formattedDate}`);
     
     get(attendanceRef).then((snapshot) => {
       if (snapshot.exists()) {
@@ -113,7 +115,7 @@ export default function AttendancePage() {
         setAttendance(initialAttendance);
       }
     });
-  }, [selectedClassId, date, user, students]);
+  }, [selectedClassId, date, user, schoolId, students]);
 
 
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
@@ -121,13 +123,13 @@ export default function AttendancePage() {
   };
 
   const handleSubmit = async () => {
-    if (!user || !selectedClassId || !date) {
+    if (!user || !schoolId || !selectedClassId || !date) {
       toast({ title: 'Error', description: 'Please select a class and date.', variant: 'destructive' });
       return;
     }
 
     const formattedDate = format(date, 'yyyy-MM-dd');
-    const attendanceRef = ref(database, `schools/${user.uid}/attendance/${selectedClassId}/${formattedDate}`);
+    const attendanceRef = ref(database, `schools/${schoolId}/attendance/${selectedClassId}/${formattedDate}`);
 
     try {
       await set(attendanceRef, attendance);

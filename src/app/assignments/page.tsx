@@ -30,6 +30,7 @@ import { BookCopy } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, set, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Teacher = { id: string; name: string };
 type Subject = { id: string; name: string; grade: number };
@@ -37,6 +38,7 @@ type Assignment = { subjectId: string; subjectName: string; grade: number; teach
 
 export default function SubjectAssignmentsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,13 +52,12 @@ export default function SubjectAssignmentsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     setLoading(true);
 
-    const schoolUid = user.uid;
-    const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
-    const subjectsRef = ref(database, `schools/${schoolUid}/subjects`);
-    const assignmentsRef = ref(database, `schools/${schoolUid}/assignments`);
+    const teachersRef = ref(database, `schools/${schoolId}/teachers`);
+    const subjectsRef = ref(database, `schools/${schoolId}/subjects`);
+    const assignmentsRef = ref(database, `schools/${schoolId}/assignments`);
 
     const unsubscribeTeachers = onValue(teachersRef, (snapshot) => {
       const data = snapshot.val();
@@ -99,7 +100,7 @@ export default function SubjectAssignmentsPage() {
     return () => {
       unsubscribeTeachers();
     };
-  }, [user, toast]);
+  }, [user, schoolId, toast]);
 
   const handleTeacherChange = (subjectId: string, newTeacherId: string) => {
     setAssignments(prev =>
@@ -108,12 +109,12 @@ export default function SubjectAssignmentsPage() {
   };
 
   const handleSaveChanges = async () => {
-    if (!user) {
+    if (!user || !schoolId) {
       toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
       return;
     }
 
-    const assignmentsRef = ref(database, `schools/${user.uid}/assignments`);
+    const assignmentsRef = ref(database, `schools/${schoolId}/assignments`);
     try {
       const updates: { [key: string]: { teacherId: string | null } } = {};
       assignments.forEach(a => {

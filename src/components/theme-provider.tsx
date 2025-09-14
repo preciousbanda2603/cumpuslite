@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import type { User } from 'firebase/auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type ColorSettings = { h: number; s: number; l: number };
 type ThemeSettings = {
@@ -15,6 +16,7 @@ type ThemeSettings = {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
@@ -22,8 +24,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      const settingsRef = ref(database, `schools/${user.uid}/settings/theme`);
+    if (user && schoolId) {
+      const settingsRef = ref(database, `schools/${schoolId}/settings/theme`);
       const unsubscribe = onValue(settingsRef, (snapshot) => {
         if (snapshot.exists()) {
           const settings: ThemeSettings = snapshot.val();
@@ -56,13 +58,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       });
       return () => unsubscribe();
     } else {
-        // Reset to default when logged out
+        // Reset to default when logged out or no schoolId
         document.documentElement.style.removeProperty('--primary');
         document.documentElement.style.removeProperty('--ring');
         document.documentElement.style.removeProperty('--background');
         document.documentElement.style.removeProperty('--secondary');
     }
-  }, [user]);
+  }, [user, schoolId]);
 
   return <>{children}</>;
 }

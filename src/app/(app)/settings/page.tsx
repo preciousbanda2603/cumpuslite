@@ -17,6 +17,7 @@ import { Palette } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, set } from 'firebase/database';
 import type { User } from 'firebase/auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type ColorSettings = { h: number; s: number; l: number };
 type ThemeSettings = {
@@ -27,6 +28,7 @@ type ThemeSettings = {
 
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -51,9 +53,9 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
-    const settingsRef = ref(database, `schools/${user.uid}/settings/theme`);
+    const settingsRef = ref(database, `schools/${schoolId}/settings/theme`);
     const unsubscribeSettings = onValue(settingsRef, (snapshot) => {
       if (snapshot.exists()) {
         const settings: ThemeSettings = snapshot.val();
@@ -77,10 +79,10 @@ export default function SettingsPage() {
     });
 
     return () => unsubscribeSettings();
-  }, [user]);
+  }, [user, schoolId]);
   
   const handleSaveChanges = async () => {
-    if (!user) {
+    if (!user || !schoolId) {
         toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
         return;
     }
@@ -105,7 +107,7 @@ export default function SettingsPage() {
     };
 
     try {
-        const settingsRef = ref(database, `schools/${user.uid}/settings/theme`);
+        const settingsRef = ref(database, `schools/${schoolId}/settings/theme`);
         await set(settingsRef, themeData);
         toast({ title: 'Success!', description: 'Theme has been updated.' });
     } catch(error: any) {

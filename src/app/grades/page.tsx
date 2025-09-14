@@ -41,12 +41,14 @@ import { GraduationCap, PlusCircle, Edit, Trash2, Eye } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, push, set, remove, query, orderByChild, equalTo, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Class = {
   id: string;
   name: string;
   roomId: string;
   grade: number;
+  classTeacherId?: string;
   teacherName?: string;
   studentCount?: number;
 };
@@ -63,6 +65,7 @@ type Teacher = {
 
 export default function GradesPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [classes, setClasses] = useState<Class[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,14 +85,13 @@ export default function GradesPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
     setLoading(true);
-    const schoolUid = user.uid;
-    const classesRef = ref(database, `schools/${schoolUid}/classes`);
-    const roomsRef = ref(database, `schools/${schoolUid}/rooms`);
-    const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
-    const studentsRef = ref(database, `schools/${schoolUid}/students`);
+    const classesRef = ref(database, `schools/${schoolId}/classes`);
+    const roomsRef = ref(database, `schools/${schoolId}/rooms`);
+    const teachersRef = ref(database, `schools/${schoolId}/teachers`);
+    const studentsRef = ref(database, `schools/${schoolId}/students`);
 
     const fetchData = async () => {
       try {
@@ -139,14 +141,14 @@ export default function GradesPage() {
       unsubscribeClasses();
     };
 
-  }, [user, toast]);
+  }, [user, schoolId, toast]);
 
   const handleAddOrUpdateClass = async () => {
     if (!newClassName.trim() || !selectedRoomId || !newClassGrade) {
       toast({ title: 'Error', description: 'All fields are required.', variant: 'destructive' });
       return;
     }
-    if (!user) {
+    if (!user || !schoolId) {
       toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
       return;
     }
@@ -160,11 +162,11 @@ export default function GradesPage() {
 
     try {
       if (editingClass?.id) {
-        const classRef = ref(database, `schools/${user.uid}/classes/${editingClass.id}`);
+        const classRef = ref(database, `schools/${schoolId}/classes/${editingClass.id}`);
         await set(classRef, classData);
         toast({ title: 'Success!', description: 'Class has been updated.' });
       } else {
-        const classesRef = ref(database, `schools/${user.uid}/classes`);
+        const classesRef = ref(database, `schools/${schoolId}/classes`);
         const newClassRef = push(classesRef);
         await set(newClassRef, classData);
         toast({ title: 'Success!', description: 'New class has been added.' });
@@ -177,13 +179,13 @@ export default function GradesPage() {
   };
 
   const handleDeleteClass = async (classId: string) => {
-    if (!user) {
+    if (!user || !schoolId) {
       toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
       return;
     }
     try {
       // TODO: Add check for students in class before deleting
-      const classRef = ref(database, `schools/${user.uid}/classes/${classId}`);
+      const classRef = ref(database, `schools/${schoolId}/classes/${classId}`);
       await remove(classRef);
       toast({ title: 'Success!', description: 'Class has been deleted.' });
     } catch (error: any) {

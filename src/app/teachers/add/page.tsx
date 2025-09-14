@@ -25,6 +25,7 @@ import { ref, push, set, onValue } from 'firebase/database';
 import { useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Subject = {
   id: string;
@@ -44,6 +45,7 @@ export default function AddTeacherPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [loading, setLoading] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -56,9 +58,9 @@ export default function AddTeacherPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
-    const subjectsRef = ref(database, `schools/${user.uid}/subjects`);
+    const subjectsRef = ref(database, `schools/${schoolId}/subjects`);
     const unsubscribeSubjects = onValue(subjectsRef, (snapshot) => {
       const subjectsData = snapshot.val();
       const subjectsList = subjectsData
@@ -73,7 +75,7 @@ export default function AddTeacherPage() {
     });
 
     return () => unsubscribeSubjects();
-  }, [user]);
+  }, [user, schoolId]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -85,7 +87,7 @@ export default function AddTeacherPage() {
     const password = formData.get('password') as string;
     const qualifications = formData.get('qualifications') as string;
     
-    if (!user) {
+    if (!user || !schoolId) {
         toast({
             title: 'Error',
             description: 'You must be logged in as a school administrator to add teachers.',
@@ -122,7 +124,7 @@ export default function AddTeacherPage() {
       const teacherUser = userCredential.user;
 
       // 2. Save teacher profile to Realtime Database
-      const teachersRef = ref(database, `schools/${user.uid}/teachers`);
+      const teachersRef = ref(database, `schools/${schoolId}/teachers`);
       const newTeacherRef = push(teachersRef);
       await set(newTeacherRef, {
         uid: teacherUser.uid, // Store the auth UID

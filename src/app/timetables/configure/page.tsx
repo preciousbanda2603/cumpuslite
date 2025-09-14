@@ -26,6 +26,7 @@ import { auth, database } from '@/lib/firebase';
 import { ref, onValue, push, set, remove } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type TimeSlot = {
   id: string;
@@ -34,6 +35,7 @@ type TimeSlot = {
 
 export default function ConfigureTimeSlotsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTimeSlot, setNewTimeSlot] = useState('');
@@ -46,9 +48,9 @@ export default function ConfigureTimeSlotsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
-    const timeSlotsRef = ref(database, `schools/${user.uid}/settings/timeSlots`);
+    const timeSlotsRef = ref(database, `schools/${schoolId}/settings/timeSlots`);
     const unsubscribe = onValue(
       timeSlotsRef,
       (snapshot) => {
@@ -65,7 +67,7 @@ export default function ConfigureTimeSlotsPage() {
     );
 
     return () => unsubscribe();
-  }, [user, toast]);
+  }, [user, schoolId, toast]);
 
   const handleAddTimeSlot = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -73,10 +75,10 @@ export default function ConfigureTimeSlotsPage() {
       toast({ title: 'Error', description: 'Time slot cannot be empty.', variant: 'destructive' });
       return;
     }
-    if (!user) return;
+    if (!user || !schoolId) return;
 
     try {
-      const timeSlotsRef = ref(database, `schools/${user.uid}/settings/timeSlots`);
+      const timeSlotsRef = ref(database, `schools/${schoolId}/settings/timeSlots`);
       const newSlotRef = push(timeSlotsRef);
       await set(newSlotRef, { time: newTimeSlot });
       toast({ title: 'Success!', description: 'New time slot has been added.' });
@@ -87,9 +89,9 @@ export default function ConfigureTimeSlotsPage() {
   };
 
   const handleDeleteTimeSlot = async (slotId: string) => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     try {
-      const slotRef = ref(database, `schools/${user.uid}/settings/timeSlots/${slotId}`);
+      const slotRef = ref(database, `schools/${schoolId}/settings/timeSlots/${slotId}`);
       await remove(slotRef);
       toast({ title: 'Success!', description: 'Time slot has been deleted.' });
     } catch (error: any) {

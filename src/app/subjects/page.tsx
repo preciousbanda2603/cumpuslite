@@ -40,6 +40,7 @@ import { BookText, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, push, set, remove } from 'firebase/database';
 import type { User } from 'firebase/auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Subject = {
   id: string;
@@ -49,6 +50,7 @@ type Subject = {
 
 export default function SubjectsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
@@ -65,9 +67,9 @@ export default function SubjectsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
-    const subjectsRef = ref(database, `schools/${user.uid}/subjects`);
+    const subjectsRef = ref(database, `schools/${schoolId}/subjects`);
     const unsubscribe = onValue(
       subjectsRef,
       (snapshot) => {
@@ -95,14 +97,14 @@ export default function SubjectsPage() {
     );
 
     return () => unsubscribe();
-  }, [user, toast]);
+  }, [user, schoolId, toast]);
 
   const handleAddOrUpdateSubject = async () => {
     if (!newSubjectName.trim() || !newSubjectGrade) {
       toast({ title: 'Error', description: 'Subject name and grade are required.', variant: 'destructive' });
       return;
     }
-    if (!user) {
+    if (!user || !schoolId) {
       toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
       return;
     }
@@ -112,11 +114,11 @@ export default function SubjectsPage() {
 
     try {
       if (editingSubject) {
-        const subjectRef = ref(database, `schools/${user.uid}/subjects/${editingSubject.id}`);
+        const subjectRef = ref(database, `schools/${schoolId}/subjects/${editingSubject.id}`);
         await set(subjectRef, subjectData);
         toast({ title: 'Success!', description: 'Subject has been updated.' });
       } else {
-        const subjectsRef = ref(database, `schools/${user.uid}/subjects`);
+        const subjectsRef = ref(database, `schools/${schoolId}/subjects`);
         const newSubjectRef = push(subjectsRef);
         await set(newSubjectRef, subjectData);
         toast({ title: 'Success!', description: 'New subject has been added.' });
@@ -129,12 +131,12 @@ export default function SubjectsPage() {
   };
 
   const handleDeleteSubject = async (subjectId: string) => {
-    if (!user) {
+    if (!user || !schoolId) {
       toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
       return;
     }
     try {
-      const subjectRef = ref(database, `schools/${user.uid}/subjects/${subjectId}`);
+      const subjectRef = ref(database, `schools/${schoolId}/subjects/${subjectId}`);
       await remove(subjectRef);
       toast({ title: 'Success!', description: 'Subject has been deleted.' });
     } catch (error: any) {

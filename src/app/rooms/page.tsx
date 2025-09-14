@@ -33,6 +33,7 @@ import { DoorOpen, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, push, set, remove } from 'firebase/database';
 import type { User } from 'firebase/auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Room = {
   id: string;
@@ -41,6 +42,7 @@ type Room = {
 
 export default function RoomsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -56,9 +58,9 @@ export default function RoomsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
-    const roomsRef = ref(database, `schools/${user.uid}/rooms`);
+    const roomsRef = ref(database, `schools/${schoolId}/rooms`);
     const unsubscribe = onValue(
       roomsRef,
       (snapshot) => {
@@ -86,7 +88,7 @@ export default function RoomsPage() {
     );
 
     return () => unsubscribe();
-  }, [user, toast]);
+  }, [user, schoolId, toast]);
 
   const handleAddOrUpdateRoom = async () => {
     if (!newRoomName.trim()) {
@@ -97,7 +99,7 @@ export default function RoomsPage() {
       });
       return;
     }
-    if (!user) {
+    if (!user || !schoolId) {
         toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
         return;
     }
@@ -105,12 +107,12 @@ export default function RoomsPage() {
     try {
         if (editingRoom) {
             // Update existing room
-            const roomRef = ref(database, `schools/${user.uid}/rooms/${editingRoom.id}`);
+            const roomRef = ref(database, `schools/${schoolId}/rooms/${editingRoom.id}`);
             await set(roomRef, { name: newRoomName });
             toast({ title: 'Success!', description: 'Room has been updated.' });
         } else {
             // Add new room
-            const roomsRef = ref(database, `schools/${user.uid}/rooms`);
+            const roomsRef = ref(database, `schools/${schoolId}/rooms`);
             const newRoomRef = push(roomsRef);
             await set(newRoomRef, { name: newRoomName });
             toast({ title: 'Success!', description: 'New room has been added.' });
@@ -123,12 +125,12 @@ export default function RoomsPage() {
   };
 
   const handleDeleteRoom = async (roomId: string) => {
-    if (!user) {
+    if (!user || !schoolId) {
         toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
         return;
     }
     try {
-        const roomRef = ref(database, `schools/${user.uid}/rooms/${roomId}`);
+        const roomRef = ref(database, `schools/${schoolId}/rooms/${roomId}`);
         await remove(roomRef);
         toast({ title: 'Success!', description: 'Room has been deleted.' });
     } catch(error: any) {

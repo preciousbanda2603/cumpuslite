@@ -26,6 +26,7 @@ import { Megaphone, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, push, set, remove } from 'firebase/database';
 import type { User } from 'firebase/auth';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Announcement = {
   id: string;
@@ -36,6 +37,7 @@ type Announcement = {
 
 export default function AnnouncementsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -52,9 +54,9 @@ export default function AnnouncementsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     setLoading(true);
-    const announcementsRef = ref(database, `schools/${user.uid}/announcements`);
+    const announcementsRef = ref(database, `schools/${schoolId}/announcements`);
     const unsubscribeAnnouncements = onValue(announcementsRef, (snapshot) => {
       const data = snapshot.val() || {};
       const list = Object.keys(data)
@@ -65,7 +67,7 @@ export default function AnnouncementsPage() {
     });
 
     return () => unsubscribeAnnouncements();
-  }, [user]);
+  }, [user, schoolId]);
 
   const openDialog = (announcement: Partial<Announcement> | null = null) => {
     setEditingAnnouncement(announcement);
@@ -82,7 +84,7 @@ export default function AnnouncementsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!user || !title || !content) {
+    if (!user || !schoolId || !title || !content) {
       toast({ title: 'Error', description: 'Please fill all fields.', variant: 'destructive' });
       return;
     }
@@ -96,11 +98,11 @@ export default function AnnouncementsPage() {
 
     try {
       if (editingAnnouncement?.id) {
-        const announcementRef = ref(database, `schools/${user.uid}/announcements/${editingAnnouncement.id}`);
+        const announcementRef = ref(database, `schools/${schoolId}/announcements/${editingAnnouncement.id}`);
         await set(announcementRef, announcementData);
         toast({ title: 'Success!', description: 'Announcement updated successfully.' });
       } else {
-        const announcementsRef = ref(database, `schools/${user.uid}/announcements`);
+        const announcementsRef = ref(database, `schools/${schoolId}/announcements`);
         const newAnnouncementRef = push(announcementsRef);
         await set(newAnnouncementRef, announcementData);
         toast({ title: 'Success!', description: 'Announcement posted successfully.' });
@@ -113,9 +115,9 @@ export default function AnnouncementsPage() {
   };
 
   const handleDelete = async (announcementId: string) => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     try {
-      const announcementRef = ref(database, `schools/${user.uid}/announcements/${announcementId}`);
+      const announcementRef = ref(database, `schools/${schoolId}/announcements/${announcementId}`);
       await remove(announcementRef);
       toast({ title: 'Success!', description: 'Announcement deleted.' });
     } catch (error) {

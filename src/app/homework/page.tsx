@@ -49,6 +49,7 @@ import { ref, onValue, push, set, remove, get, query, orderByChild, equalTo } fr
 import type { User } from 'firebase/auth';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type Homework = {
   id: string;
@@ -64,6 +65,7 @@ type Subject = { id: string; name: string, grade: number };
 
 export default function HomeworkPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [homework, setHomework] = useState<Homework[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,11 +86,11 @@ export default function HomeworkPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     setLoading(true);
-    const schoolUid = user.uid;
-    const homeworkRef = ref(database, `schools/${schoolUid}/homework`);
-    const classesRef = ref(database, `schools/${schoolUid}/classes`);
+
+    const homeworkRef = ref(database, `schools/${schoolId}/homework`);
+    const classesRef = ref(database, `schools/${schoolId}/classes`);
 
     const unsubscribeHomework = onValue(homeworkRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -106,7 +108,7 @@ export default function HomeworkPage() {
       unsubscribeHomework();
       unsubscribeClasses();
     };
-  }, [user]);
+  }, [user, schoolId]);
 
   const openDialog = (hw: Partial<Homework> | null = null) => {
     setEditingHomework(hw);
@@ -129,7 +131,7 @@ export default function HomeworkPage() {
   };
 
   const handleSubmit = async () => {
-    if (!user || !title || !selectedClassId || !subjectName || !dueDate) {
+    if (!user || !schoolId || !title || !selectedClassId || !subjectName || !dueDate) {
       toast({ title: 'Error', description: 'Please fill all fields.', variant: 'destructive' });
       return;
     }
@@ -152,11 +154,11 @@ export default function HomeworkPage() {
     
     try {
       if (editingHomework?.id) {
-        const homeworkRef = ref(database, `schools/${user.uid}/homework/${editingHomework.id}`);
+        const homeworkRef = ref(database, `schools/${schoolId}/homework/${editingHomework.id}`);
         await set(homeworkRef, homeworkData);
         toast({ title: 'Success!', description: 'Homework updated successfully.' });
       } else {
-        const homeworkRef = ref(database, `schools/${user.uid}/homework`);
+        const homeworkRef = ref(database, `schools/${schoolId}/homework`);
         const newHomeworkRef = push(homeworkRef);
         await set(newHomeworkRef, homeworkData);
         toast({ title: 'Success!', description: 'Homework added successfully.' });
@@ -169,9 +171,9 @@ export default function HomeworkPage() {
   };
   
   const handleDelete = async (homeworkId: string) => {
-      if (!user) return;
+      if (!user || !schoolId) return;
       try {
-          const homeworkRef = ref(database, `schools/${user.uid}/homework/${homeworkId}`);
+          const homeworkRef = ref(database, `schools/${schoolId}/homework/${homeworkId}`);
           await remove(homeworkRef);
           toast({ title: 'Success!', description: 'Homework deleted.' });
       } catch (error) {
