@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { navLinks } from '@/lib/nav-links';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -37,14 +37,18 @@ export function AppHeader() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col">
-          <nav className="grid gap-2 text-lg font-medium">
-            <Link
-              href="#"
-              className="flex items-center gap-2 text-lg font-semibold mb-4"
-            >
-              <GraduationCap className="h-6 w-6 text-primary" />
-              <span>Campus.ZM</span>
-            </Link>
+          <SheetHeader>
+            <SheetTitle>
+              <Link
+                href="/"
+                className="flex items-center gap-2 text-lg font-semibold"
+              >
+                <GraduationCap className="h-6 w-6 text-primary" />
+                <span>Campus.ZM</span>
+              </Link>
+            </SheetTitle>
+          </SheetHeader>
+          <nav className="grid gap-2 text-lg font-medium pt-4">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
