@@ -42,9 +42,10 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Users, BookUser, Edit, ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 type ClassInfo = { id: string; name: string; classTeacherId?: string; grade: number };
-type Teacher = { id: string; name: string };
+type Teacher = { id: string; name: string; uid: string; };
 type Student = { id: string; name: string; classId: string; };
 type SubjectAssignment = {
   subjectId: string;
@@ -58,13 +59,18 @@ type DialogState = {
   data: any;
 };
 
+type UserRole = 'admin' | 'class_teacher' | 'subject_teacher' | 'other';
+
+
 export default function ViewClassPage() {
   const params = useParams();
   const classId = params.id as string;
   const router = useRouter();
   const { toast } = useToast();
+  const schoolId = useSchoolId();
 
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>('other');
   const [classInfo, setClassInfo] = useState<ClassInfo | null>(null);
   const [classTeacher, setClassTeacher] = useState<Teacher | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -73,6 +79,8 @@ export default function ViewClassPage() {
   const [loading, setLoading] = useState(true);
   const [dialogState, setDialogState] = useState<DialogState>({ isOpen: false, type: null, data: null });
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  
+  const canPerformActions = userRole === 'admin' || userRole === 'class_teacher';
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => setUser(user));
@@ -80,21 +88,20 @@ export default function ViewClassPage() {
   }, []);
 
   useEffect(() => {
-    if (!user || !classId) return;
-    const schoolUid = user.uid;
-
+    if (!user || !schoolId || !classId) return;
+    
     const fetchData = async () => {
       setLoading(true);
       try {
         // Fetch All Teachers first
-        const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
+        const teachersRef = ref(database, `schools/${schoolId}/teachers`);
         const teachersSnap = await get(teachersRef);
         const teachersData = teachersSnap.val() || {};
         const teachersList: Teacher[] = Object.keys(teachersData).map(id => ({ id, ...teachersData[id] }));
         setAllTeachers(teachersList);
 
         // Fetch Class Info
-        const classRef = ref(database, `schools/${schoolUid}/classes/${classId}`);
+        const classRef = ref(database, `schools/${schoolId}/classes/${classId}`);
         const classSnap = await get(classRef);
         if (!classSnap.exists()) {
           toast({ title: 'Error', description: 'Class not found.', variant: 'destructive' });
@@ -104,12 +111,24 @@ export default function ViewClassPage() {
         const classData = { id: classId, ...classSnap.val() };
         setClassInfo(classData);
         
+        // Determine user role
+        if (user.uid === schoolId) {
+            setUserRole('admin');
+        } else {
+            const currentTeacher = teachersList.find(t => t.uid === user.uid);
+            if (currentTeacher && currentTeacher.id === classData.classTeacherId) {
+                setUserRole('class_teacher');
+            } else if (currentTeacher) {
+                setUserRole('subject_teacher');
+            }
+        }
+        
         if (classData.classTeacherId) {
           setClassTeacher(teachersList.find(t => t.id === classData.classTeacherId) || null);
         }
 
         // Fetch All Students and filter for the class
-        const allStudentsRef = ref(database, `schools/${schoolUid}/students`);
+        const allStudentsRef = ref(database, `schools/${schoolId}/students`);
         const allStudentsSnap = await get(allStudentsRef);
         const allStudentsData = allStudentsSnap.val() || {};
         const allStudentsList: Student[] = Object.keys(allStudentsData).map(id => ({ id, ...allStudentsData[id] }));
@@ -117,12 +136,12 @@ export default function ViewClassPage() {
 
         // Fetch Subjects and their Assignments for the class grade
         if (classData.grade) {
-          const subjectsQuery = query(ref(database, `schools/${schoolUid}/subjects`), orderByChild('grade'), equalTo(classData.grade));
+          const subjectsQuery = query(ref(database, `schools/${schoolId}/subjects`), orderByChild('grade'), equalTo(classData.grade));
           const subjectsSnap = await get(subjectsQuery);
           const subjectsData = subjectsSnap.val() || {};
           const subjectIds = Object.keys(subjectsData);
 
-          const assignmentsRef = ref(database, `schools/${schoolUid}/assignments`);
+          const assignmentsRef = ref(database, `schools/${schoolId}/assignments`);
           const assignmentsSnap = await get(assignmentsRef);
           const assignmentsData = assignmentsSnap.val() || {};
 
@@ -148,7 +167,7 @@ export default function ViewClassPage() {
     };
 
     fetchData();
-  }, [user, classId, router, toast]);
+  }, [user, schoolId, classId, router, toast]);
 
   const openDialog = (type: 'classTeacher' | 'subjectTeacher', data: any) => {
     setSelectedTeacherId(data.teacherId || '');
@@ -167,19 +186,18 @@ export default function ViewClassPage() {
       toast({ title: 'Error', description: 'Please select a teacher.', variant: 'destructive' });
       return;
     }
-    const schoolUid = user.uid;
     
     try {
       if (dialogState.type === 'classTeacher' && classInfo) {
         // Create a copy of classInfo to avoid potential circular references or read-only issues
         const updatedClassInfo = { ...classInfo };
-        await set(ref(database, `schools/${schoolUid}/classes/${classInfo.id}`), { ...updatedClassInfo, classTeacherId: selectedTeacherId });
+        await set(ref(database, `schools/${schoolId}/classes/${classInfo.id}`), { ...updatedClassInfo, classTeacherId: selectedTeacherId });
 
         setClassTeacher(allTeachers.find(t => t.id === selectedTeacherId) || null);
         setClassInfo(prev => prev ? { ...prev, classTeacherId: selectedTeacherId } : null);
         toast({ title: 'Success', description: 'Class teacher updated.' });
       } else if (dialogState.type === 'subjectTeacher') {
-        const assignmentRef = ref(database, `schools/${schoolUid}/assignments/${classId}_${dialogState.data.subjectId}`);
+        const assignmentRef = ref(database, `schools/${schoolId}/assignments/${classId}_${dialogState.data.subjectId}`);
         await set(assignmentRef, { classId: classId, subjectId: dialogState.data.subjectId, teacherId: selectedTeacherId });
         setSubjectAssignments(prev => prev.map(sa => sa.subjectId === dialogState.data.subjectId ? { ...sa, teacherId: selectedTeacherId, teacherName: allTeachers.find(t => t.id === selectedTeacherId)?.name || 'Unassigned' } : sa));
         toast({ title: 'Success', description: 'Subject teacher updated.' });
@@ -228,9 +246,11 @@ export default function ViewClassPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                         <span>Class Teacher</span>
-                        <Button variant="outline" size="icon" onClick={() => openDialog('classTeacher', { teacherId: classTeacher?.id })}>
-                            <Edit className="h-4 w-4"/>
-                        </Button>
+                        {canPerformActions && (
+                            <Button variant="outline" size="icon" onClick={() => openDialog('classTeacher', { teacherId: classTeacher?.id })}>
+                                <Edit className="h-4 w-4"/>
+                            </Button>
+                        )}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center gap-4">
@@ -269,7 +289,7 @@ export default function ViewClassPage() {
                             <TableRow>
                                 <TableHead>Subject</TableHead>
                                 <TableHead>Teacher</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                                {canPerformActions && <TableHead className="text-right">Action</TableHead>}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -277,11 +297,13 @@ export default function ViewClassPage() {
                                 <TableRow key={sa.subjectId}>
                                     <TableCell className="font-medium">{sa.subjectName}</TableCell>
                                     <TableCell>{sa.teacherName}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" onClick={() => openDialog('subjectTeacher', sa)}>
-                                            Change
-                                        </Button>
-                                    </TableCell>
+                                    {canPerformActions && (
+                                        <TableCell className="text-right">
+                                            <Button variant="outline" size="sm" onClick={() => openDialog('subjectTeacher', sa)}>
+                                                Change
+                                            </Button>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -310,6 +332,8 @@ export default function ViewClassPage() {
                                         variant="outline" 
                                         size="sm"
                                         onClick={() => router.push(`/classes/${classId}/results/${student.id}`)}
+                                        disabled={!canPerformActions}
+                                        title={!canPerformActions ? "Only Admins or Class Teachers can manage results" : ""}
                                     >
                                         Manage Results
                                     </Button>
@@ -356,3 +380,5 @@ export default function ViewClassPage() {
     </div>
   );
 }
+
+    
