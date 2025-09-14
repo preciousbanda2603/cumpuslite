@@ -78,8 +78,9 @@ export default function StudentResultsPage() {
         // Fetch Class Info to get grade
         const classRef = ref(database, `schools/${schoolUid}/classes/${studentData.classId}`);
         const classSnap = await get(classRef);
-        if (!classSnap.exists()) {
-           toast({ title: 'Error', description: 'Class not found.', variant: 'destructive' });
+        if (!classSnap.exists() || !classSnap.val()?.grade) {
+           toast({ title: 'Error', description: 'Class data or grade is missing.', variant: 'destructive' });
+           setLoading(false);
            return;
         }
         const classData = classSnap.val();
