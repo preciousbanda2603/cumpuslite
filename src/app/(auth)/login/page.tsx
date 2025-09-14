@@ -25,7 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { auth, database } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { ref, get, child } from "firebase/database";
+import { ref, get, child, query, orderByChild, equalTo } from "firebase/database";
 
 type School = {
   uid: string;
@@ -87,20 +87,29 @@ export default function LoginPage() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const loggedInUserUid = userCredential.user.uid;
 
-      // Verify that the logged-in user's UID belongs to the list of schools
-      const schoolExists = schools.some(school => school.uid === userCredential.user.uid);
-      if (!schoolExists || userCredential.user.uid !== schoolUid) {
-        await auth.signOut();
-        throw new Error("The selected school does not match your credentials.");
+      // Check 1: Is the user the school admin?
+      if (loggedInUserUid === schoolUid) {
+        toast({ title: "Success!", description: "Admin logged in." });
+        router.push('/dashboard');
+        return;
       }
-      
-      toast({
-        title: "Success!",
-        description: "You have been logged in.",
-      });
 
-      router.push('/dashboard');
+      // Check 2: If not admin, is the user a teacher for that school?
+      const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
+      const teachersQuery = query(teachersRef, orderByChild('uid'), equalTo(loggedInUserUid));
+      const teacherSnapshot = await get(teachersQuery);
+
+      if (teacherSnapshot.exists()) {
+        toast({ title: "Success!", description: "Teacher logged in." });
+        router.push('/dashboard');
+        return;
+      }
+
+      // If neither, then it's an invalid login for this school
+      await auth.signOut();
+      throw new Error("Your account is not associated with the selected school.");
 
     } catch (error: any) {
        console.error("Login failed:", error);
