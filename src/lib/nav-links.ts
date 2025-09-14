@@ -14,6 +14,7 @@ import {
   BookCopy,
   BookText,
   GraduationCap,
+  UserCheck,
 } from 'lucide-react';
 
 export const navLinks = [
@@ -22,7 +23,7 @@ export const navLinks = [
   { href: "/teachers", label: "Teacher Directory", icon: BookUser },
   { href: "/grades", label: "Grades", icon: GraduationCap },
   { href: "/subjects", label: "Subjects", icon: BookText },
-  { href: "/assignments", label: "Class Assignments", icon: BookCopy },
+  { href: "/assignments", label: "Subject Assignments", icon: BookCopy },
   { href: "/timetables", label: "Timetables", icon: CalendarDays },
   { href: "/attendance", label: "Attendance", icon: CheckSquare },
   { href: "/homework", label: "Homework", icon: ClipboardList },

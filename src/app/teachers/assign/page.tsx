@@ -18,17 +18,10 @@ import {
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { teachers } from '@/lib/mock-data';
+import { teachers, grades } from '@/lib/mock-data';
 
-const classes = [
-  'Grade 10 - Mathematics',
-  'Grade 11 - Physics',
-  'Grade 9 - History',
-  'Grade 12 - English Literature',
-  'Grade 10 - Computer Science',
-];
 
-export default function AssignTeacherPage() {
+export default function AssignClassTeacherPage() {
   const { toast } = useToast();
   const router = useRouter();
 
@@ -36,7 +29,7 @@ export default function AssignTeacherPage() {
     event.preventDefault();
     toast({
       title: 'Success!',
-      description: 'Teacher has been assigned to the class.',
+      description: 'Class teacher has been assigned.',
     });
     router.push('/teachers');
   };
@@ -47,7 +40,7 @@ export default function AssignTeacherPage() {
         <CardHeader>
           <CardTitle>Assign Class Teacher</CardTitle>
           <CardDescription>
-            Select a teacher and a class to assign them management responsibilities.
+            Select a teacher to manage a grade's attendance and final results.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -68,15 +61,15 @@ export default function AssignTeacherPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="class">Class</Label>
-               <Select name="class">
-                <SelectTrigger id="class">
-                  <SelectValue placeholder="Select a class" />
+              <Label htmlFor="grade">Grade</Label>
+               <Select name="grade">
+                <SelectTrigger id="grade">
+                  <SelectValue placeholder="Select a grade" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classes.map((className) => (
-                    <SelectItem key={className} value={className}>
-                      {className}
+                  {grades.map((grade) => (
+                    <SelectItem key={grade.id} value={grade.id}>
+                      {grade.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -86,7 +79,7 @@ export default function AssignTeacherPage() {
                <Button type="button" variant="outline" onClick={() => router.back()}>
                 Cancel
               </Button>
-              <Button type="submit">Assign Teacher</Button>
+              <Button type="submit">Assign Class Teacher</Button>
             </div>
           </form>
         </CardContent>

@@ -26,17 +26,26 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { teachers, classAssignments as initialAssignments } from '@/lib/mock-data';
+import { teachers, subjects as initialSubjects } from '@/lib/mock-data';
 import { BookCopy } from 'lucide-react';
 
-export default function AssignmentsPage() {
-  const [assignments, setAssignments] = useState(initialAssignments);
+// Mocking subject assignments
+const initialSubjectAssignments = initialSubjects.map(subject => ({
+    subjectId: subject.id,
+    subjectName: subject.name,
+    grade: subject.grade,
+    teacherId: teachers[Math.floor(Math.random() * teachers.length)].id,
+}));
+
+
+export default function SubjectAssignmentsPage() {
+  const [assignments, setAssignments] = useState(initialSubjectAssignments);
   const { toast } = useToast();
 
-  const handleTeacherChange = (className: string, newTeacherId: string) => {
+  const handleTeacherChange = (subjectId: string, newTeacherId: string) => {
     setAssignments(prevAssignments =>
       prevAssignments.map(assignment =>
-        assignment.class === className
+        assignment.subjectId === subjectId
           ? { ...assignment, teacherId: newTeacherId }
           : assignment
       )
@@ -44,11 +53,10 @@ export default function AssignmentsPage() {
   };
 
   const handleSaveChanges = () => {
-    // Here you would typically send the updated assignments to your backend.
-    console.log('Saving updated assignments:', assignments);
+    console.log('Saving updated subject assignments:', assignments);
     toast({
       title: 'Success!',
-      description: 'Class assignments have been updated.',
+      description: 'Subject assignments have been updated.',
     });
   };
 
@@ -59,15 +67,15 @@ export default function AssignmentsPage() {
        <div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                 <BookCopy className="h-8 w-8" />
-                Class Assignments
+                Subject Assignments
             </h1>
-            <p className="text-muted-foreground">View and manage teacher assignments for each class.</p>
+            <p className="text-muted-foreground">Assign teachers to specific subjects for each grade.</p>
         </div>
       <Card>
         <CardHeader>
-          <CardTitle>Manage Assignments</CardTitle>
+          <CardTitle>Manage Subject Teachers</CardTitle>
           <CardDescription>
-            Assign or re-assign teachers to different classes. Click 'Save Changes' to apply.
+            Assign or re-assign teachers to different subjects. Click 'Save Changes' to apply.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -75,20 +83,22 @@ export default function AssignmentsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Class</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Grade</TableHead>
                   <TableHead>Assigned Teacher</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assignments.map(({ class: className, teacherId }) => {
+                {assignments.sort((a, b) => a.grade - b.grade).map(({ subjectId, subjectName, grade, teacherId }) => {
                   const teacher = getTeacherById(teacherId);
                   return (
-                    <TableRow key={className}>
-                      <TableCell className="font-medium">{className}</TableCell>
+                    <TableRow key={subjectId}>
+                      <TableCell className="font-medium">{subjectName}</TableCell>
+                      <TableCell>Grade {grade}</TableCell>
                       <TableCell>
                         <Select
                           value={teacherId}
-                          onValueChange={(newTeacherId) => handleTeacherChange(className, newTeacherId)}
+                          onValueChange={(newTeacherId) => handleTeacherChange(subjectId, newTeacherId)}
                         >
                           <SelectTrigger className="w-[250px]">
                             <SelectValue placeholder="Select a teacher">

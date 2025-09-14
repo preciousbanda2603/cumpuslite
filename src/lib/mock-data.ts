@@ -74,14 +74,6 @@ export const teachers = [
     }
 ];
 
-export const classAssignments = [
-    { class: 'Grade 10 - Mathematics', teacherId: 't1' },
-    { class: 'Grade 11 - Physics', teacherId: 't2' },
-    { class: 'Grade 12 - English Literature', teacherId: 't3' },
-    { class: 'Grade 10 - Computer Science', teacherId: 't4' },
-    { class: 'Grade 9 - History', teacherId: 't3' },
-];
-
 export const subjects = [
     { id: 'sub-1', name: 'Mathematics', grade: 10 },
     { id: 'sub-2', name: 'Physics', grade: 11 },
