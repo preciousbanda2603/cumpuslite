@@ -86,13 +86,18 @@ export default function StudentResultsPage() {
         const classData = classSnap.val();
 
         // Fetch Subjects for the class's grade, only if grade exists
-        if (classData && classData.grade) {
+        if (classData && typeof classData.grade !== 'undefined') {
             const subjectsQuery = query(ref(database, `schools/${schoolUid}/subjects`), orderByChild('grade'), equalTo(classData.grade));
             const subjectsSnap = await get(subjectsQuery);
             const subjectsData = subjectsSnap.val() || {};
             setSubjects(Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] })));
         } else {
-             toast({ title: 'Warning', description: 'No grade is set for this class. Cannot load subjects.', variant: 'destructive' });
+             toast({ title: 'Warning', description: 'No grade is set for this class. Consider setting one to filter subjects correctly.', variant: 'default' });
+             // Fallback to loading all subjects if grade is not set
+             const allSubjectsRef = ref(database, `schools/${schoolUid}/subjects`);
+             const allSubjectsSnap = await get(allSubjectsRef);
+             const allSubjectsData = allSubjectsSnap.val() || {};
+             setSubjects(Object.keys(allSubjectsData).map(id => ({ id, ...allSubjectsData[id] })));
         }
 
 
