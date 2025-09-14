@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from "next/link";
@@ -40,6 +39,7 @@ export default function StudentsPage() {
   const schoolId = useSchoolId();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -47,6 +47,12 @@ export default function StudentsPage() {
     });
     return () => unsubscribe();
   }, []);
+  
+  useEffect(() => {
+    if (user && schoolId) {
+        setIsAdmin(user.uid === schoolId);
+    }
+  }, [user, schoolId]);
 
   useEffect(() => {
     if (!user || !schoolId) return;
@@ -83,12 +89,14 @@ export default function StudentsPage() {
           <CardTitle>Student Profiles</CardTitle>
           <CardDescription>Manage student information and records.</CardDescription>
         </div>
-        <Link href="/students/add">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Student
-          </Button>
-        </Link>
+        {isAdmin && (
+            <Link href="/students/add">
+            <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Student
+            </Button>
+            </Link>
+        )}
       </div>
       <Card>
         <CardContent className="p-0">

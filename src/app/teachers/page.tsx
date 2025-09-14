@@ -34,6 +34,7 @@ export default function TeachersPage() {
   const schoolId = useSchoolId();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -41,6 +42,12 @@ export default function TeachersPage() {
     });
     return () => unsubscribe();
   }, []);
+  
+  useEffect(() => {
+    if (user && schoolId) {
+        setIsAdmin(user.uid === schoolId);
+    }
+  }, [user, schoolId]);
 
   useEffect(() => {
     if (!user || !schoolId) return;
@@ -75,20 +82,22 @@ export default function TeachersPage() {
             <h1 className="text-3xl font-bold tracking-tight">Teacher Directory</h1>
             <p className="text-muted-foreground">Find contact details and qualifications for all teachers.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/teachers/add">
-            <Button className="flex items-center gap-2">
-              <PlusCircle />
-              Add Teacher
-            </Button>
-          </Link>
-          <Link href="/teachers/assign">
-            <Button variant="outline" className="flex items-center gap-2">
-              <UserPlus />
-              Assign Class Teacher
-            </Button>
-          </Link>
-        </div>
+        {isAdmin && (
+            <div className="flex items-center gap-2">
+            <Link href="/teachers/add">
+                <Button className="flex items-center gap-2">
+                <PlusCircle />
+                Add Teacher
+                </Button>
+            </Link>
+            <Link href="/teachers/assign">
+                <Button variant="outline" className="flex items-center gap-2">
+                <UserPlus />
+                Assign Class Teacher
+                </Button>
+            </Link>
+            </div>
+        )}
       </div>
        <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

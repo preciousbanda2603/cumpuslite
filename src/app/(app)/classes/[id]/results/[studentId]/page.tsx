@@ -32,6 +32,7 @@ import { useSchoolId } from '@/hooks/use-school-id';
 type Student = { id: string; name: string; classId: string; };
 type Subject = { id: string; name: string; grade: number; };
 type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; } };
+type UserRole = 'admin' | 'class_teacher' | 'subject_teacher' | 'other';
 
 const assessmentTypes = [
     { key: 'test1', label: 'Test 1' },
@@ -48,10 +49,13 @@ export default function StudentResultsPage() {
   const schoolId = useSchoolId();
 
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>('other');
   const [student, setStudent] = useState<Student | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [results, setResults] = useState<Results>({});
   const [loading, setLoading] = useState(true);
+  
+  const canPerformActions = userRole === 'admin' || userRole === 'class_teacher';
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => setUser(user));
@@ -85,6 +89,26 @@ export default function StudentResultsPage() {
            return;
         }
         const classData = classSnap.val();
+
+        // Determine user role
+        if (user.uid === schoolId) {
+            setUserRole('admin');
+        } else {
+            const teachersRef = ref(database, `schools/${schoolId}/teachers`);
+            const teachersSnap = await get(teachersRef);
+            const teachersData = teachersSnap.val() || {};
+            const currentTeacher = Object.values(teachersData).find((t: any) => t.uid === user.uid) as any;
+            
+            if (currentTeacher) {
+                const teacherId = Object.keys(teachersData).find(key => teachersData[key].uid === user.uid);
+                if (teacherId === classData.classTeacherId) {
+                    setUserRole('class_teacher');
+                } else {
+                    setUserRole('subject_teacher');
+                }
+            }
+        }
+
 
         // Fetch Subjects for the class's grade, only if grade exists
         if (classData && typeof classData.grade !== 'undefined') {
@@ -213,6 +237,7 @@ export default function StudentResultsPage() {
                                         onChange={(e) => handleScoreChange(subject.id, assessment.key, e.target.value)}
                                         min={0}
                                         max={100}
+                                        disabled={!canPerformActions}
                                     />
                                 </TableCell>
                             ))}
@@ -226,12 +251,14 @@ export default function StudentResultsPage() {
                 </div>
             </CardContent>
         </Card>
-         <div className="flex justify-end mt-4">
-            <Button size="lg" onClick={handleSaveChanges} disabled={loading}>
-                <Save className="mr-2 h-4 w-4" />
-                {loading ? 'Saving...' : 'Save All Changes'}
-            </Button>
-        </div>
+        {canPerformActions && (
+             <div className="flex justify-end mt-4">
+                <Button size="lg" onClick={handleSaveChanges} disabled={loading}>
+                    <Save className="mr-2 h-4 w-4" />
+                    {loading ? 'Saving...' : 'Save All Changes'}
+                </Button>
+            </div>
+        )}
     </div>
   );
 }

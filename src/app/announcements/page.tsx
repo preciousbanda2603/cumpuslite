@@ -43,6 +43,7 @@ export default function AnnouncementsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Partial<Announcement> | null>(null);
   const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -52,6 +53,12 @@ export default function AnnouncementsPage() {
     const unsubscribeAuth = auth.onAuthStateChanged(setUser);
     return () => unsubscribeAuth();
   }, []);
+  
+  useEffect(() => {
+      if (user && schoolId) {
+          setIsAdmin(user.uid === schoolId);
+      }
+  }, [user, schoolId]);
 
   useEffect(() => {
     if (!user || !schoolId) return;
@@ -136,10 +143,12 @@ export default function AnnouncementsPage() {
           </h1>
           <p className="text-muted-foreground">Manage and post important updates for the school.</p>
         </div>
-        <Button onClick={() => openDialog()}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Announcement
-        </Button>
+        {isAdmin && (
+            <Button onClick={() => openDialog()}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Announcement
+            </Button>
+        )}
       </div>
       <div className="space-y-4">
         {loading ? (
@@ -150,10 +159,12 @@ export default function AnnouncementsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle>{announcement.title}</CardTitle>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => openDialog(announcement)}><Edit className="h-4 w-4" /></Button>
-                        <Button variant="destructive" size="icon" onClick={() => handleDelete(announcement.id)}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
+                    {isAdmin && (
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="icon" onClick={() => openDialog(announcement)}><Edit className="h-4 w-4" /></Button>
+                            <Button variant="destructive" size="icon" onClick={() => handleDelete(announcement.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                    )}
                 </div>
                 <CardDescription>
                   Posted on {new Date(announcement.createdAt).toLocaleDateString()}

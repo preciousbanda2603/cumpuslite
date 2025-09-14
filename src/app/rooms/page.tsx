@@ -48,6 +48,7 @@ export default function RoomsPage() {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [newRoomName, setNewRoomName] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -56,6 +57,12 @@ export default function RoomsPage() {
     });
     return () => unsubscribe();
   }, []);
+  
+  useEffect(() => {
+    if (user && schoolId) {
+        setIsAdmin(user.uid === schoolId);
+    }
+  }, [user, schoolId]);
 
   useEffect(() => {
     if (!user || !schoolId) return;
@@ -163,10 +170,12 @@ export default function RoomsPage() {
             Manage the rooms and locations in the school.
           </p>
         </div>
-        <Button onClick={() => openDialog()}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Room
-        </Button>
+        {isAdmin && (
+            <Button onClick={() => openDialog()}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Room
+            </Button>
+        )}
       </div>
 
       <Card>
@@ -181,7 +190,7 @@ export default function RoomsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Room Name / Number</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {isAdmin && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -195,22 +204,24 @@ export default function RoomsPage() {
                 rooms.map((room) => (
                   <TableRow key={room.id}>
                     <TableCell className="font-medium">{room.name}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => openDialog(room)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleDeleteRoom(room.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    {isAdmin && (
+                        <TableCell className="text-right space-x-2">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => openDialog(room)}
+                        >
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => handleDeleteRoom(room.id)}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                        </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (

@@ -42,6 +42,7 @@ export default function SubjectAssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,6 +51,12 @@ export default function SubjectAssignmentsPage() {
     });
     return () => unsubscribeAuth();
   }, []);
+  
+  useEffect(() => {
+      if (user && schoolId) {
+          setIsAdmin(user.uid === schoolId);
+      }
+  }, [user, schoolId]);
 
   useEffect(() => {
     if (!user || !schoolId) return;
@@ -164,6 +171,7 @@ export default function SubjectAssignmentsPage() {
                         <Select
                           value={teacherId || 'unassigned'}
                           onValueChange={(newTeacherId) => handleTeacherChange(subjectId, newTeacherId)}
+                          disabled={!isAdmin}
                         >
                           <SelectTrigger className="w-[250px]">
                             <SelectValue placeholder="Select a teacher">
@@ -184,9 +192,11 @@ export default function SubjectAssignmentsPage() {
               </TableBody>
             </Table>
           </div>
-          <div className="flex justify-end mt-6">
-            <Button onClick={handleSaveChanges} disabled={loading}>Save Changes</Button>
-          </div>
+          {isAdmin && (
+            <div className="flex justify-end mt-6">
+                <Button onClick={handleSaveChanges} disabled={loading}>Save Changes</Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

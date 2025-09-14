@@ -39,7 +39,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { GraduationCap, PlusCircle, Edit, Trash2, Eye } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
-import { ref, onValue, push, set, remove, query, orderByChild, equalTo, get } from 'firebase/database';
+import { ref, onValue, push, set, remove, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
 
@@ -74,6 +74,7 @@ export default function GradesPage() {
   const [newClassGrade, setNewClassGrade] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -83,6 +84,12 @@ export default function GradesPage() {
     });
     return () => unsubscribeAuth();
   }, []);
+  
+  useEffect(() => {
+    if (user && schoolId) {
+        setIsAdmin(user.uid === schoolId);
+    }
+  }, [user, schoolId]);
 
   useEffect(() => {
     if (!user || !schoolId) return;
@@ -224,10 +231,12 @@ export default function GradesPage() {
           </h1>
           <p className="text-muted-foreground">Manage the classes and their assigned rooms.</p>
         </div>
-        <Button onClick={() => openDialog()}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Class
-        </Button>
+        {isAdmin && (
+            <Button onClick={() => openDialog()}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Class
+            </Button>
+        )}
       </div>
       <Card>
         <CardHeader>
@@ -259,8 +268,12 @@ export default function GradesPage() {
                     <TableCell>{getRoomName(cls.roomId)}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="icon" onClick={() => router.push(`/classes/${cls.id}`)}><Eye className="h-4 w-4" /></Button>
-                      <Button variant="outline" size="icon" onClick={() => openDialog(cls)}><Edit className="h-4 w-4" /></Button>
-                      <Button variant="destructive" size="icon" onClick={() => handleDeleteClass(cls.id)}><Trash2 className="h-4 w-4" /></Button>
+                      {isAdmin && (
+                        <>
+                          <Button variant="outline" size="icon" onClick={() => openDialog(cls)}><Edit className="h-4 w-4" /></Button>
+                          <Button variant="destructive" size="icon" onClick={() => handleDeleteClass(cls.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

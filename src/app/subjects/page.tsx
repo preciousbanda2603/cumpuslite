@@ -57,6 +57,7 @@ export default function SubjectsPage() {
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectGrade, setNewSubjectGrade] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -65,6 +66,12 @@ export default function SubjectsPage() {
     });
     return () => unsubscribe();
   }, []);
+  
+  useEffect(() => {
+    if (user && schoolId) {
+        setIsAdmin(user.uid === schoolId);
+    }
+  }, [user, schoolId]);
 
   useEffect(() => {
     if (!user || !schoolId) return;
@@ -171,10 +178,12 @@ export default function SubjectsPage() {
             Manage the subjects offered by the school.
           </p>
         </div>
-        <Button onClick={() => openDialog()}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Subject
-        </Button>
+        {isAdmin && (
+            <Button onClick={() => openDialog()}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Subject
+            </Button>
+        )}
       </div>
 
       <Card>
@@ -190,7 +199,7 @@ export default function SubjectsPage() {
               <TableRow>
                 <TableHead>Subject Name</TableHead>
                 <TableHead>Grade</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {isAdmin && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -203,14 +212,16 @@ export default function SubjectsPage() {
                   <TableRow key={subject.id}>
                     <TableCell className="font-medium">{subject.name}</TableCell>
                     <TableCell>Grade {subject.grade}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="icon" onClick={() => openDialog(subject)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="destructive" size="icon" onClick={() => handleDeleteSubject(subject.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    {isAdmin && (
+                        <TableCell className="text-right space-x-2">
+                        <Button variant="outline" size="icon" onClick={() => openDialog(subject)}>
+                            <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="destructive" size="icon" onClick={() => handleDeleteSubject(subject.id)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                        </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (
