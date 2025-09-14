@@ -10,7 +10,8 @@ import {
   CreditCard,
   Clapperboard,
   ClipboardList,
-  FileText
+  FileText,
+  BookCopy,
 } from 'lucide-react';
 
 export const navLinks = [
@@ -20,6 +21,7 @@ export const navLinks = [
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/timetables", label: "Timetables", icon: CalendarDays },
   { href: "/teachers", label: "Teacher Directory", icon: BookUser },
+  { href: "/assignments", label: "Class Assignments", icon: BookCopy },
   { href: "/communication", label: "Communication", icon: MessagesSquare },
   { href: "/calendar", label: "Events Calendar", icon: Calendar },
   { href: "/fees", label: "Fee Collection", icon: CreditCard },

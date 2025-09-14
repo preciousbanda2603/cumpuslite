@@ -72,4 +72,12 @@ export const teachers = [
         qualifications: "Ph.D. in Computer Science",
         avatar: "https://picsum.photos/seed/t4/100/100"
     }
-]
+];
+
+export const classAssignments = [
+    { class: 'Grade 10 - Mathematics', teacherId: 't1' },
+    { class: 'Grade 11 - Physics', teacherId: 't2' },
+    { class: 'Grade 12 - English Literature', teacherId: 't3' },
+    { class: 'Grade 10 - Computer Science', teacherId: 't4' },
+    { class: 'Grade 9 - History', teacherId: 't3' },
+];
