@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -22,6 +23,9 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
+import { auth, database } from '@/lib/firebase';
+import { onValue, ref } from 'firebase/database';
+import type { User } from 'firebase/auth';
 
 const chartData = [
   { month: 'January', desktop: 186 },
@@ -39,7 +43,58 @@ const chartConfig = {
   },
 };
 
+type DashboardStats = {
+  students: number;
+  classes: number;
+  teachers: number;
+  events: number;
+};
+
 export default function DashboardPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState<DashboardStats>({
+    students: 0,
+    classes: 0,
+    teachers: 0,
+    events: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const schoolUid = user.uid;
+    const statsToFetch = [
+      { key: 'students', path: `schools/${schoolUid}/students` },
+      { key: 'classes', path: `schools/${schoolUid}/classes` },
+      { key: 'teachers', path: `schools/${schoolUid}/teachers` },
+      { key: 'events', path: `schools/${schoolUid}/events` },
+    ];
+
+    const listeners = statsToFetch.map(({ key, path }) => {
+      const dbRef = ref(database, path);
+      return onValue(dbRef, (snapshot) => {
+        const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+        setStats((prevStats) => ({ ...prevStats, [key]: count }));
+      }, (error) => {
+        console.error(`Error fetching ${key}:`, error);
+      });
+    });
+
+    // Cleanup listeners on component unmount
+    return () => {
+      listeners.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [user]);
+
   return (
     <div className="flex flex-col gap-8">
        <section>
@@ -56,9 +111,9 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.students}</div>
             <p className="text-xs text-muted-foreground">
-              No students enrolled
+              {stats.students === 0 ? 'No students enrolled' : 'Currently enrolled'}
             </p>
           </CardContent>
         </Card>
@@ -70,9 +125,9 @@ export default function DashboardPage() {
             <Clapperboard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.classes}</div>
             <p className="text-xs text-muted-foreground">
-              No classes available
+              {stats.classes === 0 ? 'No classes available' : 'Active classes'}
             </p>
           </CardContent>
         </Card>
@@ -82,9 +137,9 @@ export default function DashboardPage() {
             <BookUser className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.teachers}</div>
             <p className="text-xs text-muted-foreground">
-              No teachers registered
+              {stats.teachers === 0 ? 'No teachers registered' : 'Currently active'}
             </p>
           </CardContent>
         </Card>
@@ -96,9 +151,9 @@ export default function DashboardPage() {
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.events}</div>
             <p className="text-xs text-muted-foreground">
-              No upcoming events
+              {stats.events === 0 ? 'No upcoming events' : 'Scheduled events'}
             </p>
           </CardContent>
         </Card>
