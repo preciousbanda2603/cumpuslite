@@ -21,23 +21,50 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import type { User } from 'firebase/auth';
 import { auth, database } from '@/lib/firebase';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, onValue } from 'firebase/database';
 import { Textarea } from '@/components/ui/textarea';
+
+type Class = {
+  id: string;
+  name: string;
+};
 
 export default function AddStudentPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
-  const [grade, setGrade] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [classes, setClasses] = useState<Class[]>([]);
+
+  useEffect(() => {
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const classesRef = ref(database, `schools/${user.uid}/classes`);
+    const unsubscribeClasses = onValue(classesRef, (snapshot) => {
+      const classesData = snapshot.val();
+      const classesList = classesData ? Object.keys(classesData).map(id => ({ id, ...classesData[id] })) : [];
+      setClasses(classesList);
+    });
+
+    return () => unsubscribeClasses();
+  }, [user]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
 
-    const schoolAdmin = auth.currentUser;
-    if (!schoolAdmin) {
+    if (!user) {
       toast({
         title: 'Authentication Error',
         description: 'You must be logged in to add a student.',
@@ -50,15 +77,15 @@ export default function AddStudentPage() {
 
     const formData = new FormData(event.currentTarget);
     const name = formData.get('name') as string;
-    const startingGrade = parseInt(grade, 10);
     const enrollmentDate = formData.get('enrollment-date') as string;
     const parentName = formData.get('parent-name') as string;
     const parentPhone = formData.get('parent-phone') as string;
     const parentNrcPassport = formData.get('parent-nrc-passport') as string;
     const healthStatus = formData.get('health-status') as string;
+    
+    const selectedClass = classes.find(c => c.id === selectedClassId);
 
-
-    if (!name || isNaN(startingGrade) || !enrollmentDate || !parentName || !parentPhone) {
+    if (!name || !selectedClassId || !enrollmentDate || !parentName || !parentPhone) {
         toast({
             title: 'Missing Information',
             description: 'Please fill out all required fields.',
@@ -69,11 +96,12 @@ export default function AddStudentPage() {
     }
 
     try {
-      const studentsRef = ref(database, `schools/${schoolAdmin.uid}/students`);
+      const studentsRef = ref(database, `schools/${user.uid}/students`);
       const newStudentRef = push(studentsRef);
       await set(newStudentRef, {
         name,
-        startingGrade,
+        classId: selectedClassId,
+        className: selectedClass?.name,
         enrollmentDate,
         parentName,
         parentPhone,
@@ -118,17 +146,21 @@ export default function AddStudentPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="grade">Starting Grade</Label>
-                <Select name="grade" required value={grade} onValueChange={setGrade}>
-                  <SelectTrigger id="grade">
-                    <SelectValue placeholder="Select a grade" />
+                <Label htmlFor="class">Starting Class</Label>
+                <Select name="class" required value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger id="class">
+                    <SelectValue placeholder="Select a class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((grade) => (
-                      <SelectItem key={grade} value={String(grade)}>
-                        Grade {grade}
-                      </SelectItem>
-                    ))}
+                    {classes.length > 0 ? (
+                       classes.map((cls) => (
+                        <SelectItem key={cls.id} value={cls.id}>
+                          {cls.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-classes" disabled>No classes available</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

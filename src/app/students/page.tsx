@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from "next/link";
@@ -28,7 +29,7 @@ import type { User } from "firebase/auth";
 type Student = {
   id: string;
   name: string;
-  startingGrade: number;
+  className: string;
   enrollmentDate: string;
   status: 'Active' | 'Inactive';
 };
@@ -73,15 +74,6 @@ export default function StudentsPage() {
     return () => unsubscribe();
   }, [user]);
 
-  const getStudentCurrentGrade = (enrollmentDate: string, startingGrade: number) => {
-    const enrollmentYear = new Date(enrollmentDate).getFullYear();
-    const currentYear = new Date().getFullYear();
-    const yearsPassed = currentYear - enrollmentYear;
-    const currentGrade = startingGrade + yearsPassed;
-    // Cap grade at 12
-    return Math.min(currentGrade, 12);
-  };
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -102,8 +94,7 @@ export default function StudentsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Starting Grade</TableHead>
-                <TableHead>Current Grade</TableHead>
+                <TableHead>Class</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Enrollment Date</TableHead>
               </TableRow>
@@ -111,7 +102,7 @@ export default function StudentsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     Loading students...
                   </TableCell>
                 </TableRow>
@@ -119,15 +110,14 @@ export default function StudentsPage() {
                 students.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell>{student.name}</TableCell>
-                    <TableCell>{student.startingGrade}</TableCell>
-                    <TableCell>{getStudentCurrentGrade(student.enrollmentDate, student.startingGrade)}</TableCell>
+                    <TableCell>{student.className}</TableCell>
                     <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
                     <TableCell>{student.enrollmentDate}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={4} className="text-center">
                     No students found. Add one to get started.
                   </TableCell>
                 </TableRow>
