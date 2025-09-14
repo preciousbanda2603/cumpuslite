@@ -83,11 +83,11 @@ export const classAssignments = [
 ];
 
 export const subjects = [
-    { id: 'sub-1', name: 'Mathematics' },
-    { id: 'sub-2', name: 'Physics' },
-    { id: 'sub-3', name: 'English Literature' },
-    { id: 'sub-4', name: 'Computer Science' },
-    { id: 'sub-5', name: 'History' },
-    { id: 'sub-6', name: 'Art' },
-    { id: 'sub-7', name: 'Physical Education' },
+    { id: 'sub-1', name: 'Mathematics', grade: 10 },
+    { id: 'sub-2', name: 'Physics', grade: 11 },
+    { id: 'sub-3', name: 'English Literature', grade: 12 },
+    { id: 'sub-4', name: 'Computer Science', grade: 10 },
+    { id: 'sub-5', name: 'History', grade: 9 },
+    { id: 'sub-6', name: 'Art', grade: 9 },
+    { id: 'sub-7', name: 'Physical Education', grade: 9 },
 ];

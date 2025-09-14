@@ -24,11 +24,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { subjects as initialSubjects } from '@/lib/mock-data';
 import { BookText, PlusCircle, Edit, Trash2 } from 'lucide-react';
@@ -36,30 +41,36 @@ import { BookText, PlusCircle, Edit, Trash2 } from 'lucide-react';
 type Subject = {
   id: string;
   name: string;
+  grade: number;
 };
 
 export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [newSubjectName, setNewSubjectName] = useState('');
+  const [newSubjectGrade, setNewSubjectGrade] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const handleAddOrUpdateSubject = () => {
-    if (!newSubjectName.trim()) {
+    if (!newSubjectName.trim() || !newSubjectGrade) {
       toast({
         title: 'Error',
-        description: 'Subject name cannot be empty.',
+        description: 'Subject name and grade are required.',
         variant: 'destructive',
       });
       return;
     }
 
+    const grade = parseInt(newSubjectGrade, 10);
+
     if (editingSubject) {
       // Update existing subject
       setSubjects(
         subjects.map((s) =>
-          s.id === editingSubject.id ? { ...s, name: newSubjectName } : s
+          s.id === editingSubject.id
+            ? { ...s, name: newSubjectName, grade }
+            : s
         )
       );
       toast({
@@ -71,6 +82,7 @@ export default function SubjectsPage() {
       const newSubject = {
         id: `sub-${Date.now()}`,
         name: newSubjectName,
+        grade,
       };
       setSubjects([...subjects, newSubject]);
       toast({
@@ -93,6 +105,7 @@ export default function SubjectsPage() {
   const openDialog = (subject: Subject | null = null) => {
     setEditingSubject(subject);
     setNewSubjectName(subject ? subject.name : '');
+    setNewSubjectGrade(subject ? String(subject.grade) : '');
     setIsDialogOpen(true);
   };
 
@@ -100,6 +113,7 @@ export default function SubjectsPage() {
     setIsDialogOpen(false);
     setEditingSubject(null);
     setNewSubjectName('');
+    setNewSubjectGrade('');
   };
 
   return (
@@ -132,6 +146,7 @@ export default function SubjectsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Subject Name</TableHead>
+                <TableHead>Grade</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -139,6 +154,7 @@ export default function SubjectsPage() {
               {subjects.map((subject) => (
                 <TableRow key={subject.id}>
                   <TableCell className="font-medium">{subject.name}</TableCell>
+                  <TableCell>Grade {subject.grade}</TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button
                       variant="outline"
@@ -170,8 +186,8 @@ export default function SubjectsPage() {
             </DialogTitle>
             <DialogDescription>
               {editingSubject
-                ? "Update the subject's name."
-                : 'Enter the name for the new subject.'}
+                ? "Update the subject's details."
+                : 'Enter the details for the new subject.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -186,6 +202,23 @@ export default function SubjectsPage() {
                 className="col-span-3"
                 placeholder="e.g. Chemistry"
               />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="grade-select" className="text-right">
+                Grade
+              </Label>
+              <Select value={newSubjectGrade} onValueChange={setNewSubjectGrade}>
+                <SelectTrigger id="grade-select" className="col-span-3">
+                  <SelectValue placeholder="Select a grade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((grade) => (
+                    <SelectItem key={grade} value={String(grade)}>
+                      Grade {grade}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
