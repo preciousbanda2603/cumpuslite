@@ -246,7 +246,7 @@ export default function ViewClassPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                         <span>Class Teacher</span>
-                        {canPerformActions && (
+                        {userRole === 'admin' && (
                             <Button variant="outline" size="icon" onClick={() => openDialog('classTeacher', { teacherId: classTeacher?.id })}>
                                 <Edit className="h-4 w-4"/>
                             </Button>
@@ -380,5 +380,3 @@ export default function ViewClassPage() {
     </div>
   );
 }
-
-    
