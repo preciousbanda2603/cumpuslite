@@ -125,7 +125,7 @@ export default function ViewClassPage() {
         const assignmentsData = assignmentsSnap.val() || {};
 
         const assignments: SubjectAssignment[] = subjectIds.map(subId => {
-          const assignment = assignmentsData[subId];
+          const assignment = Object.values(assignmentsData).find((a: any) => a.subjectId === subId && a.classId === classId) as any;
           const teacher = teachersList.find(t => t.id === assignment?.teacherId);
           return {
             subjectId: subId,
@@ -168,8 +168,8 @@ export default function ViewClassPage() {
         setClassTeacher(allTeachers.find(t => t.id === selectedTeacherId) || null);
         toast({ title: 'Success', description: 'Class teacher updated.' });
       } else if (dialogState.type === 'subjectTeacher') {
-        const assignmentRef = ref(database, `schools/${schoolUid}/assignments/${dialogState.data.subjectId}`);
-        await set({ teacherId: selectedTeacherId });
+        const assignmentRef = ref(database, `schools/${schoolUid}/assignments/${classId}_${dialogState.data.subjectId}`);
+        await set({ classId: classId, subjectId: dialogState.data.subjectId, teacherId: selectedTeacherId });
         setSubjectAssignments(prev => prev.map(sa => sa.subjectId === dialogState.data.subjectId ? { ...sa, teacherId: selectedTeacherId, teacherName: allTeachers.find(t => t.id === selectedTeacherId)?.name || 'Unassigned' } : sa));
         toast({ title: 'Success', description: 'Subject teacher updated.' });
       }
@@ -278,23 +278,29 @@ export default function ViewClassPage() {
              <Card>
                 <CardHeader>
                     <CardTitle>Results Sheet</CardTitle>
-                    <CardDescription>Overview of student performance.</CardDescription>
+                    <CardDescription>Enter and view student performance.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Student Name</TableHead>
-                                <TableHead>Overall Score</TableHead>
-                                <TableHead>Grade</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                            {students.map(student => (
                             <TableRow key={student.id}>
                                 <TableCell>{student.name}</TableCell>
-                                <TableCell>N/A</TableCell>
-                                <TableCell>N/A</TableCell>
+                                <TableCell className="text-right">
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => router.push(`/classes/${classId}/results/${student.id}`)}
+                                    >
+                                        Manage Results
+                                    </Button>
+                                </TableCell>
                             </TableRow>
                            ))}
                         </TableBody>
@@ -337,3 +343,5 @@ export default function ViewClassPage() {
     </div>
   );
 }
+
+    
