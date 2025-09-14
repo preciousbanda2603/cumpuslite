@@ -1,25 +1,119 @@
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+'use client';
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { GraduationCap } from "lucide-react"
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { GraduationCap } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { auth, database } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { ref, get, child } from "firebase/database";
+
+type School = {
+  uid: string;
+  name: string;
+};
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [schools, setSchools] = useState<School[]>([]);
+
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const dbRef = ref(database);
+        const snapshot = await get(child(dbRef, 'schools'));
+        if (snapshot.exists()) {
+          const schoolsData = snapshot.val();
+          const schoolsList = Object.keys(schoolsData).map(key => ({
+            uid: key,
+            name: schoolsData[key].name,
+          }));
+          setSchools(schoolsList);
+        } else {
+          console.log("No schools data available");
+        }
+      } catch (error) {
+        console.error("Error fetching schools:", error);
+        toast({
+          title: "Error",
+          description: "Could not fetch the list of schools.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchSchools();
+  }, [toast]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const schoolUid = formData.get('school') as string;
+
+     if (!schoolUid) {
+      toast({
+        title: "Login Failed",
+        description: "Please select a school.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // You can add logic here to verify if the logged-in user (userCredential.user.uid)
+      // matches the selected school (schoolUid) if needed.
+      
+      toast({
+        title: "Success!",
+        description: "You have been logged in.",
+      });
+
+      router.push('/dashboard');
+
+    } catch (error: any) {
+       console.error("Login failed:", error);
+       let errorMessage = "Invalid email or password. Please try again.";
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            errorMessage = "Invalid email or password. Please try again.";
+        }
+      
+      toast({
+        title: "Login Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
        <Link href="/" className="mb-6 flex items-center gap-2 text-lg font-semibold">
@@ -34,7 +128,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
+          <form onSubmit={handleSubmit} className="grid gap-4">
             <div className="grid gap-2">
                 <Label htmlFor="school">School</Label>
                 <Select name="school" required>
@@ -42,7 +136,13 @@ export default function LoginPage() {
                         <SelectValue placeholder="Select your school" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="no-schools" disabled>No schools available</SelectItem>
+                        {schools.length > 0 ? (
+                            schools.map(school => (
+                                <SelectItem key={school.uid} value={school.uid}>{school.name}</SelectItem>
+                            ))
+                        ) : (
+                             <SelectItem value="no-schools" disabled>No schools available</SelectItem>
+                        )}
                     </SelectContent>
                 </Select>
             </div>
@@ -50,6 +150,7 @@ export default function LoginPage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="m@example.com"
                 required
@@ -65,12 +166,12 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required />
+              <Input id="password" name="password" type="password" required />
             </div>
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
             </Button>
-          </div>
+          </form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="underline">
