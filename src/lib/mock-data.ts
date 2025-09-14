@@ -81,3 +81,13 @@ export const classAssignments = [
     { class: 'Grade 10 - Computer Science', teacherId: 't4' },
     { class: 'Grade 9 - History', teacherId: 't3' },
 ];
+
+export const subjects = [
+    { id: 'sub-1', name: 'Mathematics' },
+    { id: 'sub-2', name: 'Physics' },
+    { id: 'sub-3', name: 'English Literature' },
+    { id: 'sub-4', name: 'Computer Science' },
+    { id: 'sub-5', name: 'History' },
+    { id: 'sub-6', name: 'Art' },
+    { id: 'sub-7', name: 'Physical Education' },
+];
