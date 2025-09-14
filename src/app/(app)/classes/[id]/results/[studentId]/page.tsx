@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { auth, database } from '@/lib/firebase';
-import { ref, get, set } from 'firebase/database';
+import { ref, get, set, query, orderByChild, equalTo } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import {
   Card,
@@ -85,13 +85,10 @@ export default function StudentResultsPage() {
         const classData = classSnap.val();
 
         // Fetch Subjects for the class's grade
-        const subjectsRef = ref(database, `schools/${schoolUid}/subjects`);
-        const subjectsSnap = await get(subjectsRef);
-        const allSubjects = subjectsSnap.val() || {};
-        const gradeSubjects = Object.keys(allSubjects)
-          .map(id => ({ id, ...allSubjects[id] }))
-          .filter(s => s.grade === classData.grade);
-        setSubjects(gradeSubjects);
+        const subjectsQuery = query(ref(database, `schools/${schoolUid}/subjects`), orderByChild('grade'), equalTo(classData.grade));
+        const subjectsSnap = await get(subjectsQuery);
+        const subjectsData = subjectsSnap.val() || {};
+        setSubjects(Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] })));
 
         // Fetch existing results
         const resultsRef = ref(database, `schools/${schoolUid}/results/${studentId}`);
