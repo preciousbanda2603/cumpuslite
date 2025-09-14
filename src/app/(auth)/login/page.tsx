@@ -42,11 +42,15 @@ export default function LoginPage() {
                         <SelectValue placeholder="Select your school" />
                     </SelectTrigger>
                     <SelectContent>
-                        {schools.map((school) => (
-                        <SelectItem key={school.id} value={school.id}>
-                            {school.name}
-                        </SelectItem>
-                        ))}
+                        {schools.length > 0 ? (
+                            schools.map((school) => (
+                            <SelectItem key={school.id} value={school.id}>
+                                {school.name}
+                            </SelectItem>
+                            ))
+                        ) : (
+                            <SelectItem value="no-schools" disabled>No schools available</SelectItem>
+                        )}
                     </SelectContent>
                 </Select>
             </div>

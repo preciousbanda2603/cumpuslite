@@ -55,14 +55,22 @@ export default function StudentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell>{student.name}</TableCell>
-                  <TableCell>{getStudentCurrentGrade(student.enrollmentDate, student.startingGrade)}</TableCell>
-                  <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
-                  <TableCell>{student.enrollmentDate}</TableCell>
+              {students.length > 0 ? (
+                students.map((student) => (
+                  <TableRow key={student.id}>
+                    <TableCell>{student.name}</TableCell>
+                    <TableCell>{getStudentCurrentGrade(student.enrollmentDate, student.startingGrade)}</TableCell>
+                    <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
+                    <TableCell>{student.enrollmentDate}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">
+                    No students found.
+                  </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>

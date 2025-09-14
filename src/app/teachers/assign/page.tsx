@@ -52,11 +52,17 @@ export default function AssignClassTeacherPage() {
                   <SelectValue placeholder="Select a teacher" />
                 </SelectTrigger>
                 <SelectContent>
-                  {teachers.map((teacher) => (
-                    <SelectItem key={teacher.id} value={teacher.id}>
-                      {teacher.name}
+                  {teachers.length > 0 ? (
+                    teachers.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-teachers" disabled>
+                      No teachers available
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -67,11 +73,17 @@ export default function AssignClassTeacherPage() {
                   <SelectValue placeholder="Select a class" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
+                  {classes.length > 0 ? (
+                    classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-classes" disabled>
+                      No classes available
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>

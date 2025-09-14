@@ -34,7 +34,7 @@ const initialSubjectAssignments = initialSubjects.map(subject => ({
     subjectId: subject.id,
     subjectName: subject.name,
     grade: subject.grade,
-    teacherId: teachers[Math.floor(Math.random() * teachers.length)].id,
+    teacherId: teachers.length > 0 ? teachers[Math.floor(Math.random() * teachers.length)].id : '',
 }));
 
 
@@ -89,34 +89,42 @@ export default function SubjectAssignmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assignments.sort((a, b) => a.grade - b.grade).map(({ subjectId, subjectName, grade, teacherId }) => {
-                  const teacher = getTeacherById(teacherId);
-                  return (
-                    <TableRow key={subjectId}>
-                      <TableCell className="font-medium">{subjectName}</TableCell>
-                      <TableCell>Grade {grade}</TableCell>
-                      <TableCell>
-                        <Select
-                          value={teacherId}
-                          onValueChange={(newTeacherId) => handleTeacherChange(subjectId, newTeacherId)}
-                        >
-                          <SelectTrigger className="w-[250px]">
-                            <SelectValue placeholder="Select a teacher">
-                              {teacher ? teacher.name : 'Unassigned'}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {teachers.map(t => (
-                              <SelectItem key={t.id} value={t.id}>
-                                {t.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {assignments.length > 0 ? (
+                  assignments.sort((a, b) => a.grade - b.grade).map(({ subjectId, subjectName, grade, teacherId }) => {
+                    const teacher = getTeacherById(teacherId);
+                    return (
+                      <TableRow key={subjectId}>
+                        <TableCell className="font-medium">{subjectName}</TableCell>
+                        <TableCell>Grade {grade}</TableCell>
+                        <TableCell>
+                          <Select
+                            value={teacherId}
+                            onValueChange={(newTeacherId) => handleTeacherChange(subjectId, newTeacherId)}
+                          >
+                            <SelectTrigger className="w-[250px]">
+                              <SelectValue placeholder="Select a teacher">
+                                {teacher ? teacher.name : 'Unassigned'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {teachers.map(t => (
+                                <SelectItem key={t.id} value={t.id}>
+                                  {t.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center">
+                      No subjects available to assign.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

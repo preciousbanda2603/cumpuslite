@@ -23,7 +23,7 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 
 export function AnnouncementsWidget() {
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0].id);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | undefined>(students[0]?.id);
   const [personalizedAnnouncements, setPersonalizedAnnouncements] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -33,7 +33,11 @@ export function AnnouncementsWidget() {
 
   useEffect(() => {
     async function fetchAnnouncements() {
-      if (!selectedStudent) return;
+      if (!selectedStudent) {
+          setPersonalizedAnnouncements([]);
+          setIsLoading(false);
+          return;
+      };
       setIsLoading(true);
       try {
         const result = await getPersonalizedAnnouncements({
@@ -52,6 +56,12 @@ export function AnnouncementsWidget() {
 
     fetchAnnouncements();
   }, [selectedStudent]);
+  
+  useEffect(() => {
+    if (students.length > 0 && !selectedStudentId) {
+      setSelectedStudentId(students[0].id);
+    }
+  }, []);
 
   return (
     <Card className="h-full flex flex-col">
@@ -82,11 +92,17 @@ export function AnnouncementsWidget() {
                 </div>
             </SelectTrigger>
             <SelectContent>
-              {students.map((student) => (
-                <SelectItem key={student.id} value={student.id}>
-                  {student.name}
+              {students.length > 0 ? (
+                students.map((student) => (
+                  <SelectItem key={student.id} value={student.id}>
+                    {student.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="no-students" disabled>
+                  No students available
                 </SelectItem>
-              ))}
+              )}
             </SelectContent>
           </Select>
           {selectedStudent && (
@@ -106,11 +122,15 @@ export function AnnouncementsWidget() {
             </div>
           ) : (
             <ul className="space-y-2 list-disc pl-5">
-              {personalizedAnnouncements.map((announcement, index) => (
-                <li key={index} className="text-sm">
-                  {announcement}
-                </li>
-              ))}
+              {personalizedAnnouncements.length > 0 && personalizedAnnouncements[0] !== "" ? (
+                personalizedAnnouncements.map((announcement, index) => (
+                  <li key={index} className="text-sm">
+                    {announcement}
+                  </li>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No relevant announcements for this student.</p>
+              )}
             </ul>
           )}
         </div>

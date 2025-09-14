@@ -44,23 +44,29 @@ export default function TeachersPage() {
           />
         </div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {teachers.map(teacher => (
-            <Card key={teacher.id}>
-                <CardHeader className="items-center">
-                    <Avatar className="h-24 w-24 mb-2">
-                        <AvatarImage src={teacher.avatar} alt={teacher.name} data-ai-hint="teacher portrait" />
-                        <AvatarFallback>{teacher.name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <CardTitle>{teacher.name}</CardTitle>
-                    <CardDescription>{teacher.subject}</CardDescription>
-                </CardHeader>
-                <CardContent className="text-center">
-                    <p className="text-sm text-muted-foreground mb-2">{teacher.qualifications}</p>
-                    <p className="text-sm text-muted-foreground mb-4">{teacher.email}</p>
-                    <Button variant="outline">View Profile</Button>
-                </CardContent>
-            </Card>
-        ))}
+        {teachers.length > 0 ? (
+            teachers.map(teacher => (
+                <Card key={teacher.id}>
+                    <CardHeader className="items-center">
+                        <Avatar className="h-24 w-24 mb-2">
+                            <AvatarImage src={teacher.avatar} alt={teacher.name} data-ai-hint="teacher portrait" />
+                            <AvatarFallback>{teacher.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
+                        </Avatar>
+                        <CardTitle>{teacher.name}</CardTitle>
+                        <CardDescription>{teacher.subject}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="text-center">
+                        <p className="text-sm text-muted-foreground mb-2">{teacher.qualifications}</p>
+                        <p className="text-sm text-muted-foreground mb-4">{teacher.email}</p>
+                        <Button variant="outline">View Profile</Button>
+                    </CardContent>
+                </Card>
+            ))
+        ) : (
+            <div className="col-span-full text-center text-muted-foreground py-12">
+                No teachers found.
+            </div>
+        )}
       </div>
     </div>
   );
