@@ -87,10 +87,10 @@ export default function LoginPage() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
-      // Verify that the logged-in user's UID matches the selected school's UID
-      if (userCredential.user.uid !== schoolUid) {
-        // Log the user out to prevent unauthorized access
+
+      // Verify that the logged-in user's UID belongs to the list of schools
+      const schoolExists = schools.some(school => school.uid === userCredential.user.uid);
+      if (!schoolExists || userCredential.user.uid !== schoolUid) {
         await auth.signOut();
         throw new Error("The selected school does not match your credentials.");
       }
