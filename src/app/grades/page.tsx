@@ -97,7 +97,7 @@ export default function GradesPage() {
           get(roomsRef),
           get(teachersRef),
           get(classesRef),
-          get(studentsSnap)
+          get(studentsRef)
         ]);
         
         const roomsData = roomsSnap.val() || {};
