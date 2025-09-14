@@ -34,9 +34,11 @@ import { auth, database } from '@/lib/firebase';
 import { ref, onValue, set, get, push } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
-import { PlusCircle, Edit, Info } from 'lucide-react';
+import { PlusCircle, Edit, Info, School } from 'lucide-react';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type Student = {
   id: string;
@@ -52,7 +54,7 @@ type Fee = {
   status: 'Paid' | 'Pending' | 'Overdue';
   term: string;
 };
-type FeeSettings = { defaultAmount: number; defaultDueDate: string };
+type FeeSettings = { defaultAmount: number; defaultDueDate: string; isFreeEducation?: boolean; };
 type StudentFeeSummary = {
   student: Student;
   fees: { [term: string]: Fee | undefined };
@@ -167,6 +169,10 @@ export default function FeesPage() {
         toast({ title: "Error", description: "Please set the default fee amount and due date in settings first.", variant: "destructive" });
         return;
     }
+     if (feeSettings.isFreeEducation) {
+        toast({ title: "Action Blocked", description: "Cannot generate invoices while 'Free Education' mode is active.", variant: "destructive" });
+        return;
+    }
 
     setLoading(true);
     const termNameWithYear = `${generateTerm} ${currentYear}`;
@@ -257,10 +263,21 @@ export default function FeesPage() {
             {isAdmin && (
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setIsSettingsOpen(true)}><Edit className="mr-2 h-4 w-4"/> Settings</Button>
-                    <Button onClick={() => setIsGenerateOpen(true)}><PlusCircle className="mr-2 h-4 w-4"/> Generate Invoices</Button>
+                    <Button onClick={() => setIsGenerateOpen(true)} disabled={feeSettings.isFreeEducation}><PlusCircle className="mr-2 h-4 w-4"/> Generate Invoices</Button>
                 </div>
             )}
         </div>
+
+        {feeSettings.isFreeEducation && (
+            <Alert>
+                <School className="h-4 w-4" />
+                <AlertTitle>Free Education Mode</AlertTitle>
+                <AlertDescription>
+                    This school is currently set to 'Free Education'. Fee collection and invoice generation are disabled.
+                </AlertDescription>
+            </Alert>
+        )}
+
         <Card>
             <CardHeader>
                  <div className="flex items-center gap-4">
@@ -320,16 +337,24 @@ export default function FeesPage() {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Fee Settings</DialogTitle>
-                    <DialogDescription>Set the default amount and due date for new invoices.</DialogDescription>
+                    <DialogDescription>Set the default amount and due date, or enable free education mode.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
                         <Label htmlFor="default-amount">Default Fee Amount (ZMW)</Label>
-                        <Input id="default-amount" type="number" value={feeSettings.defaultAmount || ''} onChange={(e) => setFeeSettings(prev => ({ ...prev, defaultAmount: Number(e.target.value) }))} />
+                        <Input id="default-amount" type="number" value={feeSettings.defaultAmount || ''} onChange={(e) => setFeeSettings(prev => ({ ...prev, defaultAmount: Number(e.target.value) }))} disabled={feeSettings.isFreeEducation} />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="default-due-date">Default Due Date</Label>
-                        <Input id="default-due-date" type="date" value={feeSettings.defaultDueDate || ''} onChange={(e) => setFeeSettings(prev => ({ ...prev, defaultDueDate: e.target.value }))} />
+                        <Input id="default-due-date" type="date" value={feeSettings.defaultDueDate || ''} onChange={(e) => setFeeSettings(prev => ({ ...prev, defaultDueDate: e.target.value }))} disabled={feeSettings.isFreeEducation} />
+                    </div>
+                    <div className="flex items-center space-x-2 border-t pt-4 mt-2">
+                        <Switch 
+                            id="free-education-mode"
+                            checked={feeSettings.isFreeEducation || false}
+                            onCheckedChange={(checked) => setFeeSettings(prev => ({ ...prev, isFreeEducation: checked }))}
+                         />
+                        <Label htmlFor="free-education-mode">Enable Free Education Mode</Label>
                     </div>
                 </div>
                 <DialogFooter>
@@ -402,3 +427,5 @@ export default function FeesPage() {
     </div>
   );
 }
+
+    
