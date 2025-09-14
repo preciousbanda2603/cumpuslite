@@ -15,6 +15,8 @@ import {
   BookUser,
   Activity,
   ArrowRight,
+  FileText,
+  Megaphone,
 } from 'lucide-react';
 import {
   ChartContainer,
