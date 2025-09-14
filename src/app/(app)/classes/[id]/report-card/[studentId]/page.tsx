@@ -118,12 +118,14 @@ export default function ReportCardPage() {
 
             const perfData = subjects.map(subject => {
                 const subjectResults = results[subject.id] || {};
-                const caScores = [subjectResults.test1, subjectResults.test2, subjectResults.midTerm].filter(s => s !== undefined) as number[];
+                const caScores = [subjectResults.test1, subjectResults.test2, subjectResults.midTerm].filter(s => typeof s === 'number') as number[];
                 const examScore = subjectResults.finalExam;
 
                 const caAvg = caScores.length > 0 ? (caScores.reduce((a, b) => a + b, 0) / caScores.length) : 'N/A';
-                const total = typeof caAvg === 'number' && typeof examScore === 'number' ? ((caAvg + examScore) / 2) : 'N/A';
                 
+                const allScores = [...caScores, examScore].filter(s => typeof s === 'number') as number[];
+                const total = allScores.length > 0 ? (allScores.reduce((a,b) => a + b, 0) / allScores.length) : 'N/A';
+
                 let grade = 'N/A', comment = 'N/A';
                 if(typeof total === 'number') {
                     const gradeInfo = getGradeAndComment(total);
@@ -134,7 +136,7 @@ export default function ReportCardPage() {
                 return {
                     subjectName: subject.name,
                     continuousAssessment: typeof caAvg === 'number' ? caAvg.toFixed(1) : caAvg,
-                    examMarks: examScore ?? 'N/A',
+                    examMarks: typeof examScore === 'number' ? examScore : 'N/A',
                     total: typeof total === 'number' ? total.toFixed(1) : total,
                     grade,
                     comment,
