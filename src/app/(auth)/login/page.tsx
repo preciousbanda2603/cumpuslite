@@ -1,3 +1,4 @@
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { schools } from "@/lib/mock-data"
 
 export default function LoginPage() {
   return (
@@ -42,15 +42,7 @@ export default function LoginPage() {
                         <SelectValue placeholder="Select your school" />
                     </SelectTrigger>
                     <SelectContent>
-                        {schools.length > 0 ? (
-                            schools.map((school) => (
-                            <SelectItem key={school.id} value={school.id}>
-                                {school.name}
-                            </SelectItem>
-                            ))
-                        ) : (
-                            <SelectItem value="no-schools" disabled>No schools available</SelectItem>
-                        )}
+                        <SelectItem value="no-schools" disabled>No schools available</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

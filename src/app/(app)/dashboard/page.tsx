@@ -1,8 +1,6 @@
 
 'use client';
 
-import Image from 'next/image';
-import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -10,14 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
   Users,
   CalendarDays,
   Clapperboard,
   BookUser,
-  Activity,
-  ArrowRight,
   FileText,
   Megaphone,
 } from 'lucide-react';
@@ -47,28 +42,9 @@ const chartConfig = {
 export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
-      <section className="relative w-full h-80 rounded-lg overflow-hidden">
-        <Image
-          src="https://picsum.photos/seed/vr-classroom/1200/400"
-          data-ai-hint="virtual reality classroom"
-          alt="Virtual Reality Classroom"
-          fill
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-center text-white p-4">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-            Welcome to the Future of Education
-          </h1>
-          <p className="mt-4 text-lg md:text-xl max-w-2xl">
-            Experience immersive learning with our virtual reality platform.
-            Manage your school effortlessly and step into the new era of
-            education.
-          </p>
-          <Button className="mt-6 bg-accent text-accent-foreground hover:bg-accent/90">
-            Enter VR Classroom
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
-        </div>
+       <section>
+        <h1 className="text-3xl font-bold tracking-tight">School Dashboard</h1>
+        <p className="text-muted-foreground">An overview of your school's key metrics and activities.</p>
       </section>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -80,9 +56,9 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,254</div>
+            <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">
-              +20.1% from last month
+              No students enrolled
             </p>
           </CardContent>
         </Card>
@@ -94,9 +70,9 @@ export default function DashboardPage() {
             <Clapperboard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">42</div>
+            <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">
-              +15 from last week
+              No classes available
             </p>
           </CardContent>
         </Card>
@@ -106,9 +82,9 @@ export default function DashboardPage() {
             <BookUser className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">78</div>
+            <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">
-              +2 new hires this month
+              No teachers registered
             </p>
           </CardContent>
         </Card>
@@ -120,9 +96,9 @@ export default function DashboardPage() {
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5</div>
+            <div className="text-2xl font-bold">0</div>
             <p className="text-xs text-muted-foreground">
-              Science Fair next week
+              No upcoming events
             </p>
           </CardContent>
         </Card>
@@ -138,7 +114,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="w-full h-[300px]">
-              <BarChart accessibilityLayer data={chartData}>
+              <BarChart accessibilityLayer data={chartData} >
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="month"
@@ -163,48 +139,9 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-muted rounded-full">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-sm">New Student Added</p>
-                <p className="text-sm text-muted-foreground">
-                  Sam Lee was enrolled in Grade 9.
-                </p>
-                <time className="text-xs text-muted-foreground">
-                  10 minutes ago
-                </time>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-muted rounded-full">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-sm">Grades Published</p>
-                <p className="text-sm text-muted-foreground">
-                  Physics mid-term results are now available.
-                </p>
-                <time className="text-xs text-muted-foreground">
-                  1 hour ago
-                </time>
-              </div>
-            </div>
-             <div className="flex items-start gap-4">
-              <div className="p-2 bg-muted rounded-full">
-                <Megaphone className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-sm">New Announcement</p>
-                <p className="text-sm text-muted-foreground">
-                  Soccer team tryouts next Tuesday.
-                </p>
-                <time className="text-xs text-muted-foreground">
-                  2 hours ago
-                </time>
-              </div>
-            </div>
+             <div className="text-center text-muted-foreground pt-8">
+                No recent activity.
+             </div>
           </CardContent>
         </Card>
       </div>
