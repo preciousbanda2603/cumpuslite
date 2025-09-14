@@ -102,7 +102,8 @@ export default function StudentsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Grade</TableHead>
+                <TableHead>Starting Grade</TableHead>
+                <TableHead>Current Grade</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Enrollment Date</TableHead>
               </TableRow>
@@ -110,7 +111,7 @@ export default function StudentsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Loading students...
                   </TableCell>
                 </TableRow>
@@ -118,6 +119,7 @@ export default function StudentsPage() {
                 students.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell>{student.name}</TableCell>
+                    <TableCell>{student.startingGrade}</TableCell>
                     <TableCell>{getStudentCurrentGrade(student.enrollmentDate, student.startingGrade)}</TableCell>
                     <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
                     <TableCell>{student.enrollmentDate}</TableCell>
@@ -125,7 +127,7 @@ export default function StudentsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
+                  <TableCell colSpan={5} className="text-center">
                     No students found. Add one to get started.
                   </TableCell>
                 </TableRow>
