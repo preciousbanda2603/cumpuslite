@@ -19,9 +19,9 @@ import { GraduationCap } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast";
 
-import { auth, db } from '@/lib/firebase';
+import { auth, database } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { ref, set } from "firebase/database";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -45,14 +45,14 @@ export default function RegisterPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Save school profile to Firestore
-      await setDoc(doc(db, "schools", user.uid), {
+      // 2. Save school profile to Realtime Database
+      await set(ref(database, "schools/" + user.uid), {
         name: schoolName,
         address: schoolAddress,
         contactPerson: contactPerson,
         contactPhone: contactPhone,
         adminEmail: email,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
       });
 
       toast({
