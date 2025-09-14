@@ -25,10 +25,37 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useEffect, useState } from 'react';
+import { auth, database } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+import type { User } from 'firebase/auth';
 
 export function AppHeader() {
   const pathname = usePathname();
+  const [user, setUser] = useState<User | null>(null);
+  const [schoolName, setSchoolName] = useState('Your School');
   
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      const schoolRef = ref(database, `schools/${user.uid}`);
+      const unsubscribe = onValue(schoolRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setSchoolName(snapshot.val().name);
+        } else {
+          setSchoolName('School Not Found');
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
       <Sheet>
@@ -80,22 +107,10 @@ export function AppHeader() {
 
       <div className="w-full flex-1">
         <div className="flex items-center gap-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                <School className="h-4 w-4" />
-                <span>Northwood High</span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuLabel>Select School</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Northwood High</DropdownMenuItem>
-              <DropdownMenuItem>Westside Elementary</DropdownMenuItem>
-              <DropdownMenuItem>Oakridge Middle</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+           <Button variant="outline" className="flex items-center gap-2 cursor-default">
+              <School className="h-4 w-4" />
+              <span>{schoolName}</span>
+            </Button>
 
           <form className="ml-auto flex-1 sm:flex-initial">
             <div className="relative">
