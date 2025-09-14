@@ -18,12 +18,11 @@ import { auth, database } from '@/lib/firebase';
 import { ref, onValue, set } from 'firebase/database';
 import type { User } from 'firebase/auth';
 
+type ColorSettings = { h: number; s: number; l: number };
 type ThemeSettings = {
-  primaryColor: {
-    h: number;
-    s: number;
-    l: number;
-  };
+  primaryColor: ColorSettings;
+  backgroundColor: ColorSettings;
+  secondaryColor: ColorSettings;
 };
 
 export default function SettingsPage() {
@@ -31,9 +30,20 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const [hue, setHue] = useState(212);
-  const [saturation, setSaturation] = useState(72);
-  const [lightness, setLightness] = useState(59);
+  // State for Primary Color
+  const [primaryHue, setPrimaryHue] = useState(212);
+  const [primarySaturation, setPrimarySaturation] = useState(72);
+  const [primaryLightness, setPrimaryLightness] = useState(59);
+
+  // State for Background Color
+  const [backgroundHue, setBackgroundHue] = useState(208);
+  const [backgroundSaturation, setBackgroundSaturation] = useState(100);
+  const [backgroundLightness, setBackgroundLightness] = useState(97);
+
+  // State for Secondary Color
+  const [secondaryHue, setSecondaryHue] = useState(210);
+  const [secondarySaturation, setSecondarySaturation] = useState(40);
+  const [secondaryLightness, setSecondaryLightness] = useState(96);
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged(setUser);
@@ -47,10 +57,21 @@ export default function SettingsPage() {
     const unsubscribeSettings = onValue(settingsRef, (snapshot) => {
       if (snapshot.exists()) {
         const settings: ThemeSettings = snapshot.val();
-        const { h, s, l } = settings.primaryColor;
-        setHue(h);
-        setSaturation(s);
-        setLightness(l);
+        if (settings.primaryColor) {
+            setPrimaryHue(settings.primaryColor.h);
+            setPrimarySaturation(settings.primaryColor.s);
+            setPrimaryLightness(settings.primaryColor.l);
+        }
+        if (settings.backgroundColor) {
+            setBackgroundHue(settings.backgroundColor.h);
+            setBackgroundSaturation(settings.backgroundColor.s);
+            setBackgroundLightness(settings.backgroundColor.l);
+        }
+        if (settings.secondaryColor) {
+            setSecondaryHue(settings.secondaryColor.h);
+            setSecondarySaturation(settings.secondaryColor.s);
+            setSecondaryLightness(settings.secondaryColor.l);
+        }
       }
       setLoading(false);
     });
@@ -67,9 +88,19 @@ export default function SettingsPage() {
     setLoading(true);
     const themeData: ThemeSettings = {
         primaryColor: {
-            h: hue,
-            s: saturation,
-            l: lightness,
+            h: primaryHue,
+            s: primarySaturation,
+            l: primaryLightness,
+        },
+        backgroundColor: {
+            h: backgroundHue,
+            s: backgroundSaturation,
+            l: backgroundLightness,
+        },
+        secondaryColor: {
+            h: secondaryHue,
+            s: secondarySaturation,
+            l: secondaryLightness,
         }
     };
 
@@ -85,36 +116,23 @@ export default function SettingsPage() {
     }
   };
   
-  const previewColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  const primaryPreviewColor = `hsl(${primaryHue}, ${primarySaturation}%, ${primaryLightness}%)`;
+  const backgroundPreviewColor = `hsl(${backgroundHue}, ${backgroundSaturation}%, ${backgroundLightness}%)`;
+  const secondaryPreviewColor = `hsl(${secondaryHue}, ${secondarySaturation}%, ${secondaryLightness}%)`;
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Palette className="h-8 w-8" />
-            Theme Settings
-          </h1>
-          <p className="text-muted-foreground">
-            Customize the application's appearance to match your school's colors.
-          </p>
-        </div>
-      </div>
-
-      <Card>
+  const ColorEditor = ({ title, description, hue, setHue, saturation, setSaturation, lightness, setLightness, previewColor }: any) => (
+     <Card>
         <CardHeader>
-          <CardTitle>Primary Color</CardTitle>
-          <CardDescription>
-            Adjust the HSL values to set the main theme color. Changes will be applied globally.
-          </CardDescription>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
             <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-4">
                      <div className="grid gap-2">
-                        <Label htmlFor="hue">Hue</Label>
+                        <Label htmlFor={`${title}-hue`}>Hue</Label>
                         <Input 
-                            id="hue"
+                            id={`${title}-hue`}
                             type="number"
                             value={hue}
                             onChange={(e) => setHue(parseInt(e.target.value, 10))}
@@ -123,9 +141,9 @@ export default function SettingsPage() {
                         />
                     </div>
                      <div className="grid gap-2">
-                        <Label htmlFor="saturation">Saturation (%)</Label>
+                        <Label htmlFor={`${title}-saturation`}>Saturation (%)</Label>
                         <Input 
-                            id="saturation"
+                            id={`${title}-saturation`}
                             type="number"
                             value={saturation}
                             onChange={(e) => setSaturation(parseInt(e.target.value, 10))}
@@ -134,9 +152,9 @@ export default function SettingsPage() {
                         />
                     </div>
                      <div className="grid gap-2">
-                        <Label htmlFor="lightness">Lightness (%)</Label>
+                        <Label htmlFor={`${title}-lightness`}>Lightness (%)</Label>
                         <Input 
-                            id="lightness"
+                            id={`${title}-lightness`}
                             type="number"
                             value={lightness}
                             onChange={(e) => setLightness(parseInt(e.target.value, 10))}
@@ -153,17 +171,59 @@ export default function SettingsPage() {
                     />
                     <div className="text-center">
                         <p className="text-sm font-mono">{previewColor}</p>
-                        <p className="text-xs text-muted-foreground">This color will be used for buttons, links, and other primary elements.</p>
                     </div>
                 </div>
             </div>
-            <div className="flex justify-end mt-6">
-                <Button onClick={handleSaveChanges} disabled={loading}>
-                    {loading ? 'Saving...' : 'Save Changes'}
-                </Button>
-            </div>
         </CardContent>
       </Card>
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Palette className="h-8 w-8" />
+            Theme Settings
+          </h1>
+          <p className="text-muted-foreground">
+            Customize the application's appearance to match your school's colors.
+          </p>
+        </div>
+      </div>
+      
+      <div className="space-y-6">
+        <ColorEditor 
+            title="Primary Color"
+            description="Used for buttons, links, and other key interactive elements."
+            hue={primaryHue} setHue={setPrimaryHue}
+            saturation={primarySaturation} setSaturation={setPrimarySaturation}
+            lightness={primaryLightness} setLightness={setPrimaryLightness}
+            previewColor={primaryPreviewColor}
+        />
+        <ColorEditor 
+            title="Background Color"
+            description="The main background color for the application."
+            hue={backgroundHue} setHue={setBackgroundHue}
+            saturation={backgroundSaturation} setSaturation={setBackgroundSaturation}
+            lightness={backgroundLightness} setLightness={setBackgroundLightness}
+            previewColor={backgroundPreviewColor}
+        />
+        <ColorEditor 
+            title="Secondary Color"
+            description="Used for secondary elements and accents."
+            hue={secondaryHue} setHue={setSecondaryHue}
+            saturation={secondarySaturation} setSaturation={setSecondarySaturation}
+            lightness={secondaryLightness} setLightness={setSecondaryLightness}
+            previewColor={secondaryPreviewColor}
+        />
+      </div>
+
+       <div className="flex justify-end mt-6">
+            <Button onClick={handleSaveChanges} disabled={loading} size="lg">
+                {loading ? 'Saving...' : 'Save All Changes'}
+            </Button>
+        </div>
     </div>
   );
 }

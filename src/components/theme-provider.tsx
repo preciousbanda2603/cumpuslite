@@ -6,8 +6,11 @@ import { auth, database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import type { User } from 'firebase/auth';
 
+type ColorSettings = { h: number; s: number; l: number };
 type ThemeSettings = {
-  primaryColor: { h: number; s: number; l: number };
+  primaryColor: ColorSettings;
+  backgroundColor: ColorSettings;
+  secondaryColor: ColorSettings;
 };
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -24,17 +27,31 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const unsubscribe = onValue(settingsRef, (snapshot) => {
         if (snapshot.exists()) {
           const settings: ThemeSettings = snapshot.val();
-          const { h, s, l } = settings.primaryColor;
-          const primaryColor = `${h} ${s}% ${l}%`;
-          // Also generate a darker color for the ring
-          const ringColor = `${h} ${s}% ${Math.max(0, l - 10)}%`;
+          
+          if (settings.primaryColor) {
+            const { h, s, l } = settings.primaryColor;
+            const primaryColor = `${h} ${s}% ${l}%`;
+            const ringColor = `${h} ${s}% ${Math.max(0, l - 10)}%`;
+            document.documentElement.style.setProperty('--primary', primaryColor);
+            document.documentElement.style.setProperty('--ring', ringColor);
+          }
 
-          document.documentElement.style.setProperty('--primary', primaryColor);
-          document.documentElement.style.setProperty('--ring', ringColor);
+          if (settings.backgroundColor) {
+            const { h, s, l } = settings.backgroundColor;
+            document.documentElement.style.setProperty('--background', `${h} ${s}% ${l}%`);
+          }
+
+          if (settings.secondaryColor) {
+            const { h, s, l } = settings.secondaryColor;
+            document.documentElement.style.setProperty('--secondary', `${h} ${s}% ${l}%`);
+          }
+
         } else {
           // Reset to default if no theme is set
           document.documentElement.style.removeProperty('--primary');
           document.documentElement.style.removeProperty('--ring');
+          document.documentElement.style.removeProperty('--background');
+          document.documentElement.style.removeProperty('--secondary');
         }
       });
       return () => unsubscribe();
@@ -42,6 +59,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         // Reset to default when logged out
         document.documentElement.style.removeProperty('--primary');
         document.documentElement.style.removeProperty('--ring');
+        document.documentElement.style.removeProperty('--background');
+        document.documentElement.style.removeProperty('--secondary');
     }
   }, [user]);
 
