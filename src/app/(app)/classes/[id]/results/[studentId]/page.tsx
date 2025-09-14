@@ -183,13 +183,39 @@ export default function StudentResultsPage() {
     }));
   };
 
-  const calculateTotal = (subjectId: string) => {
-    const subjectScores = results[subjectId];
-    if (!subjectScores) return 'N/A';
-    const total = Object.values(subjectScores).reduce((sum, score) => sum + (score || 0), 0);
-    const count = Object.values(subjectScores).filter(s => s !== undefined).length;
-    return count > 0 ? (total / count).toFixed(1) : 'N/A';
+  const getGradeAndComment = (total: number) => {
+      if (total >= 90) return { grade: 'A', comment: 'Excellent progress' };
+      if (total >= 80) return { grade: 'B+', comment: 'Very good work' };
+      if (total >= 70) return { grade: 'B', comment: 'Good understanding' };
+      if (total >= 60) return { grade: 'C+', comment: 'Satisfactory' };
+      if (total >= 50) return { grade: 'C', comment: 'Needs improvement' };
+      if (total >= 40) return { grade: 'D', comment: 'Work harder' };
+      return { grade: 'F', comment: 'Unsatisfactory' };
   };
+  
+  const calculatePerformance = (subjectId: string) => {
+    const subjectResults = results[subjectId] || {};
+    const caScores = [subjectResults.test1, subjectResults.test2, subjectResults.midTerm].filter(s => typeof s === 'number') as number[];
+    const examScore = subjectResults.finalExam;
+
+    const caAvg = caScores.length > 0 ? (caScores.reduce((a, b) => a + b, 0) / caScores.length) : 'N/A';
+    
+    const allScores = [...caScores, examScore].filter(s => typeof s === 'number') as number[];
+    const total = allScores.length > 0 ? (allScores.reduce((a,b) => a + b, 0) / allScores.length) : 'N/A';
+
+    let grade = 'N/A';
+    if(typeof total === 'number') {
+        grade = getGradeAndComment(total).grade;
+    }
+
+    return {
+        continuousAssessment: typeof caAvg === 'number' ? caAvg.toFixed(1) : caAvg,
+        examMarks: typeof examScore === 'number' ? examScore : 'N/A',
+        total: typeof total === 'number' ? total.toFixed(1) : total,
+        grade,
+    };
+  };
+
   
   const handleSaveChanges = async () => {
     if (!user || !schoolId) return;
@@ -239,42 +265,58 @@ export default function StudentResultsPage() {
         <Card>
             <CardHeader>
                 <CardTitle>Academic Performance</CardTitle>
-                <CardDescription>Enter scores for each subject. Scores should be between 0 and 100.</CardDescription>
+                <CardDescription>Enter scores for each subject (0-100). Averages and grades are calculated automatically.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="min-w-[150px]">Subject</TableHead>
-                            {assessmentTypes.map(assessment => (
-                                <TableHead key={assessment.key} className="text-center">{assessment.label}</TableHead>
-                            ))}
-                            <TableHead className="text-center font-bold">Total Avg.</TableHead>
+                            <TableHead className="min-w-[150px] font-bold">Subject</TableHead>
+                            <TableHead className="text-center">Test 1</TableHead>
+                            <TableHead className="text-center">Test 2</TableHead>
+                            <TableHead className="text-center">Mid-Term</TableHead>
+                            <TableHead className="text-center font-bold bg-muted/50">CA (Avg)</TableHead>
+                            <TableHead className="text-center">Final Exam</TableHead>
+                            <TableHead className="text-center font-bold bg-muted/50">Total (Avg)</TableHead>
+                            <TableHead className="text-center font-bold bg-muted/50">Grade</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {subjects.map(subject => (
+                       {subjects.map(subject => {
+                        const performance = calculatePerformance(subject.id);
+                        return (
                         <TableRow key={subject.id}>
                             <TableCell className="font-medium">{subject.name}</TableCell>
-                            {assessmentTypes.map(assessment => (
-                                <TableCell key={assessment.key}>
+                             {['test1', 'test2', 'midTerm'].map(assessment => (
+                                <TableCell key={assessment}>
                                     <Input 
                                         type="number"
-                                        className="w-24 text-center mx-auto"
-                                        value={results[subject.id]?.[assessment.key as keyof Results[string]] ?? ''}
-                                        onChange={(e) => handleScoreChange(subject.id, assessment.key, e.target.value)}
+                                        className="w-20 text-center mx-auto"
+                                        value={results[subject.id]?.[assessment as keyof Results[string]] ?? ''}
+                                        onChange={(e) => handleScoreChange(subject.id, assessment, e.target.value)}
                                         min={0}
                                         max={100}
                                         disabled={!canPerformActions}
                                     />
                                 </TableCell>
                             ))}
-                            <TableCell className="text-center font-bold text-lg">
-                                {calculateTotal(subject.id)}
+                            <TableCell className="text-center font-bold bg-muted/50">{performance.continuousAssessment}</TableCell>
+                            <TableCell>
+                               <Input 
+                                    type="number"
+                                    className="w-20 text-center mx-auto"
+                                    value={results[subject.id]?.finalExam ?? ''}
+                                    onChange={(e) => handleScoreChange(subject.id, 'finalExam', e.target.value)}
+                                    min={0}
+                                    max={100}
+                                    disabled={!canPerformActions}
+                                />
                             </TableCell>
+                            <TableCell className="text-center font-bold bg-muted/50">{performance.total}</TableCell>
+                            <TableCell className="text-center font-bold bg-muted/50">{performance.grade}</TableCell>
                         </TableRow>
-                       ))}
+                       )})}
                     </TableBody>
                 </Table>
                 </div>
