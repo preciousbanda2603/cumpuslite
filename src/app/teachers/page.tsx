@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -7,16 +8,24 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import { teachers } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 
 export default function TeachersPage() {
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Teacher Directory</h1>
-        <p className="text-muted-foreground">Find contact details and qualifications for all teachers.</p>
+      <div className="flex items-center justify-between">
+        <div>
+            <h1 className="text-3xl font-bold tracking-tight">Teacher Directory</h1>
+            <p className="text-muted-foreground">Find contact details and qualifications for all teachers.</p>
+        </div>
+        <Link href="/teachers/add">
+          <Button className="flex items-center gap-2">
+            <PlusCircle />
+            Add New Teacher
+          </Button>
+        </Link>
       </div>
        <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
