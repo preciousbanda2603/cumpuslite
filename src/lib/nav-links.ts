@@ -1,0 +1,29 @@
+import {
+  LayoutDashboard,
+  Users,
+  CheckSquare,
+  Megaphone,
+  CalendarDays,
+  BookUser,
+  MessagesSquare,
+  Calendar,
+  CreditCard,
+  Clapperboard,
+  ClipboardList,
+  FileText
+} from 'lucide-react';
+
+export const navLinks = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/students", label: "Student Profiles", icon: Users },
+  { href: "/attendance", label: "Attendance", icon: CheckSquare },
+  { href: "/announcements", label: "Announcements", icon: Megaphone },
+  { href: "/timetables", label: "Timetables", icon: CalendarDays },
+  { href: "/teachers", label: "Teacher Directory", icon: BookUser },
+  { href: "/communication", label: "Communication", icon: MessagesSquare },
+  { href: "/calendar", label: "Events Calendar", icon: Calendar },
+  { href: "/fees", label: "Fee Collection", icon: CreditCard },
+  { href: "/classes", label: "Online Classes", icon: Clapperboard },
+  { href: "/homework", label: "Homework", icon: ClipboardList },
+  { href: "/exams", label: "Quizzes & Exams", icon: FileText },
+];

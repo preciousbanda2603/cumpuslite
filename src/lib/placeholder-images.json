@@ -1,3 +1,64 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "teacher1",
+      "description": "Portrait of a friendly male teacher.",
+      "imageUrl": "https://picsum.photos/seed/t1/100/100",
+      "imageHint": "teacher portrait"
+    },
+    {
+      "id": "teacher2",
+      "description": "Portrait of a smiling female teacher.",
+      "imageUrl": "https://picsum.photos/seed/t2/100/100",
+      "imageHint": "teacher headshot"
+    },
+    {
+      "id": "teacher3",
+      "description": "Professional headshot of a teacher.",
+      "imageUrl": "https://picsum.photos/seed/t3/100/100",
+      "imageHint": "educator smiling"
+    },
+    {
+      "id": "teacher4",
+      "description": "Portrait of a teacher in a classroom.",
+      "imageUrl": "https://picsum.photos/seed/t4/100/100",
+      "imageHint": "teacher classroom"
+    },
+    {
+      "id": "student1",
+      "description": "Avatar of a male student.",
+      "imageUrl": "https://picsum.photos/seed/s1/100/100",
+      "imageHint": "student avatar"
+    },
+    {
+      "id": "student2",
+      "description": "Avatar of a female student.",
+      "imageUrl": "https://picsum.photos/seed/s2/100/100",
+      "imageHint": "student profile"
+    },
+    {
+      "id": "student3",
+      "description": "Avatar of a student with glasses.",
+      "imageUrl": "https://picsum.photos/seed/s3/100/100",
+      "imageHint": "student glasses"
+    },
+    {
+      "id": "event_science_fair",
+      "description": "Image for a science fair event.",
+      "imageUrl": "https://picsum.photos/seed/e1/400/250",
+      "imageHint": "science experiment"
+    },
+    {
+      "id": "event_sports_day",
+      "description": "Image for a sports day event.",
+      "imageUrl": "https://picsum.photos/seed/e2/400/250",
+      "imageHint": "running track"
+    },
+    {
+      "id": "event_art_exhibition",
+      "description": "Image for an art exhibition.",
+      "imageUrl": "https://picsum.photos/seed/e3/400/250",
+      "imageHint": "art gallery"
+    }
+  ]
 }
