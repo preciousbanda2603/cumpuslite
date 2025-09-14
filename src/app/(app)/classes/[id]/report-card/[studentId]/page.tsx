@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { auth, database } from '@/lib/firebase';
-import { ref, get } from 'firebase/database';
+import { ref, get, query, orderByChild, equalTo } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -60,6 +60,7 @@ export default function ReportCardPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Step 1: Fetch School, Student, and Extras data
         const schoolRef = ref(database, `schools/${schoolId}`);
         const studentRef = ref(database, `schools/${schoolId}/students/${studentId}`);
         const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}`);
@@ -67,7 +68,7 @@ export default function ReportCardPage() {
         const [schoolSnap, studentSnap, extrasSnap] = await Promise.all([get(schoolRef), get(studentRef), get(extrasRef)]);
         
         if (!schoolSnap.exists() || !studentSnap.exists()) {
-            toast({ title: 'Error', description: 'Required data not found.', variant: 'destructive' });
+            toast({ title: 'Error', description: 'School or Student data not found.', variant: 'destructive' });
             router.back();
             return;
         }
@@ -80,53 +81,61 @@ export default function ReportCardPage() {
             setExtras(extrasSnap.val());
         }
 
+        // Step 2: Fetch Class Info using student's classId
         const classRef = ref(database, `schools/${schoolId}/classes/${studentData.classId}`);
         const classSnap = await get(classRef);
-        if (classSnap.exists()) {
-            const classData = classSnap.val();
-            setClassInfo(classData);
-
-            if(classData.classTeacherId) {
-                const teacherRef = ref(database, `schools/${schoolId}/teachers/${classData.classTeacherId}`);
-                const teacherSnap = await get(teacherRef);
-                if (teacherSnap.exists()) setClassTeacher(teacherSnap.val());
-            }
-
-            let subjects: Subject[] = [];
-            if (classData.grade !== undefined && classData.grade !== null) {
-              const allSubjectsRef = ref(database, `schools/${schoolId}/subjects`);
-              const subjectsSnap = await get(allSubjectsRef);
-              const subjectsData = subjectsSnap.val() || {};
-              subjects = Object.keys(subjectsData)
-                .map(id => ({ id, ...subjectsData[id] }))
-                .filter(subject => subject.grade === classData.grade);
-            }
-
-            const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
-            const resultsSnap = await get(resultsRef);
-            const results: Results = resultsSnap.exists() ? resultsSnap.val() : {};
-
-            const perfData = subjects.map(subject => {
-                const subjectResults = results[subject.id] || {};
-                const caScores = [subjectResults.test1, subjectResults.test2, subjectResults.midTerm].filter(s => typeof s === 'number') as number[];
-                const examScore = subjectResults.finalExam;
-
-                const caAvg = caScores.length > 0 ? (caScores.reduce((a, b) => a + b, 0) / caScores.length) : 'N/A';
-                
-                const allScores = [subjectResults.test1, subjectResults.test2, subjectResults.midTerm, examScore].filter(s => typeof s === 'number') as number[];
-                const total = allScores.length > 0 ? (allScores.reduce((a,b) => a + b, 0) / allScores.length) : 'N/A';
-
-                return {
-                    subjectName: subject.name,
-                    continuousAssessment: typeof caAvg === 'number' ? caAvg.toFixed(1) : caAvg,
-                    examMarks: typeof examScore === 'number' ? examScore : 'N/A',
-                    total: typeof total === 'number' ? total.toFixed(1) : total,
-                    grade: subjectResults.grade || 'N/A',
-                    comment: subjectResults.comment || 'N/A',
-                };
-            });
-            setPerformanceData(perfData);
+        if (!classSnap.exists()) {
+            toast({ title: 'Error', description: 'Class data for this student is missing.', variant: 'destructive' });
+            setLoading(false);
+            return;
         }
+        
+        const classData = classSnap.val();
+        setClassInfo(classData);
+
+        // Step 3: Fetch Class Teacher if assigned
+        if(classData.classTeacherId) {
+            const teacherRef = ref(database, `schools/${schoolId}/teachers/${classData.classTeacherId}`);
+            const teacherSnap = await get(teacherRef);
+            if (teacherSnap.exists()) setClassTeacher(teacherSnap.val());
+        }
+
+        // Step 4: Fetch Subjects ONLY if class has a grade
+        let subjects: Subject[] = [];
+        if (classData.grade !== undefined && classData.grade !== null) {
+          const subjectsQuery = query(ref(database, `schools/${schoolId}/subjects`), orderByChild('grade'), equalTo(classData.grade));
+          const subjectsSnap = await get(subjectsQuery);
+          const subjectsData = subjectsSnap.val() || {};
+          subjects = Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] }));
+        } else {
+            console.warn("Class has no grade, cannot fetch subjects.");
+        }
+
+        // Step 5: Fetch Results for the student
+        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
+        const resultsSnap = await get(resultsRef);
+        const results: Results = resultsSnap.exists() ? resultsSnap.val() : {};
+
+        // Step 6: Process and set performance data
+        const perfData = subjects.map(subject => {
+            const subjectResults = results[subject.id] || {};
+            const caScores = [subjectResults.test1, subjectResults.test2, subjectResults.midTerm].filter(s => typeof s === 'number') as number[];
+            const examScore = subjectResults.finalExam;
+            
+            const caAvg = caScores.length > 0 ? (caScores.reduce((a, b) => a + b, 0) / caScores.length) : 'N/A';
+            const allScores = [...caScores, examScore].filter(s => typeof s === 'number') as number[];
+            const total = allScores.length > 0 ? (allScores.reduce((a,b) => a + b, 0) / allScores.length) : 'N/A';
+
+            return {
+                subjectName: subject.name,
+                continuousAssessment: typeof caAvg === 'number' ? caAvg.toFixed(1) : caAvg,
+                examMarks: typeof examScore === 'number' ? examScore : 'N/A',
+                total: typeof total === 'number' ? total.toFixed(1) : total,
+                grade: subjectResults.grade || 'N/A',
+                comment: subjectResults.comment || 'N/A',
+            };
+        });
+        setPerformanceData(perfData);
 
       } catch (error) {
         console.error("Error fetching report card data:", error);
@@ -296,3 +305,5 @@ export default function ReportCardPage() {
     </>
   );
 }
+
+    
