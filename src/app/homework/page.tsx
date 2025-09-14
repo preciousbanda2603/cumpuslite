@@ -56,7 +56,6 @@ type Homework = {
   description: string;
   classId: string;
   className: string;
-  subjectId: string;
   subjectName: string;
   dueDate: string;
 };
@@ -67,8 +66,6 @@ export default function HomeworkPage() {
   const [user, setUser] = useState<User | null>(null);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHomework, setEditingHomework] = useState<Partial<Homework> | null>(null);
@@ -78,7 +75,7 @@ export default function HomeworkPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const [subjectName, setSubjectName] = useState('');
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date());
 
   useEffect(() => {
@@ -92,7 +89,6 @@ export default function HomeworkPage() {
     const schoolUid = user.uid;
     const homeworkRef = ref(database, `schools/${schoolUid}/homework`);
     const classesRef = ref(database, `schools/${schoolUid}/classes`);
-    const subjectsRef = ref(database, `schools/${schoolUid}/subjects`);
 
     const unsubscribeHomework = onValue(homeworkRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -106,38 +102,18 @@ export default function HomeworkPage() {
       setClasses(Object.keys(data).map(id => ({ id, ...data[id] })));
     });
 
-    const unsubscribeSubjects = onValue(subjectsRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      setSubjects(Object.keys(data).map(id => ({ id, ...data[id] })));
-    });
-
     return () => {
       unsubscribeHomework();
       unsubscribeClasses();
-      unsubscribeSubjects();
     };
   }, [user]);
-  
-  useEffect(() => {
-      if (selectedClassId) {
-          const selectedClass = classes.find(c => c.id === selectedClassId);
-          if (selectedClass) {
-              setFilteredSubjects(subjects.filter(s => s.grade === selectedClass.grade));
-          } else {
-              setFilteredSubjects([]);
-          }
-      } else {
-          setFilteredSubjects([]);
-      }
-      setSelectedSubjectId('');
-  }, [selectedClassId, classes, subjects]);
 
   const openDialog = (hw: Partial<Homework> | null = null) => {
     setEditingHomework(hw);
     setTitle(hw?.title || '');
     setDescription(hw?.description || '');
     setSelectedClassId(hw?.classId || '');
-    setSelectedSubjectId(hw?.subjectId || '');
+    setSubjectName(hw?.subjectName || '');
     setDueDate(hw?.dueDate ? new Date(hw.dueDate) : new Date());
     setIsDialogOpen(true);
   };
@@ -148,20 +124,19 @@ export default function HomeworkPage() {
       setTitle('');
       setDescription('');
       setSelectedClassId('');
-      setSelectedSubjectId('');
+      setSubjectName('');
       setDueDate(new Date());
   };
 
   const handleSubmit = async () => {
-    if (!user || !title || !selectedClassId || !selectedSubjectId || !dueDate) {
+    if (!user || !title || !selectedClassId || !subjectName || !dueDate) {
       toast({ title: 'Error', description: 'Please fill all fields.', variant: 'destructive' });
       return;
     }
 
     const selectedClass = classes.find(c => c.id === selectedClassId);
-    const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
-    if (!selectedClass || !selectedSubject) {
-      toast({ title: 'Error', description: 'Invalid class or subject.', variant: 'destructive' });
+    if (!selectedClass) {
+      toast({ title: 'Error', description: 'Invalid class.', variant: 'destructive' });
       return;
     }
     
@@ -170,8 +145,7 @@ export default function HomeworkPage() {
       description,
       classId: selectedClassId,
       className: selectedClass.name,
-      subjectId: selectedSubjectId,
-      subjectName: selectedSubject.name,
+      subjectName,
       dueDate: format(dueDate, 'yyyy-MM-dd'),
       createdAt: new Date().toISOString(),
     };
@@ -284,12 +258,7 @@ export default function HomeworkPage() {
                </div>
                <div className="grid gap-2">
                  <Label htmlFor="subject">Subject</Label>
-                 <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={!selectedClassId}>
-                    <SelectTrigger id="subject"><SelectValue placeholder="Select Subject" /></SelectTrigger>
-                    <SelectContent>
-                        {filteredSubjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                 </Select>
+                 <Input id="subject" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g. Mathematics" />
                </div>
             </div>
             <div className="grid gap-2">
