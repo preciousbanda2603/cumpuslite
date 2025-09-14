@@ -42,10 +42,11 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useSchoolId } from '@/hooks/use-school-id';
 
-type Class = { id: string; name: string };
+type Class = { id: string; name: string; classTeacherId?: string };
 type Student = { id: string; name: string; classId: string; };
 type AttendanceStatus = 'present' | 'absent' | 'late' | 'sick' | 'unmarked';
 type AttendanceRecord = { [studentId: string]: AttendanceStatus };
+type UserRole = 'admin' | 'class_teacher' | 'other';
 
 export default function AttendancePage() {
   const [user, setUser] = useState<User | null>(null);
@@ -57,6 +58,9 @@ export default function AttendancePage() {
   const [attendance, setAttendance] = useState<AttendanceRecord>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [userRole, setUserRole] = useState<UserRole>('other');
+  
+  const canPerformActions = userRole === 'admin' || userRole === 'class_teacher';
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => setUser(user));
@@ -74,6 +78,40 @@ export default function AttendancePage() {
     });
     return () => unsubscribeClasses();
   }, [user, schoolId]);
+  
+  useEffect(() => {
+      if (!user || !schoolId || !selectedClassId) {
+          setUserRole('other');
+          return;
+      }
+
+      const determineRole = async () => {
+          if (user.uid === schoolId) {
+              setUserRole('admin');
+              return;
+          }
+          
+          const teachersRef = ref(database, `schools/${schoolId}/teachers`);
+          const teachersSnap = await get(teachersRef);
+          const teachersData = teachersSnap.val() || {};
+          const currentTeacher = Object.values(teachersData).find((t: any) => t.uid === user.uid) as any;
+          
+          if (currentTeacher) {
+              const teacherId = Object.keys(teachersData).find(key => teachersData[key].uid === user.uid);
+              const selectedClass = classes.find(c => c.id === selectedClassId);
+              if (selectedClass && teacherId === selectedClass.classTeacherId) {
+                  setUserRole('class_teacher');
+              } else {
+                  setUserRole('other');
+              }
+          } else {
+              setUserRole('other');
+          }
+      };
+
+      determineRole();
+
+  }, [user, schoolId, selectedClassId, classes]);
 
   useEffect(() => {
     if (!selectedClassId || !user || !schoolId) {
@@ -209,6 +247,7 @@ export default function AttendancePage() {
                                     value={attendance[student.id] || 'unmarked'}
                                     onValueChange={(value) => handleStatusChange(student.id, value as any)}
                                     className="flex justify-around"
+                                    disabled={!canPerformActions}
                                     >
                                     <div className="flex items-center justify-center w-1/5">
                                         <RadioGroupItem value="present" id={`p-${student.id}`} />
@@ -237,9 +276,11 @@ export default function AttendancePage() {
                         )}
                     </TableBody>
                 </Table>
-                <div className="flex justify-end mt-6">
-                    <Button onClick={handleSubmit} disabled={students.length === 0}>Submit Attendance</Button>
-                </div>
+                {canPerformActions && (
+                    <div className="flex justify-end mt-6">
+                        <Button onClick={handleSubmit} disabled={students.length === 0}>Submit Attendance</Button>
+                    </div>
+                )}
                 </>
                 ) : (
                     <div className="text-center text-muted-foreground py-12">
