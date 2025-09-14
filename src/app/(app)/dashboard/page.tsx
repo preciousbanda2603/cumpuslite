@@ -27,6 +27,7 @@ import { auth, database } from '@/lib/firebase';
 import { onValue, ref, query, orderByChild, limitToLast } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { format, subMonths } from 'date-fns';
+import { useSchoolId } from '@/hooks/use-school-id';
 
 const chartConfig = {
   enrollments: {
@@ -48,6 +49,7 @@ type Activity = { id: string, type: 'student' | 'teacher', text: string, time: s
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
+  const schoolId = useSchoolId();
   const [stats, setStats] = useState<DashboardStats>({
     students: 0,
     classes: 0,
@@ -66,7 +68,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
 
     const processStudentDataForChart = (studentsData: { [key: string]: Student }) => {
       const enrollmentsByMonth: { [key: string]: number } = {};
@@ -102,12 +104,11 @@ export default function DashboardPage() {
     };
 
     setLoading(true);
-    const schoolUid = user.uid;
     const statsToFetch = [
-      { key: 'students', path: `schools/${schoolUid}/students` },
-      { key: 'classes', path: `schools/${schoolUid}/classes` },
-      { key: 'teachers', path: `schools/${schoolUid}/teachers` },
-      { key: 'events', path: `schools/${schoolUid}/events` },
+      { key: 'students', path: `schools/${schoolId}/students` },
+      { key: 'classes', path: `schools/${schoolId}/classes` },
+      { key: 'teachers', path: `schools/${schoolId}/teachers` },
+      { key: 'events', path: `schools/${schoolId}/events` },
     ];
 
     const listeners = statsToFetch.map(({ key, path }) => {
@@ -119,12 +120,14 @@ export default function DashboardPage() {
 
         if (key === 'students' && data) {
            processStudentDataForChart(data);
+        } else if (key === 'students' && !data) {
+           processStudentDataForChart({}); // Handle case with no students
         }
       });
     });
 
-    const studentsRef = query(ref(database, `schools/${schoolUid}/students`), orderByChild('createdAt'), limitToLast(3));
-    const teachersRef = query(ref(database, `schools/${schoolUid}/teachers`), orderByChild('createdAt'), limitToLast(2));
+    const studentsRef = query(ref(database, `schools/${schoolId}/students`), orderByChild('createdAt'), limitToLast(3));
+    const teachersRef = query(ref(database, `schools/${schoolId}/teachers`), orderByChild('createdAt'), limitToLast(2));
 
     const unsubscribeStudentsActivity = onValue(studentsRef, (snapshot) => {
         const newActivities: Activity[] = [];
@@ -163,7 +166,7 @@ export default function DashboardPage() {
       unsubscribeStudentsActivity();
       unsubscribeTeachersActivity();
     };
-  }, [user]);
+  }, [user, schoolId]);
 
   return (
     <div className="flex flex-col gap-8">

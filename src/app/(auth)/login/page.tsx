@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { auth, database } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { ref, get, child } from "firebase/database";
+import { SCHOOL_ID_LOCAL_STORAGE_KEY } from "@/hooks/use-school-id";
 
 type School = {
   uid: string;
@@ -91,6 +92,7 @@ export default function LoginPage() {
 
       // Check 1: Is the user the school admin?
       if (loggedInUserUid === schoolUid) {
+        localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolUid);
         toast({ title: "Success!", description: "Admin logged in." });
         router.push('/dashboard');
         return;
@@ -105,6 +107,7 @@ export default function LoginPage() {
         const isTeacherForSchool = Object.values(teachersData).some((teacher: any) => teacher.uid === loggedInUserUid);
         
         if (isTeacherForSchool) {
+            localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolUid);
             toast({ title: "Success!", description: "Teacher logged in." });
             router.push('/dashboard');
             return;

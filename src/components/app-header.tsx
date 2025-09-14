@@ -29,12 +29,14 @@ import { auth, database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { Separator } from './ui/separator';
+import { useSchoolId, SCHOOL_ID_LOCAL_STORAGE_KEY } from '@/hooks/use-school-id';
 
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [schoolName, setSchoolName] = useState('Your School');
+  const schoolId = useSchoolId();
   
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -44,8 +46,8 @@ export function AppHeader() {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      const schoolRef = ref(database, `schools/${user.uid}`);
+    if (schoolId) {
+      const schoolRef = ref(database, `schools/${schoolId}`);
       const unsubscribe = onValue(schoolRef, (snapshot) => {
         if (snapshot.exists()) {
           setSchoolName(snapshot.val().name);
@@ -55,11 +57,12 @@ export function AppHeader() {
       });
       return () => unsubscribe();
     }
-  }, [user]);
+  }, [schoolId]);
 
   const handleLogout = async () => {
     try {
       await auth.signOut();
+      localStorage.removeItem(SCHOOL_ID_LOCAL_STORAGE_KEY);
       router.push('/login');
     } catch (error) {
       console.error("Failed to log out:", error);
