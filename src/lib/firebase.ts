@@ -7,14 +7,15 @@ import { getDatabase } from "firebase/database";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+  apiKey: "AIzaSyCQKGX0f8Q_59VuCmXvjyipaAE4BfaFHvE",
+  authDomain: "studio-2119893974-60441.firebaseapp.com",
+  databaseURL: "https://studio-2119893974-60441-default-rtdb.firebaseio.com",
+  projectId: "studio-2119893974-60441",
+  storageBucket: "studio-2119893974-60441.appspot.com",
+  messagingSenderId: "782301073730",
+  appId: "1:782301073730:web:15eb1304f7b890411c38db"
 };
+
 
 // Initialize Firebase
 let app;
