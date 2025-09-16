@@ -19,7 +19,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
-import { navLinks } from '@/lib/nav-links';
+import { navLinks as adminNavLinks } from '@/lib/nav-links';
+import { navLinks as parentNavLinks } from '@/lib/parent-nav-links';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -38,6 +39,9 @@ export function AppHeader() {
   const [schoolName, setSchoolName] = useState('Your School');
   const schoolId = useSchoolId();
   
+  const isParentPortal = pathname.startsWith('/parent');
+  const navLinks = isParentPortal ? parentNavLinks : adminNavLinks;
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setUser(user);
@@ -86,7 +90,7 @@ export function AppHeader() {
           <SheetHeader>
             <SheetTitle>
               <Link
-                href="/dashboard"
+                href={isParentPortal ? '/parent/dashboard' : '/dashboard'}
                 className="flex items-center gap-2 text-lg font-semibold"
               >
                 <GraduationCap className="h-6 w-6 text-primary" />
@@ -170,8 +174,8 @@ export function AppHeader() {
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="icon" className="rounded-full">
             <Avatar>
-                <AvatarImage src="https://picsum.photos/seed/admin/100/100" data-ai-hint="person avatar" alt="Admin" />
-                <AvatarFallback>AD</AvatarFallback>
+                <AvatarImage src="https://picsum.photos/seed/admin/100/100" data-ai-hint="person avatar" alt="User" />
+                <AvatarFallback>{user?.email?.[0].toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
             <span className="sr-only">Toggle user menu</span>
           </Button>
@@ -179,7 +183,7 @@ export function AppHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => router.push('/settings')}>Settings</DropdownMenuItem>
+          {!isParentPortal && <DropdownMenuItem onSelect={() => router.push('/settings')}>Settings</DropdownMenuItem>}
           <DropdownMenuItem onSelect={() => router.push('#')}>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={handleLogout}>Logout</DropdownMenuItem>
