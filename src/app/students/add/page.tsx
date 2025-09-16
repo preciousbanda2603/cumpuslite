@@ -112,7 +112,7 @@ export default function AddStudentPage() {
       const newStudentRef = push(studentsRef);
       await set(newStudentRef, {
         name,
-        admissionNo,
+        admissionNo: admissionNo,
         classId: selectedClassId,
         className: selectedClass?.name,
         enrollmentDate,
