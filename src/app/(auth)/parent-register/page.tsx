@@ -18,7 +18,7 @@ import { GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth, database } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { ref, set, get, query, orderByChild, equalTo, update } from "firebase/database";
+import { ref, set, get, query, orderByChild, equalTo, update, child } from "firebase/database";
 import {
   Select,
   SelectContent,
@@ -49,7 +49,7 @@ export default function ParentRegisterPage() {
   useEffect(() => {
     const fetchSchools = async () => {
       const dbRef = ref(database);
-      const snapshot = await get(ref(dbRef, 'schools'));
+      const snapshot = await get(child(dbRef, 'schools'));
       if (snapshot.exists()) {
         const schoolsData = snapshot.val();
         const schoolsList = Object.keys(schoolsData).map(key => ({
