@@ -25,7 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { auth, database } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { ref, get, child } from "firebase/database";
+import { ref, get, child, query, orderByChild, equalTo } from "firebase/database";
 import { SCHOOL_ID_LOCAL_STORAGE_KEY } from "@/hooks/use-school-id";
 
 type School = {
@@ -38,8 +38,12 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
+  const [superAdminEmail, setSuperAdminEmail] = useState('');
 
   useEffect(() => {
+    // In a real app, this would come from a secure config
+    setSuperAdminEmail(process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'superadmin@campus.zm');
+
     const fetchSchools = async () => {
       try {
         const dbRef = ref(database);
@@ -76,6 +80,19 @@ export default function LoginPage() {
     const password = formData.get('password') as string;
     const schoolUid = formData.get('school') as string;
 
+    if (email === superAdminEmail) {
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            toast({ title: "Success!", description: "Super Admin logged in." });
+            router.push('/super-admin');
+            return;
+        } catch (error) {
+            toast({ title: "Login Failed", description: "Invalid super admin credentials.", variant: "destructive" });
+            setLoading(false);
+            return;
+        }
+    }
+
      if (!schoolUid) {
       toast({
         title: "Login Failed",
@@ -90,7 +107,6 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const loggedInUserUid = userCredential.user.uid;
 
-      // Check 1: Is the user the school admin?
       if (loggedInUserUid === schoolUid) {
         localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolUid);
         toast({ title: "Success!", description: "Admin logged in." });
@@ -98,7 +114,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Check 2: If not admin, is the user a teacher for that school?
       const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
       const teacherSnapshot = await get(teachersRef);
 
@@ -114,7 +129,6 @@ export default function LoginPage() {
         }
       }
 
-      // If neither, then it's an invalid login for this school
       await auth.signOut();
       throw new Error("Your account is not associated with the selected school.");
 
@@ -145,16 +159,16 @@ export default function LoginPage() {
        </Link>
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardTitle className="text-2xl">School Staff Login</CardTitle>
           <CardDescription>
-            Enter your credentials below to login to your account
+            Enter your credentials and select your school to log in.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4">
             <div className="grid gap-2">
                 <Label htmlFor="school">School</Label>
-                <Select name="school" required>
+                <Select name="school">
                     <SelectTrigger id="school">
                         <SelectValue placeholder="Select your school" />
                     </SelectTrigger>
@@ -168,6 +182,7 @@ export default function LoginPage() {
                         )}
                     </SelectContent>
                 </Select>
+                 <p className="text-xs text-muted-foreground px-1">Super Admins can log in with their email without selecting a school.</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -182,12 +197,6 @@ export default function LoginPage() {
             <div className="grid gap-2">
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
-                <Link
-                  href="#"
-                  className="ml-auto inline-block text-sm underline"
-                >
-                  Forgot your password?
-                </Link>
               </div>
               <Input id="password" name="password" type="password" required />
             </div>
@@ -196,13 +205,19 @@ export default function LoginPage() {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="underline">
-              Sign up
+            Are you a parent?{" "}
+            <Link href="/parent-login" className="underline">
+              Parent Portal Login
             </Link>
           </div>
         </CardContent>
       </Card>
+       <div className="mt-4 text-center text-sm">
+            Don't have a school account?{" "}
+            <Link href="/register" className="underline">
+              Register a School
+            </Link>
+          </div>
     </div>
   )
 }

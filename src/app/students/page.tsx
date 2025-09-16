@@ -25,10 +25,12 @@ import { auth, database } from "@/lib/firebase";
 import { onValue, ref } from "firebase/database";
 import type { User } from "firebase/auth";
 import { useSchoolId } from "@/hooks/use-school-id";
+import { Input } from "@/components/ui/input";
 
 type Student = {
   id: string;
   name: string;
+  admissionNo: string;
   className: string;
   enrollmentDate: string;
   status: 'Active' | 'Inactive';
@@ -38,8 +40,10 @@ export default function StudentsPage() {
   const [user, setUser] = useState<User | null>(null);
   const schoolId = useSchoolId();
   const [students, setStudents] = useState<Student[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -68,8 +72,10 @@ export default function StudentsPage() {
             ...studentsData[key],
           }));
           setStudents(studentsList);
+          setFilteredStudents(studentsList);
         } else {
           setStudents([]);
+          setFilteredStudents([]);
         }
         setLoading(false);
       },
@@ -81,6 +87,14 @@ export default function StudentsPage() {
 
     return () => unsubscribe();
   }, [user, schoolId]);
+
+  useEffect(() => {
+    const results = students.filter(student =>
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.admissionNo?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredStudents(results);
+  }, [searchTerm, students]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,11 +113,20 @@ export default function StudentsPage() {
         )}
       </div>
       <Card>
+        <CardHeader>
+           <Input
+            placeholder="Search by name or admission number..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+        </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Admission No.</TableHead>
                 <TableHead>Class</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Enrollment Date</TableHead>
@@ -112,14 +135,15 @@ export default function StudentsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     Loading students...
                   </TableCell>
                 </TableRow>
-              ) : students.length > 0 ? (
-                students.map((student) => (
+              ) : filteredStudents.length > 0 ? (
+                filteredStudents.map((student) => (
                   <TableRow key={student.id}>
-                    <TableCell>{student.name}</TableCell>
+                    <TableCell className="font-medium">{student.name}</TableCell>
+                    <TableCell>{student.admissionNo}</TableCell>
                     <TableCell>{student.className}</TableCell>
                     <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
                     <TableCell>{student.enrollmentDate}</TableCell>
@@ -127,8 +151,8 @@ export default function StudentsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center">
-                    No students found. Add one to get started.
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    No students found.
                   </TableCell>
                 </TableRow>
               )}
