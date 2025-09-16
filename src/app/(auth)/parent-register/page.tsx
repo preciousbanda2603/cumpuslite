@@ -16,9 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { auth, database } from "@/lib/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { ref, set, get, query, orderByChild, equalTo, update, child } from "firebase/database";
+import { database } from "@/lib/firebase";
+import { ref, get, child } from "firebase/database";
 import {
   Select,
   SelectContent,
@@ -26,14 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { createParentUser } from "@/app/actions";
 
-
-// Create a secondary auth instance for creating parent accounts
-// This prevents any logged-in admin from being logged out
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-const secondaryApp = getApps().length > 1 ? getApp("secondary") : initializeApp(auth.app.options, "secondary");
-const secondaryAuth = getAuth(secondaryApp);
 
 type School = {
   uid: string;
@@ -79,57 +72,23 @@ export default function ParentRegisterPage() {
     }
 
     try {
-      // Step 1: Find the student
-      const studentsRef = ref(database, `schools/${schoolUid}/students`);
-      const q = query(studentsRef, orderByChild('admissionNo'), equalTo(admissionNo));
-      const studentSnapshot = await get(q);
+      const result = await createParentUser({ email, password, schoolUid, admissionNo });
 
-      if (!studentSnapshot.exists()) {
-        throw new Error("No student found with that Admission Number at the selected school.");
+      if (result.success) {
+        toast({
+          title: "Success!",
+          description: "Your parent account has been created and linked. Please log in.",
+        });
+        router.push('/parent-login');
+      } else {
+        throw new Error(result.error);
       }
-      
-      let studentId: string | null = null;
-      let studentData: any = null;
-      studentSnapshot.forEach((child) => {
-          studentId = child.key;
-          studentData = child.val();
-      });
-
-      if (!studentId || !studentData) throw new Error("Could not retrieve student data.");
-      
-      if (studentData.parentUid) {
-        throw new Error("This student is already linked to a parent account.");
-      }
-      
-      // Step 2: Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-      const user = userCredential.user;
-
-      // Step 3: Update student record with parent's UID
-      const studentRef = ref(database, `schools/${schoolUid}/students/${studentId}`);
-      await update(studentRef, { parentUid: user.uid });
-
-      toast({
-        title: "Success!",
-        description: "Your parent account has been created and linked. Please log in.",
-      });
-
-      router.push('/parent-login');
 
     } catch (error: any) {
       console.error("Registration failed:", error);
-      let errorMessage = "An unexpected error occurred. Please try again.";
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = "This email is already registered. Please use a different email or log in.";
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = "The password is too weak. Please choose a stronger password.";
-      } else {
-        errorMessage = error.message;
-      }
-      
       toast({
         title: "Registration Failed",
-        description: errorMessage,
+        description: error.message,
         variant: "destructive",
       });
     } finally {
