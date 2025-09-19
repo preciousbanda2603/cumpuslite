@@ -239,19 +239,19 @@ export default function ExamsPage() {
                         </CardContent>
                         <CardFooter className="flex-col items-stretch gap-2">
                             {isAdmin ? (
-                                <Button className="w-full" onClick={() => router.push(`/exams/${exam.id}/edit`)}>
-                                    Manage Questions
-                                </Button>
+                                <>
+                                    <Button className="w-full" onClick={() => router.push(`/exams/${exam.id}/edit`)}>
+                                        Manage Questions
+                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" className="w-full" onClick={() => openDialog(exam)}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
+                                        <Button variant="destructive" className="w-full" onClick={() => handleDelete(exam.id)}><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
+                                    </div>
+                                </>
                             ) : (
                                 <Button className="w-full" disabled={exam.status === 'Unavailable'} onClick={() => router.push(`/exams/${exam.id}/take`)}>
                                     {exam.status === 'Available' ? 'Start Exam' : 'Not Available'}
                                 </Button>
-                            )}
-                            {isAdmin && (
-                                <div className="flex items-center gap-2">
-                                    <Button variant="outline" className="w-full" onClick={() => openDialog(exam)}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
-                                    <Button variant="destructive" className="w-full" onClick={() => handleDelete(exam.id)}><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
-                                </div>
                             )}
                         </CardFooter>
                     </Card>
