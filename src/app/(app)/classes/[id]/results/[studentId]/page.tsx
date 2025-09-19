@@ -25,14 +25,17 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { Textarea } from '@/components/ui/textarea';
+import { generateReportCardComments, ReportCardData } from '@/ai/flows/report-card-assistant';
+
 
 type Student = { id: string; name: string; classId: string; };
 type Subject = { id: string; name: string; grade: number; };
-type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; grade?: string; comment?: string; } };
+type Result = { test1?: number; test2?: number; midTerm?: number; finalExam?: number; grade?: string; comment?: string; };
+type Results = { [subjectId: string]: Result };
 type ReportCardExtras = {
     attendance?: { totalDays?: string; daysPresent?: string; daysAbsent?: string; punctuality?: string; };
     development?: { participation?: string; homework?: string; sports?: string; behaviour?: string; };
@@ -54,6 +57,7 @@ export default function StudentResultsPage() {
   const [results, setResults] = useState<Results>({});
   const [extras, setExtras] = useState<ReportCardExtras>({});
   const [loading, setLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   
   const canPerformActions = userRole === 'admin' || userRole === 'class_teacher';
 
@@ -193,6 +197,41 @@ export default function StudentResultsPage() {
         examMarks: typeof examScore === 'number' ? examScore : 'N/A',
         total: typeof total === 'number' ? total.toFixed(1) : total,
     };
+  };
+
+  const handleGenerateComments = async () => {
+    if (!student) return;
+    setIsGenerating(true);
+    
+    const performanceData = subjects.map(subject => {
+        const subjectResult: Result = results[subject.id] || {};
+        return {
+            subjectName: subject.name,
+            ...subjectResult
+        };
+    });
+
+    const reportCardInput: ReportCardData = {
+        studentName: student.name,
+        performanceData: performanceData
+    };
+    
+    try {
+        const comments = await generateReportCardComments(reportCardInput);
+        setExtras(prev => ({
+            ...prev,
+            comments: {
+                strengths: comments.strengths,
+                improvements: comments.improvements,
+            }
+        }));
+        toast({ title: "Success", description: "AI comments have been generated." });
+    } catch (error) {
+        console.error("AI generation failed:", error);
+        toast({ title: "Error", description: "Failed to generate AI comments.", variant: "destructive" });
+    } finally {
+        setIsGenerating(false);
+    }
   };
 
   
@@ -375,8 +414,18 @@ export default function StudentResultsPage() {
 
         <Card>
             <CardHeader>
-                <CardTitle>Comments & Next Steps</CardTitle>
-                <CardDescription>Provide overall comments for the student.</CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Comments & Next Steps</CardTitle>
+                        <CardDescription>Provide overall comments for the student.</CardDescription>
+                    </div>
+                    {canPerformActions && (
+                        <Button variant="outline" onClick={handleGenerateComments} disabled={isGenerating}>
+                           <Sparkles className="mr-2 h-4 w-4" />
+                           {isGenerating ? 'Generating...' : 'Generate with AI'}
+                        </Button>
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="grid gap-2">
