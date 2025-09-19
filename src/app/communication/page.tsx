@@ -13,10 +13,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send } from 'lucide-react';
+import { Send, MessagesSquare } from 'lucide-react';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { auth, database } from '@/lib/firebase';
-import { ref, onValue, push, set, serverTimestamp, query, orderByChild } from 'firebase/database';
+import { ref, onValue, push, set, serverTimestamp, query, orderByChild, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -257,4 +257,3 @@ export default function CommunicationPage() {
     </div>
   );
 }
-
