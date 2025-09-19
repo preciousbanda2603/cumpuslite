@@ -176,7 +176,7 @@ export default function StudentReportCardPage() {
         </Button>
       </div>
 
-       <style jsx global>{\`
+       <style jsx global>{`
           @media print {
             body { background: white; }
             .report-card { border: none; margin: 0; padding: 0; box-shadow: none; }
@@ -204,7 +204,7 @@ export default function StudentReportCardPage() {
           .report-card .section-title { font-weight: bold; margin-bottom: 10px; text-decoration: underline; }
           .report-card .signatures div { display: inline-block; width: 45%; margin-top: 40px; }
           .report-card .footer { text-align: center; font-size: 0.9em; color: #666; margin-top: 40px; }
-      \`}</style>
+      `}</style>
 
       <div className="print-container">
         <div className="report-card">
