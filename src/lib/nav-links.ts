@@ -1,3 +1,4 @@
+
 import {
   LayoutDashboard,
   Users,
@@ -17,6 +18,7 @@ import {
   DoorOpen,
   Settings,
   Palette,
+  DollarSign,
 } from 'lucide-react';
 
 export const navLinks = [
@@ -36,6 +38,7 @@ export const navLinks = [
   { href: "/calendar", label: "Events Calendar", icon: Calendar },
   { href: "/communication", label: "Communication", icon: MessagesSquare },
   { href: "/fees", label: "Fee Collection", icon: CreditCard },
+  { href: "/payroll", label: "Payroll", icon: DollarSign },
   { href: "/timetables/configure", label: "Time Slots", icon: Settings, isSettings: true, isHidden: true },
   { href: "/settings", label: "Theme Settings", icon: Palette, isSettings: true },
   // This is a new link that should be hidden from the sidebar
