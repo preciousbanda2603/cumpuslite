@@ -5,6 +5,7 @@ import {
   CheckSquare,
   CreditCard,
   CalendarDays,
+  MessagesSquare,
 } from 'lucide-react';
 
 export const navLinks = [
@@ -13,4 +14,5 @@ export const navLinks = [
   { href: "/parent/attendance", label: "Attendance", icon: CheckSquare },
   { href: "/parent/fees", label: "Fees", icon: CreditCard },
   { href: "/parent/events", label: "School Events", icon: CalendarDays },
+  { href: "/parent/communication", label: "Communication", icon: MessagesSquare },
 ];

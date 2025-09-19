@@ -25,7 +25,7 @@ type UserProfile = {
   id: string;
   uid: string;
   name: string;
-  role: 'Admin' | 'Teacher' | 'Parent';
+  role: 'Admin' | 'Teacher';
 };
 
 type ChatMessage = {
@@ -35,11 +35,9 @@ type ChatMessage = {
   timestamp: number;
 };
 
-export default function CommunicationPage() {
-  const schoolId = useSchoolId();
+export default function ParentCommunicationPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [contacts, setContacts] = useState<UserProfile[]>([]);
   const [activeChat, setActiveChat] = useState<UserProfile | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -52,66 +50,81 @@ export default function CommunicationPage() {
     });
     return () => unsubscribeAuth();
   }, []);
-
+  
   useEffect(() => {
-    if (user && schoolId) {
-      setIsAdmin(user.uid === schoolId);
-    }
-  }, [user, schoolId]);
-
-  useEffect(() => {
-    if (!user || !schoolId) return;
+    if (!user) return;
 
     setLoading(true);
-    
-    const fetchAllUsers = async () => {
-        const schoolAdminRef = ref(database, `schools/${schoolId}`);
-        const teachersRef = ref(database, `schools/${schoolId}/teachers`);
-        const studentsRef = ref(database, `schools/${schoolId}/students`);
+    const findStudentAndContacts = async () => {
+        const schoolsRef = ref(database, 'schools');
+        const schoolsSnap = await get(schoolsRef);
+        if(!schoolsSnap.exists()) {
+            setLoading(false);
+            return;
+        }
 
-        const [schoolSnap, teachersSnap, studentsSnap] = await Promise.all([
-            get(schoolAdminRef),
-            get(teachersRef),
-            get(studentsSnap)
-        ]);
+        const schoolsData = schoolsSnap.val();
+        let studentData: any = null;
+        let schoolId: string | null = null;
         
-        const schoolData = schoolSnap.val();
-        const teachersData = teachersSnap.val() || {};
-        const studentsData = studentsSnap.val() || {};
-        
-        const adminProfile: UserProfile = { id: schoolId, uid: schoolId, name: `${schoolData.name} (Admin)`, role: 'Admin' };
-        
-        const teachersList: UserProfile[] = Object.keys(teachersData).map(key => ({
-            id: key,
-            uid: teachersData[key].uid,
-            name: teachersData[key].name,
-            role: 'Teacher',
-        }));
+        for (const sId in schoolsData) {
+            const students = schoolsData[sId].students || {};
+            for (const studentId in students) {
+                if (students[studentId].parentUid === user.uid) {
+                    studentData = students[studentId];
+                    schoolId = sId;
+                    break;
+                }
+            }
+            if (studentData) break;
+        }
 
-        const parentsList: UserProfile[] = Object.values(studentsData)
-            .filter((student: any) => student.parentUid && student.parentName)
-            .map((student: any) => ({
-                id: student.parentUid,
-                uid: student.parentUid,
-                name: `${student.parentName} (Parent)`,
-                role: 'Parent'
-            }));
-        
-        // Remove duplicates for parents with multiple children
-        const uniqueParents = Array.from(new Map(parentsList.map(item => [item.uid, item])).values());
-        
-        const combinedUsers = [adminProfile, ...teachersList, ...uniqueParents];
-        
-        setAllUsers(combinedUsers.filter(u => u.uid !== user.uid));
+        if (studentData && schoolId) {
+            const schoolAdminRef = ref(database, `schools/${schoolId}`);
+            const classRef = ref(database, `schools/${schoolId}/classes/${studentData.classId}`);
+            
+            const [schoolSnap, classSnap] = await Promise.all([get(schoolAdminRef), get(classRef)]);
+            
+            const fetchedContacts: UserProfile[] = [];
+            
+            // Add Admin
+            const schoolData = schoolSnap.val();
+            fetchedContacts.push({ id: schoolId, uid: schoolId, name: `${schoolData.name} (Admin)`, role: 'Admin' });
+
+            // Add Class Teacher
+            const classData = classSnap.val();
+            if (classData.classTeacherId) {
+                const teacherRef = ref(database, `schools/${schoolId}/teachers/${classData.classTeacherId}`);
+                const teacherSnap = await get(teacherRef);
+                if (teacherSnap.exists()) {
+                    const teacherData = teacherSnap.val();
+                    fetchedContacts.push({
+                        id: classData.classTeacherId,
+                        uid: teacherData.uid,
+                        name: `${teacherData.name} (Class Teacher)`,
+                        role: 'Teacher',
+                    });
+                }
+            }
+            setContacts(fetchedContacts);
+        }
         setLoading(false);
     };
 
-    fetchAllUsers();
+    findStudentAndContacts();
 
-  }, [user, schoolId]);
+  }, [user]);
+
 
   useEffect(() => {
-    if (!activeChat || !user) return;
+    if (!activeChat || !user || !contacts.length) return;
+    
+    // We need the schoolId to construct the path, which we don't have here.
+    // The admin profile conveniently uses the schoolId as its ID.
+    const adminContact = contacts.find(c => c.role === 'Admin');
+    if (!adminContact) return;
+    const schoolId = adminContact.id;
+
 
     const getChatId = (uid1: string, uid2: string) => {
         return [uid1, uid2].sort().join('_');
@@ -128,7 +141,7 @@ export default function CommunicationPage() {
     
     return () => unsubscribeMessages();
 
-  }, [activeChat, user, schoolId]);
+  }, [activeChat, user, contacts]);
   
    useEffect(() => {
     // Scroll to bottom when messages change
@@ -142,7 +155,11 @@ export default function CommunicationPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !activeChat || !schoolId) return;
+    if (!newMessage.trim() || !user || !activeChat || !contacts.length) return;
+    
+    const adminContact = contacts.find(c => c.role === 'Admin');
+    if (!adminContact) return;
+    const schoolId = adminContact.id;
     
     const getChatId = (uid1: string, uid2: string) => {
         return [uid1, uid2].sort().join('_');
@@ -170,13 +187,13 @@ export default function CommunicationPage() {
       <Card className="md:col-span-1 flex flex-col">
         <CardHeader>
           <CardTitle>Conversations</CardTitle>
-          <CardDescription>Select a conversation to start chatting.</CardDescription>
+          <CardDescription>Select a contact to start chatting.</CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto">
             <ScrollArea className="h-full pr-4">
             <div className="space-y-2">
             {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
+                Array.from({ length: 2 }).map((_, i) => (
                    <div key={i} className="flex items-center gap-4 p-2 rounded-lg">
                      <Skeleton className="h-12 w-12 rounded-full" />
                      <div className="space-y-2">
@@ -185,8 +202,8 @@ export default function CommunicationPage() {
                      </div>
                    </div>
                 ))
-            ) : allUsers.length > 0 ? (
-                 allUsers.map(chatUser => (
+            ) : contacts.length > 0 ? (
+                 contacts.map(chatUser => (
                      <div 
                         key={chatUser.id} 
                         className={`flex items-center gap-4 p-2 rounded-lg cursor-pointer hover:bg-muted ${activeChat?.id === chatUser.id ? 'bg-muted' : ''}`}
@@ -203,7 +220,7 @@ export default function CommunicationPage() {
                     </div>
                 ))
             ) : (
-                <p className="text-center text-muted-foreground pt-10">No other users to chat with.</p>
+                <p className="text-center text-muted-foreground pt-10">No contacts available.</p>
             )}
             </div>
             </ScrollArea>
@@ -220,7 +237,7 @@ export default function CommunicationPage() {
                 <div className="space-y-4">
                    {messages.map(msg => {
                      const isSender = msg.senderId === user.uid;
-                     const senderProfile = isSender ? { name: user.displayName || 'Me', id: user.uid } : allUsers.find(u => u.uid === msg.senderId) || activeChat;
+                     const senderProfile = isSender ? { name: 'Me', id: user.uid } : activeChat;
                      return (
                          <div key={msg.id} className={`flex items-start gap-3 ${isSender ? 'justify-end' : ''}`}>
                             {!isSender && (
@@ -265,7 +282,7 @@ export default function CommunicationPage() {
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
              <MessagesSquare className="h-12 w-12 mb-4"/>
              <h3 className="text-lg font-semibold">Welcome to the Chat</h3>
-             <p>Select a conversation from the left to start messaging.</p>
+             <p>Select a contact from the left to start messaging.</p>
           </div>
        )}
       </Card>
