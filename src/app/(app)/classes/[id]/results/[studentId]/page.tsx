@@ -59,7 +59,8 @@ export default function StudentResultsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [results, setResults] = useState<Results>({});
   const [extras, setExtras] = useState<ReportCardExtras>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Manages loading state for term-specific data
+  const [pageLoading, setPageLoading] = useState(true); // Manages initial page load
   const [isGenerating, setIsGenerating] = useState(false);
   
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear().toString());
@@ -78,6 +79,7 @@ export default function StudentResultsPage() {
     if (!user || !schoolId || !classId || !studentId) return;
 
     const fetchStaticData = async () => {
+        setPageLoading(true);
         try {
             // Fetch Student Info
             const studentRef = ref(database, `schools/${schoolId}/students/${studentId}`);
@@ -124,10 +126,14 @@ export default function StudentResultsPage() {
                 const subjectsSnap = await get(subjectsQuery);
                 const subjectsData = subjectsSnap.val() || {};
                 setSubjects(Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] })));
+            } else {
+                setSubjects([]);
             }
         } catch (error) {
             console.error("Error fetching static data:", error);
             toast({ title: 'Error', description: 'Failed to fetch student or subject data.', variant: 'destructive' });
+        } finally {
+            setPageLoading(false);
         }
     };
     
@@ -135,7 +141,7 @@ export default function StudentResultsPage() {
   }, [user, schoolId, classId, studentId, router, toast]);
 
   useEffect(() => {
-    if (!student || subjects.length === 0) return; // Wait for student and subject data
+    if (pageLoading) return; // Wait for student and subject data
     
     const fetchTermData = async () => {
         setLoading(true);
@@ -159,7 +165,7 @@ export default function StudentResultsPage() {
 
     fetchTermData();
 
-  }, [student, subjects, schoolId, studentId, termId, toast]);
+  }, [pageLoading, schoolId, studentId, termId, toast]);
 
   const handleResultChange = (subjectId: string, field: string, value: string) => {
     let finalValue: string | number | undefined = value;
@@ -263,7 +269,7 @@ export default function StudentResultsPage() {
     }
   };
 
-  if (!student || subjects.length === 0) {
+  if (pageLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-1/3" />
@@ -289,7 +295,7 @@ export default function StudentResultsPage() {
                     <h1 className="text-3xl font-bold tracking-tight">
                         Manage Results & Report Data
                     </h1>
-                    <p className="text-muted-foreground">Editing term information for <span className="font-semibold text-primary">{student.name}</span>.</p>
+                    <p className="text-muted-foreground">Editing term information for <span className="font-semibold text-primary">{student?.name}</span>.</p>
                 </div>
                 <div className="flex items-center gap-4 mt-4 md:mt-0">
                     <div className="grid gap-2">
