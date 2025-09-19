@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { GraduationCap } from 'lucide-react';
 import { navLinks as adminNavLinks } from '@/lib/nav-links';
 import { navLinks as parentNavLinks } from '@/lib/parent-nav-links';
+import { navLinks as studentNavLinks } from '@/lib/student-nav-links';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from './ui/separator';
@@ -13,7 +14,10 @@ import { Separator } from './ui/separator';
 export function AppSidebar() {
   const pathname = usePathname();
   const isParentPortal = pathname.startsWith('/parent');
-  const navLinks = isParentPortal ? parentNavLinks : adminNavLinks;
+  const isStudentPortal = pathname.startsWith('/student');
+  const navLinks = isParentPortal ? parentNavLinks : isStudentPortal ? studentNavLinks : adminNavLinks;
+
+  const dashboardHref = isParentPortal ? "/parent/dashboard" : isStudentPortal ? "/student/dashboard" : "/dashboard";
 
   const visibleLinks = navLinks.filter(link => !link.isHidden);
   const mainLinks = visibleLinks.filter(link => !link.isSettings);
@@ -23,7 +27,7 @@ export function AppSidebar() {
     <div className="hidden border-r bg-muted/40 md:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <Link href={isParentPortal ? "/parent/dashboard" : "/dashboard"} className="flex items-center gap-2 font-semibold">
+          <Link href={dashboardHref} className="flex items-center gap-2 font-semibold">
             <GraduationCap className="h-6 w-6 text-primary" />
             <span className="">Campus.ZM</span>
           </Link>

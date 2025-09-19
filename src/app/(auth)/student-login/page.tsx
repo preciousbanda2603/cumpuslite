@@ -98,7 +98,7 @@ export default function StudentLoginPage() {
       
       localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolUid);
       toast({ title: "Success!", description: "Student logged in." });
-      router.push('/dashboard');
+      router.push('/student/dashboard');
 
     } catch (error: any) {
       console.error("Login failed:", error);
