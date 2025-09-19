@@ -135,7 +135,7 @@ export default function StudentResultsPage() {
   }, [user, schoolId, classId, studentId, router, toast]);
 
   useEffect(() => {
-    if (!student) return; // Wait for student data to be loaded
+    if (!student || subjects.length === 0) return; // Wait for student and subject data
     
     const fetchTermData = async () => {
         setLoading(true);
@@ -159,7 +159,7 @@ export default function StudentResultsPage() {
 
     fetchTermData();
 
-  }, [student, schoolId, studentId, termId, toast]);
+  }, [student, subjects, schoolId, studentId, termId, toast]);
 
   const handleResultChange = (subjectId: string, field: string, value: string) => {
     let finalValue: string | number | undefined = value;
@@ -236,7 +236,8 @@ export default function StudentResultsPage() {
         toast({ title: "Success", description: "AI comments have been generated." });
     } catch (error) {
         console.error("AI generation failed:", error);
-        toast({ title: "Error", description: "Failed to generate AI comments.", variant: "destructive" });
+        toast({ title: "Error", description: "Failed to generate AI comments. Please ensure AI is set up correctly.", variant: "destructive" });
+        router.push('/ai-setup-guide');
     } finally {
         setIsGenerating(false);
     }
@@ -262,14 +263,14 @@ export default function StudentResultsPage() {
     }
   };
 
-  if (!student) {
+  if (!student || subjects.length === 0) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-4 w-1/4" />
         <Card>
           <CardContent className="p-6">
-            <Skeleton className="h-96" />
+            <div className="text-center text-muted-foreground py-12">Loading student and subject data...</div>
           </CardContent>
         </Card>
       </div>
