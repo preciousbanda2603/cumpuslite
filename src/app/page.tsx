@@ -27,9 +27,9 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="relative w-full h-screen flex items-center justify-center text-center">
            <Image
-            src="https://picsum.photos/seed/vr-classroom/1200/800"
-            data-ai-hint="virtual reality classroom"
-            alt="Virtual Reality Classroom"
+            src="https://picsum.photos/seed/student-uniform/1200/800"
+            data-ai-hint="student uniform"
+            alt="Student in school uniform"
             fill
             className="object-cover"
           />
