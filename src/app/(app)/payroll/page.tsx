@@ -26,6 +26,7 @@ import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { DollarSign } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 type Teacher = {
   id: string;
