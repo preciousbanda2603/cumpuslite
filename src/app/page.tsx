@@ -12,7 +12,7 @@ export default function LandingPage() {
           <GraduationCap className="h-6 w-6 text-primary" />
           <span className="text-xl font-bold">Campus.ZM</span>
         </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
+        <nav className="ml-auto flex items-center gap-4 sm:gap-6">
           <Link
             href="/login"
             className="text-sm font-medium hover:underline underline-offset-4"
@@ -27,7 +27,7 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="relative w-full h-screen flex items-center justify-center text-center">
            <Image
-            src="https://picsum.photos/seed/student-uniform/1200/800"
+            src="https://picsum.photos/seed/student-color/1200/800"
             data-ai-hint="student uniform"
             alt="Student in school uniform"
             fill
