@@ -72,7 +72,7 @@ export default function CommunicationPage() {
         const [schoolSnap, teachersSnap, studentsSnap] = await Promise.all([
             get(schoolAdminRef),
             get(teachersRef),
-            get(studentsSnap)
+            get(studentsRef)
         ]);
         
         const schoolData = schoolSnap.val();
