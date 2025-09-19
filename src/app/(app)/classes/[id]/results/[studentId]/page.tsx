@@ -38,8 +38,8 @@ type Subject = { id: string; name: string; grade: number; };
 type Result = { test1?: number; test2?: number; midTerm?: number; finalExam?: number; grade?: string; comment?: string; };
 type Results = { [subjectId: string]: Result };
 type ReportCardExtras = {
-    attendance?: { totalDays?: string; daysPresent?: string; daysAbsent?: string; punctuality?: string; };
-    development?: { participation?: string; homework?: string; sports?: string; behaviour?: string; };
+    attendance?: { totalDays?: string; daysPresent?: string; punctuality?: string; };
+    development?: { participation?: string; homework?: string; behaviour?: string; };
     comments?: { strengths?: string; improvements?: string; principalComment?: string; };
 };
 type UserRole = 'admin' | 'class_teacher' | 'subject_teacher' | 'other';
@@ -167,7 +167,7 @@ export default function ReportBookEditorPage() {
 
   }, [pageLoading, schoolId, studentId, termId, toast]);
 
-  const handleResultChange = (subjectId: string, field: string, value: string) => {
+  const handleResultChange = (subjectId: string, field: keyof Result, value: string) => {
     let finalValue: string | number | undefined = value;
     if (['test1', 'test2', 'midTerm', 'finalExam'].includes(field)) {
       finalValue = value === '' ? undefined : parseInt(value, 10);
@@ -190,7 +190,7 @@ export default function ReportBookEditorPage() {
     setExtras(prev => ({
         ...prev,
         [section]: {
-            ...prev[section],
+            ...(prev[section] as object),
             [field]: value
         }
     }));
@@ -348,7 +348,8 @@ export default function ReportBookEditorPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {subjects.map(subject => {
+                        {subjects.length > 0 ? (
+                          subjects.map(subject => {
                             const performance = calculatePerformance(subject.id);
                             return (
                             <TableRow key={subject.id}>
@@ -416,7 +417,14 @@ export default function ReportBookEditorPage() {
                                     />
                                 </TableCell>
                             </TableRow>
-                        )})}
+                        )})
+                        ) : (
+                           <TableRow>
+                                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                                    No subjects have been configured for this student's grade.
+                                </TableCell>
+                           </TableRow>
+                        )}
                         </TableBody>
                     </Table>
                     </div>
@@ -512,5 +520,3 @@ export default function ReportBookEditorPage() {
     </div>
   );
 }
-
-    
