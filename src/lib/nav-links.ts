@@ -40,4 +40,7 @@ export const navLinks = [
   { href: "/settings", label: "Theme Settings", icon: Palette, isSettings: true },
   // This is a new link that should be hidden from the sidebar
   { href: "/classes/[id]/report-card/[studentId]", label: "Report Card", icon: FileText, isHidden: true },
+  { href: "/exams/[examId]/edit", label: "Edit Exam", icon: FileText, isHidden: true },
+  { href: "/exams/[examId]/take", label: "Take Exam", icon: FileText, isHidden: true },
+  { href: "/exams/[examId]/results", label: "Exam Results", icon: FileText, isHidden: true },
 ];

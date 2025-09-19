@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -57,6 +58,7 @@ type Exam = {
   status: 'Available' | 'Unavailable';
 };
 type Class = { id: string; name: string };
+type UserRole = 'admin' | 'class_teacher' | 'subject_teacher' | 'other';
 
 export default function ExamsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -67,6 +69,8 @@ export default function ExamsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<Partial<Exam> | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
+  const [userRole, setUserRole] = useState<UserRole>('other');
 
   // Form state
   const [title, setTitle] = useState('');
@@ -79,9 +83,17 @@ export default function ExamsPage() {
   const [status, setStatus] = useState<'Available' | 'Unavailable'>('Available');
 
   useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged(setUser);
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+        setUser(user);
+        if (user && schoolId) {
+            // Simple admin check for now
+            if (user.uid === schoolId) {
+                setUserRole('admin');
+            }
+        }
+    });
     return () => unsubscribeAuth();
-  }, []);
+  }, [schoolId]);
 
   useEffect(() => {
     if (!user || !schoolId) return;
@@ -157,7 +169,8 @@ export default function ExamsPage() {
       duration: parseInt(duration, 10),
       questionCount: parseInt(questionCount, 10),
       status,
-      createdAt: new Date().toISOString(),
+      createdAt: editingExam ? (editingExam as Exam).createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     
     try {
@@ -190,6 +203,8 @@ export default function ExamsPage() {
       }
   };
 
+  const isAdmin = userRole === 'admin';
+
   return (
     <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
@@ -198,12 +213,14 @@ export default function ExamsPage() {
                     <FileText className="h-8 w-8" />
                     Quizzes & Exams
                 </h1>
-                <p className="text-muted-foreground">Your portal for online assessments.</p>
+                <p className="text-muted-foreground">{isAdmin ? 'Create and manage online assessments.' : 'Your portal for online assessments.'}</p>
             </div>
-            <Button onClick={() => openDialog()}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Exam/Quiz
-            </Button>
+            {isAdmin && (
+                <Button onClick={() => openDialog()}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Exam/Quiz
+                </Button>
+            )}
         </div>
         <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {loading ? (
@@ -221,13 +238,21 @@ export default function ExamsPage() {
                            <div className="flex items-center gap-2 text-sm text-muted-foreground"><HelpCircle className="h-4 w-4" /> Due by {format(new Date(exam.dueDate), 'PPP')}</div>
                         </CardContent>
                         <CardFooter className="flex-col items-stretch gap-2">
-                            <Button className="w-full" disabled={exam.status === 'Unavailable'}>
-                                {exam.status === 'Available' ? 'Start Exam' : 'Not Available'}
-                            </Button>
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" className="w-full" onClick={() => openDialog(exam)}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
-                                <Button variant="destructive" className="w-full" onClick={() => handleDelete(exam.id)}><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
-                            </div>
+                            {isAdmin ? (
+                                <Button className="w-full" onClick={() => router.push(`/exams/${exam.id}/edit`)}>
+                                    Manage Questions
+                                </Button>
+                            ) : (
+                                <Button className="w-full" disabled={exam.status === 'Unavailable'} onClick={() => router.push(`/exams/${exam.id}/take`)}>
+                                    {exam.status === 'Available' ? 'Start Exam' : 'Not Available'}
+                                </Button>
+                            )}
+                            {isAdmin && (
+                                <div className="flex items-center gap-2">
+                                    <Button variant="outline" className="w-full" onClick={() => openDialog(exam)}><Edit className="mr-2 h-4 w-4" /> Edit</Button>
+                                    <Button variant="destructive" className="w-full" onClick={() => handleDelete(exam.id)}><Trash2 className="mr-2 h-4 w-4"/> Delete</Button>
+                                </div>
+                            )}
                         </CardFooter>
                     </Card>
                 ))
