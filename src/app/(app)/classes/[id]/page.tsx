@@ -312,8 +312,8 @@ export default function ViewClassPage() {
             </Card>
              <Card>
                 <CardHeader>
-                    <CardTitle>Results & Reports</CardTitle>
-                    <CardDescription>Enter scores and view student report cards.</CardDescription>
+                    <CardTitle>Results & Report Books</CardTitle>
+                    <CardDescription>Manually create and view student report books.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -336,7 +336,7 @@ export default function ViewClassPage() {
                                         title={!canPerformActions ? "Only Admins or Class Teachers can manage results" : ""}
                                     >
                                         <Edit className="mr-2 h-4 w-4" />
-                                        Manage Results
+                                        Report Book Editor
                                     </Button>
                                      <Button 
                                         variant="secondary" 
@@ -389,3 +389,5 @@ export default function ViewClassPage() {
     </div>
   );
 }
+
+    

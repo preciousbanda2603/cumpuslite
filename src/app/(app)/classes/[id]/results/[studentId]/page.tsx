@@ -40,13 +40,13 @@ type Results = { [subjectId: string]: Result };
 type ReportCardExtras = {
     attendance?: { totalDays?: string; daysPresent?: string; daysAbsent?: string; punctuality?: string; };
     development?: { participation?: string; homework?: string; sports?: string; behaviour?: string; };
-    comments?: { strengths?: string; improvements?: string; };
+    comments?: { strengths?: string; improvements?: string; principalComment?: string; };
 };
 type UserRole = 'admin' | 'class_teacher' | 'subject_teacher' | 'other';
 
 const terms = ["Term 1", "Term 2", "Term 3"];
 
-export default function StudentResultsPage() {
+export default function ReportBookEditorPage() {
   const params = useParams();
   const { id: classId, studentId } = params as { id: string; studentId: string };
   const router = useRouter();
@@ -235,6 +235,7 @@ export default function StudentResultsPage() {
         setExtras(prev => ({
             ...prev,
             comments: {
+                ...prev.comments,
                 strengths: comments.strengths,
                 improvements: comments.improvements,
             }
@@ -260,7 +261,7 @@ export default function StudentResultsPage() {
         const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}/${termId}`);
         await set(extrasRef, extras);
 
-        toast({ title: 'Success', description: `Student's data for ${termId} has been saved.` });
+        toast({ title: 'Success', description: `Student's report book for ${termId} has been saved.` });
     } catch (error) {
         console.error("Error saving results:", error);
         toast({ title: 'Error', description: 'Failed to save results.', variant: 'destructive' });
@@ -293,9 +294,9 @@ export default function StudentResultsPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
-                        Manage Results & Report Data
+                        Report Book Editor
                     </h1>
-                    <p className="text-muted-foreground">Editing term information for <span className="font-semibold text-primary">{student?.name}</span>.</p>
+                    <p className="text-muted-foreground">Editing term report for <span className="font-semibold text-primary">{student?.name}</span>.</p>
                 </div>
                 <div className="flex items-center gap-4 mt-4 md:mt-0">
                     <div className="grid gap-2">
@@ -343,7 +344,7 @@ export default function StudentResultsPage() {
                                 <TableHead className="text-center">Final Exam</TableHead>
                                 <TableHead className="text-center font-bold bg-muted/50">Total (Avg)</TableHead>
                                 <TableHead className="text-center">Grade</TableHead>
-                                <TableHead className="text-center min-w-[200px]">Comment</TableHead>
+                                <TableHead className="text-center min-w-[200px]">Teacher's Comment</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -431,7 +432,7 @@ export default function StudentResultsPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
-                                <Label>Total Days</Label>
+                                <Label>Total School Days</Label>
                                 <Input type="number" value={extras.attendance?.totalDays || ''} onChange={e => handleExtrasChange('attendance', 'totalDays', e.target.value)} disabled={!canPerformActions} />
                             </div>
                             <div className="grid gap-2">
@@ -439,15 +440,9 @@ export default function StudentResultsPage() {
                                 <Input type="number" value={extras.attendance?.daysPresent || ''} onChange={e => handleExtrasChange('attendance', 'daysPresent', e.target.value)} disabled={!canPerformActions} />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label>Days Absent</Label>
-                                <Input type="number" value={extras.attendance?.daysAbsent || ''} onChange={e => handleExtrasChange('attendance', 'daysAbsent', e.target.value)} disabled={!canPerformActions} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Punctuality</Label>
-                                <Input value={extras.attendance?.punctuality || ''} onChange={e => handleExtrasChange('attendance', 'punctuality', e.target.value)} placeholder="e.g. Good" disabled={!canPerformActions} />
-                            </div>
+                         <div className="grid gap-2">
+                            <Label>Punctuality</Label>
+                            <Input value={extras.attendance?.punctuality || ''} onChange={e => handleExtrasChange('attendance', 'punctuality', e.target.value)} placeholder="e.g. Excellent, Good, Needs Improvement" disabled={!canPerformActions} />
                         </div>
                     </CardContent>
                 </Card>
@@ -466,10 +461,6 @@ export default function StudentResultsPage() {
                             <Input value={extras.development?.homework || ''} onChange={e => handleExtrasChange('development', 'homework', e.target.value)} disabled={!canPerformActions} />
                         </div>
                         <div className="grid gap-2">
-                            <Label>Sports & Games</Label>
-                            <Input value={extras.development?.sports || ''} onChange={e => handleExtrasChange('development', 'sports', e.target.value)} disabled={!canPerformActions} />
-                        </div>
-                        <div className="grid gap-2">
                             <Label>Behaviour / Social Skills</Label>
                             <Input value={extras.development?.behaviour || ''} onChange={e => handleExtrasChange('development', 'behaviour', e.target.value)} disabled={!canPerformActions} />
                         </div>
@@ -481,8 +472,8 @@ export default function StudentResultsPage() {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle>Comments & Next Steps</CardTitle>
-                            <CardDescription>Provide overall comments for the student.</CardDescription>
+                            <CardTitle>Final Comments</CardTitle>
+                            <CardDescription>Provide overall comments for the student's report book.</CardDescription>
                         </div>
                         {canPerformActions && (
                             <Button variant="outline" onClick={handleGenerateComments} disabled={isGenerating}>
@@ -494,12 +485,16 @@ export default function StudentResultsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid gap-2">
-                        <Label>Strengths</Label>
+                        <Label>Class Teacher's Comment on Strengths</Label>
                         <Textarea value={extras.comments?.strengths || ''} onChange={e => handleExtrasChange('comments', 'strengths', e.target.value)} disabled={!canPerformActions} />
                     </div>
                     <div className="grid gap-2">
-                        <Label>Areas for Improvement</Label>
+                        <Label>Class Teacher's Comment on Areas for Improvement</Label>
                         <Textarea value={extras.comments?.improvements || ''} onChange={e => handleExtrasChange('comments', 'improvements', e.target.value)} disabled={!canPerformActions} />
+                    </div>
+                     <div className="grid gap-2">
+                        <Label>Head Teacher / Principal's Comment</Label>
+                        <Textarea value={extras.comments?.principalComment || ''} onChange={e => handleExtrasChange('comments', 'principalComment', e.target.value)} disabled={userRole !== 'admin'} />
                     </div>
                 </CardContent>
             </Card>
@@ -508,7 +503,7 @@ export default function StudentResultsPage() {
                 <div className="flex justify-end mt-4">
                     <Button size="lg" onClick={handleSaveChanges} disabled={loading}>
                         <Save className="mr-2 h-4 w-4" />
-                        {loading ? 'Saving...' : 'Save All Changes'}
+                        {loading ? 'Saving...' : 'Save Report Book'}
                     </Button>
                 </div>
             )}
@@ -517,3 +512,5 @@ export default function StudentResultsPage() {
     </div>
   );
 }
+
+    

@@ -22,9 +22,9 @@ type Teacher = { name: string };
 type Subject = { id: string; name: string; grade: number; };
 type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; grade?: string; comment?: string; } };
 type ReportCardExtras = {
-    attendance?: { totalDays?: string; daysPresent?: string; daysAbsent?: string; punctuality?: string; };
-    development?: { participation?: string; homework?: string; sports?: string; behaviour?: string; };
-    comments?: { strengths?: string; improvements?: string; };
+    attendance?: { totalDays?: string; daysPresent?: string; punctuality?: string; };
+    development?: { participation?: string; homework?: string; behaviour?: string; };
+    comments?: { strengths?: string; improvements?: string; principalComment?: string; };
 };
 
 type PerformanceData = {
@@ -168,6 +168,10 @@ export default function ReportCardPage() {
             const caAvg = caScores.length > 0 ? (caScores.reduce((a, b) => a + b, 0) / caScores.length) : 'N/A';
             const allScores = [...caScores, examScore].filter(s => typeof s === 'number') as number[];
             const total = allScores.length > 0 ? (allScores.reduce((a,b) => a + b, 0) / allScores.length) : 'N/A';
+            
+            const daysPresent = extras.attendance?.daysPresent ? parseInt(extras.attendance.daysPresent) : 0;
+            const totalDays = extras.attendance?.totalDays ? parseInt(extras.attendance.totalDays) : 0;
+            const daysAbsent = totalDays > 0 ? totalDays - daysPresent : 'N/A';
 
             return {
                 subjectName: subject.name,
@@ -176,6 +180,7 @@ export default function ReportCardPage() {
                 total: typeof total === 'number' ? total.toFixed(1) : total,
                 grade: subjectResults.grade || 'N/A',
                 comment: subjectResults.comment || 'N/A',
+                daysAbsent: daysAbsent,
             };
         });
         setPerformanceData(perfData);
@@ -191,6 +196,13 @@ export default function ReportCardPage() {
   }, [user, schoolId, studentId, router, toast, selectedTerm, availableTerms]);
   
   const handlePrint = () => window.print();
+  
+  const daysAbsent = () => {
+    const present = extras.attendance?.daysPresent ? parseInt(extras.attendance.daysPresent, 10) : 0;
+    const total = extras.attendance?.totalDays ? parseInt(extras.attendance.totalDays, 10) : 0;
+    if (isNaN(present) || isNaN(total) || total === 0) return '-';
+    return total - present;
+  }
 
   if (loading) {
       return <div className="p-8"><Skeleton className="h-[800px] w-full" /></div>
@@ -281,7 +293,7 @@ export default function ReportCardPage() {
                 <table>
                 <thead>
                     <tr>
-                        <th>Total Days</th>
+                        <th>Total School Days</th>
                         <th>Days Present</th>
                         <th>Days Absent</th>
                         <th>Punctuality</th>
@@ -291,7 +303,7 @@ export default function ReportCardPage() {
                     <tr>
                         <td>{extras.attendance?.totalDays || '-'}</td>
                         <td>{extras.attendance?.daysPresent || '-'}</td>
-                        <td>{extras.attendance?.daysAbsent || '-'}</td>
+                        <td>{daysAbsent()}</td>
                         <td>{extras.attendance?.punctuality || '-'}</td>
                     </tr>
                 </tbody>
@@ -338,16 +350,16 @@ export default function ReportCardPage() {
                 <tbody>
                     <tr><td>Class Participation</td><td>{extras.development?.participation || '-'}</td></tr>
                     <tr><td>Homework & Assignments</td><td>{extras.development?.homework || '-'}</td></tr>
-                    <tr><td>Sports & Games</td><td>{extras.development?.sports || '-'}</td></tr>
                     <tr><td>Behaviour / Social Skills</td><td>{extras.development?.behaviour || '-'}</td></tr>
                 </tbody>
                 </table>
             </div>
 
             <div className="comments">
-                <div className="section-title">Comments & Next Steps</div>
-                <p><strong>Strengths:</strong> {extras.comments?.strengths || ''}</p>
-                <p><strong>Areas for Improvement:</strong> {extras.comments?.improvements || ''}</p>
+                <div className="section-title">Final Comments</div>
+                <p><strong>Class Teacher's Comment on Strengths:</strong> {extras.comments?.strengths || ''}</p>
+                <p><strong>Class Teacher's Comment on Areas for Improvement:</strong> {extras.comments?.improvements || ''}</p>
+                 <p className="mt-4"><strong>Head Teacher / Principal's Comment:</strong> {extras.comments?.principalComment || ''}</p>
             </div>
 
             <div className="signatures">
@@ -370,3 +382,5 @@ export default function ReportCardPage() {
     </>
   );
 }
+
+    
