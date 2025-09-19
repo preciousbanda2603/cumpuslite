@@ -23,6 +23,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const resetThemeToDefault = () => {
+    document.documentElement.style.removeProperty('--primary');
+    document.documentElement.style.removeProperty('--ring');
+    document.documentElement.style.removeProperty('--background');
+    document.documentElement.style.removeProperty('--secondary');
+  };
+
   useEffect(() => {
     if (user && schoolId) {
       const settingsRef = ref(database, `schools/${schoolId}/settings/theme`);
@@ -33,7 +40,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           if (settings.primaryColor) {
             const { h, s, l } = settings.primaryColor;
             const primaryColor = `${h} ${s}% ${l}%`;
-            const ringColor = `${h} ${s}% ${Math.max(0, l - 10)}%`;
+            const ringColor = `${h} ${s}% ${l}%`;
             document.documentElement.style.setProperty('--primary', primaryColor);
             document.documentElement.style.setProperty('--ring', ringColor);
           }
@@ -50,19 +57,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
         } else {
           // Reset to default if no theme is set
-          document.documentElement.style.removeProperty('--primary');
-          document.documentElement.style.removeProperty('--ring');
-          document.documentElement.style.removeProperty('--background');
-          document.documentElement.style.removeProperty('--secondary');
+          resetThemeToDefault();
         }
       });
       return () => unsubscribe();
     } else {
         // Reset to default when logged out or no schoolId
-        document.documentElement.style.removeProperty('--primary');
-        document.documentElement.style.removeProperty('--ring');
-        document.documentElement.style.removeProperty('--background');
-        document.documentElement.style.removeProperty('--secondary');
+        resetThemeToDefault();
     }
   }, [user, schoolId]);
 

@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Palette } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
+import { ref, onValue, set, remove } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
 
@@ -26,6 +26,12 @@ type ThemeSettings = {
   secondaryColor: ColorSettings;
 };
 
+const defaultTheme = {
+  primary: { h: 212, s: 72, l: 59 },
+  background: { h: 45, s: 100, l: 98 },
+  secondary: { h: 45, s: 60, l: 96 },
+};
+
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
   const schoolId = useSchoolId();
@@ -34,19 +40,19 @@ export default function SettingsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   // State for Primary Color
-  const [primaryHue, setPrimaryHue] = useState(212);
-  const [primarySaturation, setPrimarySaturation] = useState(72);
-  const [primaryLightness, setPrimaryLightness] = useState(59);
+  const [primaryHue, setPrimaryHue] = useState(defaultTheme.primary.h);
+  const [primarySaturation, setPrimarySaturation] = useState(defaultTheme.primary.s);
+  const [primaryLightness, setPrimaryLightness] = useState(defaultTheme.primary.l);
 
   // State for Background Color
-  const [backgroundHue, setBackgroundHue] = useState(208);
-  const [backgroundSaturation, setBackgroundSaturation] = useState(100);
-  const [backgroundLightness, setBackgroundLightness] = useState(97);
+  const [backgroundHue, setBackgroundHue] = useState(defaultTheme.background.h);
+  const [backgroundSaturation, setBackgroundSaturation] = useState(defaultTheme.background.s);
+  const [backgroundLightness, setBackgroundLightness] = useState(defaultTheme.background.l);
 
   // State for Secondary Color
-  const [secondaryHue, setSecondaryHue] = useState(210);
-  const [secondarySaturation, setSecondarySaturation] = useState(40);
-  const [secondaryLightness, setSecondaryLightness] = useState(96);
+  const [secondaryHue, setSecondaryHue] = useState(defaultTheme.secondary.h);
+  const [secondarySaturation, setSecondarySaturation] = useState(defaultTheme.secondary.s);
+  const [secondaryLightness, setSecondaryLightness] = useState(defaultTheme.secondary.l);
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged(setUser);
@@ -81,6 +87,9 @@ export default function SettingsPage() {
             setSecondarySaturation(settings.secondaryColor.s);
             setSecondaryLightness(settings.secondaryColor.l);
         }
+      } else {
+        // If no settings in DB, reset to default state
+        handleResetToDefault(false);
       }
       setLoading(false);
     });
@@ -125,6 +134,38 @@ export default function SettingsPage() {
     }
   };
   
+  const handleResetToDefault = async (showToast = true) => {
+    // Reset state
+    setPrimaryHue(defaultTheme.primary.h);
+    setPrimarySaturation(defaultTheme.primary.s);
+    setPrimaryLightness(defaultTheme.primary.l);
+    setBackgroundHue(defaultTheme.background.h);
+    setBackgroundSaturation(defaultTheme.background.s);
+    setBackgroundLightness(defaultTheme.background.l);
+    setSecondaryHue(defaultTheme.secondary.h);
+    setSecondarySaturation(defaultTheme.secondary.s);
+    setSecondaryLightness(defaultTheme.secondary.l);
+
+    // Remove from database if user is logged in
+    if (user && schoolId) {
+        setLoading(true);
+        try {
+            const settingsRef = ref(database, `schools/${schoolId}/settings/theme`);
+            await remove(settingsRef);
+            if (showToast) {
+                toast({ title: 'Theme Reset', description: 'The theme has been reset to the system default.' });
+            }
+        } catch (error: any) {
+            console.error("Failed to reset theme:", error);
+            if (showToast) {
+                toast({ title: 'Error', description: "Could not reset theme in the database.", variant: 'destructive' });
+            }
+        } finally {
+            setLoading(false);
+        }
+    }
+  };
+
   const primaryPreviewColor = `hsl(${primaryHue}, ${primarySaturation}%, ${primaryLightness}%)`;
   const backgroundPreviewColor = `hsl(${backgroundHue}, ${backgroundSaturation}%, ${backgroundLightness}%)`;
   const secondaryPreviewColor = `hsl(${secondaryHue}, ${secondarySaturation}%, ${secondaryLightness}%)`;
@@ -235,7 +276,10 @@ export default function SettingsPage() {
       </div>
 
        {isAdmin && (
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-end mt-6 gap-2">
+            <Button onClick={() => handleResetToDefault()} variant="outline" disabled={loading}>
+                Reset to Default
+            </Button>
             <Button onClick={handleSaveChanges} disabled={loading} size="lg">
                 {loading ? 'Saving...' : 'Save All Changes'}
             </Button>
