@@ -129,9 +129,12 @@ export default function ParentLoginPage() {
           </div>
         </CardContent>
       </Card>
-      <div className="mt-4 text-center text-sm">
+      <div className="mt-4 text-center text-sm space-x-4">
           <Link href="/login" className="underline">
-            Back to School Staff Login
+            School Staff Login
+          </Link>
+          <Link href="/student-login" className="underline">
+            Student Login
           </Link>
         </div>
     </div>

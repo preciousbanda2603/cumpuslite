@@ -28,6 +28,14 @@ import { ref, push, set, onValue } from 'firebase/database';
 import { Textarea } from '@/components/ui/textarea';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { customAlphabet } from 'nanoid';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+
+// Create a secondary auth instance for creating student accounts
+// This prevents the admin from being logged out
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+const secondaryApp = getApps().length > 1 ? getApp("secondary") : initializeApp(auth.app.options, "secondary");
+const secondaryAuth = getAuth(secondaryApp);
 
 type Class = {
   id: string;
@@ -88,6 +96,8 @@ export default function AddStudentPage() {
 
     const formData = new FormData(event.currentTarget);
     const name = formData.get('name') as string;
+    const password = formData.get('password') as string;
+    const admissionNo = formData.get('admission-no') as string;
     const enrollmentDate = formData.get('enrollment-date') as string;
     const parentName = formData.get('parent-name') as string;
     const parentPhone = formData.get('parent-phone') as string;
@@ -96,11 +106,20 @@ export default function AddStudentPage() {
     const healthStatus = formData.get('health-status') as string;
     
     const selectedClass = classes.find(c => c.id === selectedClassId);
-
-    if (!name || !selectedClassId || !enrollmentDate || !parentName || !parentPhone || !parentEmail) {
+    
+    if (!name || !selectedClassId || !enrollmentDate || !parentName || !parentPhone || !parentEmail || !password) {
         toast({
             title: 'Missing Information',
-            description: 'Please fill out all required fields.',
+            description: 'Please fill out all required fields, including password.',
+            variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+    }
+     if (password.length < 6) {
+        toast({
+            title: 'Weak Password',
+            description: 'The student password must be at least 6 characters long.',
             variant: 'destructive',
         });
         setLoading(false);
@@ -108,9 +127,15 @@ export default function AddStudentPage() {
     }
 
     try {
+      // Use admission number to create a unique, non-public email
+      const studentEmail = `${admissionNo.toLowerCase()}@school.app`;
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, studentEmail, password);
+      const studentUser = userCredential.user;
+
       const studentsRef = ref(database, `schools/${schoolId}/students`);
       const newStudentRef = push(studentsRef);
       await set(newStudentRef, {
+        uid: studentUser.uid,
         name,
         admissionNo: admissionNo,
         classId: selectedClassId,
@@ -127,15 +152,19 @@ export default function AddStudentPage() {
 
       toast({
         title: 'Success!',
-        description: `Student '${name}' has been added.`,
+        description: `Student '${name}' has been added and their account created.`,
       });
       router.push('/students');
 
     } catch (error: any) {
       console.error("Failed to add student:", error);
+      let errorMessage = 'An unexpected error occurred.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This admission number has already been used to create an account.';
+      }
       toast({
         title: 'Error',
-        description: error.message || 'An unexpected error occurred.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -149,45 +178,56 @@ export default function AddStudentPage() {
         <CardHeader>
           <CardTitle>Add New Student</CardTitle>
           <CardDescription>
-            Fill out the form below to enroll a new student.
+            Fill out the form below to enroll a new student and create their portal account.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">Student's Full Name</Label>
-              <Input id="name" name="name" placeholder="e.g. John Smith" required />
+            <div className="space-y-4 border-b pb-6">
+                 <h3 className="text-lg font-medium">Student Details</h3>
+                 <div className="space-y-2">
+                    <Label htmlFor="name">Student's Full Name</Label>
+                    <Input id="name" name="name" placeholder="e.g. John Smith" required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="admission-no">Admission Number</Label>
+                    <Input id="admission-no" name="admission-no" value={admissionNo} readOnly />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="enrollment-date">Enrollment Date</Label>
+                    <Input id="enrollment-date" name="enrollment-date" type="date" required />
+                </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="class">Starting Class</Label>
+                        <Select name="class" required value={selectedClassId} onValueChange={setSelectedClassId}>
+                        <SelectTrigger id="class">
+                            <SelectValue placeholder="Select a class" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {classes.length > 0 ? (
+                            classes.map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id}>
+                                {cls.name}
+                                </SelectItem>
+                            ))
+                            ) : (
+                            <SelectItem value="no-classes" disabled>No classes available</SelectItem>
+                            )}
+                        </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="password">Set Password</Label>
+                        <Input id="password" name="password" type="password" required />
+                    </div>
+                </div>
             </div>
-             <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-2">
-                <Label htmlFor="admission-no">Admission Number</Label>
-                <Input id="admission-no" name="admission-no" value={admissionNo} readOnly />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="enrollment-date">Enrollment Date</Label>
-                <Input id="enrollment-date" name="enrollment-date" type="date" required />
-              </div>
-            </div>
-             <div className="space-y-2">
-                <Label htmlFor="class">Starting Class</Label>
-                <Select name="class" required value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger id="class">
-                    <SelectValue placeholder="Select a class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes.length > 0 ? (
-                       classes.map((cls) => (
-                        <SelectItem key={cls.id} value={cls.id}>
-                          {cls.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-classes" disabled>No classes available</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            <div className="space-y-4 border-t pt-6">
+            
+            <div className="space-y-4 border-b pb-6">
+                 <h3 className="text-lg font-medium">Parent/Guardian Details</h3>
                  <div className="space-y-2">
                     <Label htmlFor="parent-name">Parent's Full Name</Label>
                     <Input id="parent-name" name="parent-name" placeholder="e.g. Jane Smith" required />
@@ -207,12 +247,13 @@ export default function AddStudentPage() {
                     <Input id="parent-nrc-passport" name="parent-nrc-passport" placeholder="Enter ID number" />
                 </div>
             </div>
-             <div className="space-y-2 border-t pt-6">
+             <div className="space-y-2">
+                <h3 className="text-lg font-medium">Additional Information</h3>
                 <Label htmlFor="health-status">Student's Health Status</Label>
                 <Textarea id="health-status" name="health-status" placeholder="e.g. Allergies, medical conditions, etc."/>
             </div>
            
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-4">
                <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
                 Cancel
               </Button>

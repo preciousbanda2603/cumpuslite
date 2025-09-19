@@ -187,10 +187,15 @@ export default function LoginPage() {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            Are you a parent?{" "}
-            <Link href="/parent-login" className="underline">
-              Parent Portal Login
-            </Link>
+            Are you a student or parent?{" "}
+             <div className="flex justify-center gap-4 mt-2">
+                <Link href="/student-login" className="underline">
+                    Student Login
+                </Link>
+                <Link href="/parent-login" className="underline">
+                    Parent Login
+                </Link>
+            </div>
           </div>
         </CardContent>
       </Card>
