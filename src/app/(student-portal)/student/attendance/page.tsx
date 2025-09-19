@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -87,6 +87,19 @@ export default function StudentAttendancePage() {
     return () => unsubscribe();
   }, [student, selectedDate]);
   
+  const attendanceSummary = useMemo(() => {
+    if (!attendance) {
+      return { present: 0, absent: 0, late: 0, sick: 0 };
+    }
+    const counts = { present: 0, absent: 0, late: 0, sick: 0 };
+    Object.values(attendance).forEach(status => {
+      if (status in counts) {
+        (counts as any)[status]++;
+      }
+    });
+    return counts;
+  }, [attendance]);
+  
   const getStatusForDay = (day: Date) => {
     if (!attendance) return 'default';
     const dateStr = format(day, 'yyyy-MM-dd');
@@ -145,13 +158,13 @@ export default function StudentAttendancePage() {
          <div>
           <Card>
             <CardHeader>
-              <CardTitle>Legend</CardTitle>
+              <CardTitle>Monthly Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-green-200" /> Present</div>
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-200" /> Absent</div>
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-200" /> Late</div>
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-blue-200" /> Sick</div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-green-200" /> Present</div> <span className="font-semibold">{attendanceSummary.present}</span></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-200" /> Absent</div> <span className="font-semibold">{attendanceSummary.absent}</span></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-200" /> Late</div> <span className="font-semibold">{attendanceSummary.late}</span></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-blue-200" /> Sick</div> <span className="font-semibold">{attendanceSummary.sick}</span></div>
                 <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full border" /> No Record</div>
             </CardContent>
           </Card>
