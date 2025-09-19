@@ -11,6 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+
 
 type School = { name: string, address: string, contactPhone: string };
 type Student = { id: string; name: string; classId: string; admissionNo?: string };
@@ -33,6 +36,8 @@ type PerformanceData = {
   comment: string;
 };
 
+const terms = ["Term 1", "Term 2", "Term 3"];
+
 export default function ReportCardPage() {
   const params = useParams();
   const { studentId } = params as { studentId: string };
@@ -48,6 +53,8 @@ export default function ReportCardPage() {
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [extras, setExtras] = useState<ReportCardExtras>({});
   const [loading, setLoading] = useState(true);
+  const [availableTerms, setAvailableTerms] = useState<string[]>([]);
+  const [selectedTerm, setSelectedTerm] = useState('');
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => setUser(user));
@@ -57,13 +64,47 @@ export default function ReportCardPage() {
   useEffect(() => {
     if (!user || !schoolId || !studentId) return;
 
+    const findAvailableTerms = async () => {
+        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
+        const resultsSnap = await get(resultsRef);
+        if (resultsSnap.exists()) {
+            const terms = Object.keys(resultsSnap.val());
+            setAvailableTerms(terms);
+            if (terms.length > 0) {
+                 // Select the most recent term by default
+                const sortedTerms = terms.sort((a,b) => {
+                    const yearA = parseInt(a.split(' ')[2]);
+                    const termA = parseInt(a.split(' ')[1]);
+                    const yearB = parseInt(b.split(' ')[2]);
+                    const termB = parseInt(b.split(' ')[1]);
+                    if (yearA !== yearB) return yearB - yearA;
+                    return termB - termA;
+                });
+                setSelectedTerm(sortedTerms[0]);
+            }
+        }
+    };
+    findAvailableTerms();
+
+  }, [user, schoolId, studentId]);
+
+  useEffect(() => {
+    if (!user || !schoolId || !studentId || !selectedTerm) {
+        if (availableTerms.length > 0 && !selectedTerm) {
+            // still waiting for default term to be set
+        } else {
+             setLoading(false);
+        }
+        return;
+    };
+
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Step 1: Fetch School, Student, and Extras data
+        // Step 1: Fetch School, Student, and Extras data for the selected term
         const schoolRef = ref(database, `schools/${schoolId}`);
         const studentRef = ref(database, `schools/${schoolId}/students/${studentId}`);
-        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}`);
+        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}/${selectedTerm}`);
         
         const [schoolSnap, studentSnap, extrasSnap] = await Promise.all([get(schoolRef), get(studentRef), get(extrasRef)]);
         
@@ -79,6 +120,8 @@ export default function ReportCardPage() {
 
         if (extrasSnap.exists()) {
             setExtras(extrasSnap.val());
+        } else {
+            setExtras({}); // Clear extras if none for this term
         }
 
         // Step 2: Fetch Class Info using student's classId
@@ -111,8 +154,8 @@ export default function ReportCardPage() {
             console.warn("Class has no grade, cannot fetch subjects.");
         }
 
-        // Step 5: Fetch Results for the student
-        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
+        // Step 5: Fetch Results for the student for the selected term
+        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}/${selectedTerm}`);
         const resultsSnap = await get(resultsRef);
         const results: Results = resultsSnap.exists() ? resultsSnap.val() : {};
 
@@ -145,7 +188,7 @@ export default function ReportCardPage() {
       }
     };
     fetchData();
-  }, [user, schoolId, studentId, router, toast]);
+  }, [user, schoolId, studentId, router, toast, selectedTerm, availableTerms]);
   
   const handlePrint = () => window.print();
 
@@ -156,11 +199,26 @@ export default function ReportCardPage() {
   return (
     <>
       <div className="bg-muted/40 p-4 print:hidden flex items-center justify-between sticky top-0 z-10">
-        <Button variant="outline" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Class
-        </Button>
-        <h1 className="text-lg font-semibold">Student Report Card</h1>
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" onClick={() => router.back()}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+            {availableTerms.length > 0 && (
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="term-select">Term</Label>
+                    <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                        <SelectTrigger id="term-select" className="w-[180px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableTerms.map(term => <SelectItem key={term} value={term}>{term}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+        </div>
+        <h1 className="text-lg font-semibold hidden md:block">Student Report Card</h1>
         <Button size="sm" onClick={handlePrint}>
           <Printer className="mr-2 h-4 w-4" />
           Print Report
@@ -196,14 +254,20 @@ export default function ReportCardPage() {
           .report-card .signatures div { display: inline-block; width: 45%; margin-top: 40px; }
           .report-card .footer { text-align: center; font-size: 0.9em; color: #666; margin-top: 40px; }
       `}</style>
-
+        
+      {availableTerms.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+              <p className="text-lg">No Results Found</p>
+              <p>There are no report cards available for this student yet.</p>
+          </div>
+      ) : (
       <div className="print-container">
         <div className="report-card">
             <div className="school-info">
                 <h1>Ministry of Education - Zambia</h1>
                 <h2>{school?.name}</h2>
                 <p>{school?.address} • {school?.contactPhone}</p>
-                <h3>Term Report Card – Term 2 2024</h3>
+                <h3>Term Report Card – {selectedTerm}</h3>
             </div>
 
             <div className="student-info">
@@ -302,8 +366,7 @@ export default function ReportCardPage() {
             </div>
         </div>
       </div>
+       )}
     </>
   );
 }
-
-    

@@ -31,7 +31,7 @@ import { useSchoolId } from '@/hooks/use-school-id';
 import { Textarea } from '@/components/ui/textarea';
 import { generateReportCardComments } from '@/ai/flows/report-card-assistant';
 import type { ReportCardData } from '@/ai/schemas/report-card-schemas';
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type Student = { id: string; name: string; classId: string; };
 type Subject = { id: string; name: string; grade: number; };
@@ -43,6 +43,8 @@ type ReportCardExtras = {
     comments?: { strengths?: string; improvements?: string; };
 };
 type UserRole = 'admin' | 'class_teacher' | 'subject_teacher' | 'other';
+
+const terms = ["Term 1", "Term 2", "Term 3"];
 
 export default function StudentResultsPage() {
   const params = useParams();
@@ -60,7 +62,12 @@ export default function StudentResultsPage() {
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear().toString());
+  const [selectedTerm, setSelectedTerm] = useState(`Term ${Math.ceil((new Date().getMonth() + 1) / 4)}`);
+
   const canPerformActions = userRole === 'admin' || userRole === 'class_teacher';
+  
+  const termId = `${selectedTerm} ${currentYear}`;
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => setUser(user));
@@ -70,89 +77,89 @@ export default function StudentResultsPage() {
   useEffect(() => {
     if (!user || !schoolId || !classId || !studentId) return;
 
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-
-        // Fetch Student Info
-        const studentRef = ref(database, `schools/${schoolId}/students/${studentId}`);
-        const studentSnap = await get(studentRef);
-        if (!studentSnap.exists()) {
-          toast({ title: 'Error', description: 'Student not found.', variant: 'destructive' });
-          router.back();
-          return;
-        }
-        const studentData = { id: studentId, ...studentSnap.val() };
-        setStudent(studentData);
-        
-        // Fetch Class Info to get grade
-        const classRef = ref(database, `schools/${schoolId}/classes/${studentData.classId}`);
-        const classSnap = await get(classRef);
-        if (!classSnap.exists()) {
-           toast({ title: 'Error', description: 'Class data is missing for this student.', variant: 'destructive' });
-           setLoading(false);
-           return;
-        }
-        const classData = classSnap.val();
-
-        // Determine user role
-        if (user.uid === schoolId) {
-            setUserRole('admin');
-        } else {
-            const teachersRef = ref(database, `schools/${schoolId}/teachers`);
-            const teachersSnap = await get(teachersRef);
-            const teachersData = teachersSnap.val() || {};
-            const currentTeacher = Object.values(teachersData).find((t: any) => t.uid === user.uid) as any;
+    const fetchStaticData = async () => {
+        try {
+            // Fetch Student Info
+            const studentRef = ref(database, `schools/${schoolId}/students/${studentId}`);
+            const studentSnap = await get(studentRef);
+            if (!studentSnap.exists()) {
+            toast({ title: 'Error', description: 'Student not found.', variant: 'destructive' });
+            router.back();
+            return;
+            }
+            const studentData = { id: studentId, ...studentSnap.val() };
+            setStudent(studentData);
             
-            if (currentTeacher) {
-                const teacherId = Object.keys(teachersData).find(key => teachersData[key].uid === user.uid);
-                if (teacherId === classData.classTeacherId) {
-                    setUserRole('class_teacher');
-                } else {
-                    setUserRole('subject_teacher');
+            // Fetch Class Info to get grade
+            const classRef = ref(database, `schools/${schoolId}/classes/${studentData.classId}`);
+            const classSnap = await get(classRef);
+            if (!classSnap.exists()) {
+            toast({ title: 'Error', description: 'Class data is missing for this student.', variant: 'destructive' });
+            return;
+            }
+            const classData = classSnap.val();
+
+            // Determine user role
+            if (user.uid === schoolId) {
+                setUserRole('admin');
+            } else {
+                const teachersRef = ref(database, `schools/${schoolId}/teachers`);
+                const teachersSnap = await get(teachersRef);
+                const teachersData = teachersSnap.val() || {};
+                const currentTeacher = Object.values(teachersData).find((t: any) => t.uid === user.uid) as any;
+                
+                if (currentTeacher) {
+                    const teacherId = Object.keys(teachersData).find(key => teachersData[key].uid === user.uid);
+                    if (teacherId === classData.classTeacherId) {
+                        setUserRole('class_teacher');
+                    } else {
+                        setUserRole('subject_teacher');
+                    }
                 }
             }
+
+            // Fetch Subjects for the class's grade, only if grade exists
+            if (classData && typeof classData.grade !== 'undefined') {
+                const subjectsQuery = query(ref(database, `schools/${schoolId}/subjects`), orderByChild('grade'), equalTo(classData.grade));
+                const subjectsSnap = await get(subjectsQuery);
+                const subjectsData = subjectsSnap.val() || {};
+                setSubjects(Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] })));
+            }
+        } catch (error) {
+            console.error("Error fetching static data:", error);
+            toast({ title: 'Error', description: 'Failed to fetch student or subject data.', variant: 'destructive' });
         }
-
-
-        // Fetch Subjects for the class's grade, only if grade exists
-        if (classData && typeof classData.grade !== 'undefined') {
-            const subjectsQuery = query(ref(database, `schools/${schoolId}/subjects`), orderByChild('grade'), equalTo(classData.grade));
-            const subjectsSnap = await get(subjectsQuery);
-            const subjectsData = subjectsSnap.val() || {};
-            setSubjects(Object.keys(subjectsData).map(id => ({ id, ...subjectsData[id] })));
-        } else {
-             // Fallback to loading all subjects if grade is not set on the class
-             const allSubjectsRef = ref(database, `schools/${schoolId}/subjects`);
-             const allSubjectsSnap = await get(allSubjectsRef);
-             const allSubjectsData = allSubjectsSnap.val() || {};
-             setSubjects(Object.keys(allSubjectsData).map(id => ({ id, ...allSubjectsData[id] })));
-        }
-
-
-        // Fetch existing results
-        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
-        const resultsSnap = await get(resultsRef);
-        if (resultsSnap.exists()) {
-          setResults(resultsSnap.val());
-        }
-        
-        // Fetch existing extra report card data
-        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}`);
-        const extrasSnap = await get(extrasRef);
-        if (extrasSnap.exists()) {
-          setExtras(extrasSnap.val());
-        }
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({ title: 'Error', description: 'Failed to fetch student or subject data.', variant: 'destructive' });
-      } finally {
-        setLoading(false);
-      }
     };
-    fetchData();
+    
+    fetchStaticData();
   }, [user, schoolId, classId, studentId, router, toast]);
+
+  useEffect(() => {
+    if (!student) return; // Wait for student data to be loaded
+    
+    const fetchTermData = async () => {
+        setLoading(true);
+        try {
+            // Fetch existing results for the term
+            const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}/${termId}`);
+            const resultsSnap = await get(resultsRef);
+            setResults(resultsSnap.exists() ? resultsSnap.val() : {});
+            
+            // Fetch existing extra report card data for the term
+            const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}/${termId}`);
+            const extrasSnap = await get(extrasRef);
+            setExtras(extrasSnap.exists() ? extrasSnap.val() : {});
+        } catch (error) {
+            console.error("Error fetching term data:", error);
+            toast({ title: 'Error', description: `Failed to fetch data for ${termId}.`, variant: 'destructive' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchTermData();
+
+  }, [student, schoolId, studentId, termId, toast]);
 
   const handleResultChange = (subjectId: string, field: string, value: string) => {
     let finalValue: string | number | undefined = value;
@@ -240,13 +247,13 @@ export default function StudentResultsPage() {
     if (!user || !schoolId) return;
     setLoading(true);
     try {
-        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
+        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}/${termId}`);
         await set(resultsRef, results);
 
-        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}`);
+        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}/${termId}`);
         await set(extrasRef, extras);
 
-        toast({ title: 'Success', description: "Student's results and report data have been saved." });
+        toast({ title: 'Success', description: `Student's data for ${termId} has been saved.` });
     } catch (error) {
         console.error("Error saving results:", error);
         toast({ title: 'Error', description: 'Failed to save results.', variant: 'destructive' });
@@ -255,7 +262,7 @@ export default function StudentResultsPage() {
     }
   };
 
-  if (loading || !student) {
+  if (!student) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-1/3" />
@@ -276,177 +283,209 @@ export default function StudentResultsPage() {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Class
             </Button>
-            <h1 className="text-3xl font-bold tracking-tight">
-                Manage Results & Report Data
-            </h1>
-            <p className="text-muted-foreground">Editing term information for <span className="font-semibold text-primary">{student.name}</span>.</p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">
+                        Manage Results & Report Data
+                    </h1>
+                    <p className="text-muted-foreground">Editing term information for <span className="font-semibold text-primary">{student.name}</span>.</p>
+                </div>
+                <div className="flex items-center gap-4 mt-4 md:mt-0">
+                    <div className="grid gap-2">
+                        <Label>Term</Label>
+                        <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {terms.map(term => <SelectItem key={term} value={term}>{term}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label>Year</Label>
+                        <Input className="w-[120px]" value={currentYear} onChange={(e) => setCurrentYear(e.target.value)} />
+                    </div>
+                </div>
+            </div>
         </div>
-        <Card>
-            <CardHeader>
-                <CardTitle>Academic Performance</CardTitle>
-                <CardDescription>Enter scores for each subject (0-100). Averages are calculated automatically.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="overflow-x-auto">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="min-w-[150px] font-bold">Subject</TableHead>
-                            <TableHead className="text-center">Test 1</TableHead>
-                            <TableHead className="text-center">Test 2</TableHead>
-                            <TableHead className="text-center">Mid-Term</TableHead>
-                            <TableHead className="text-center font-bold bg-muted/50">CA (Avg)</TableHead>
-                            <TableHead className="text-center">Final Exam</TableHead>
-                            <TableHead className="text-center font-bold bg-muted/50">Total (Avg)</TableHead>
-                            <TableHead className="text-center">Grade</TableHead>
-                            <TableHead className="text-center min-w-[200px]">Comment</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                       {subjects.map(subject => {
-                        const performance = calculatePerformance(subject.id);
-                        return (
-                        <TableRow key={subject.id}>
-                            <TableCell className="font-medium">{subject.name}</TableCell>
-                             {['test1', 'test2', 'midTerm'].map(assessment => (
-                                <TableCell key={assessment}>
-                                    <Input 
+
+        {loading ? (
+             <Card>
+                <CardContent className="p-6">
+                    <Skeleton className="h-96" />
+                </CardContent>
+            </Card>
+        ) : (
+        <>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Academic Performance</CardTitle>
+                    <CardDescription>Enter scores for each subject (0-100). Averages are calculated automatically.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="min-w-[150px] font-bold">Subject</TableHead>
+                                <TableHead className="text-center">Test 1</TableHead>
+                                <TableHead className="text-center">Test 2</TableHead>
+                                <TableHead className="text-center">Mid-Term</TableHead>
+                                <TableHead className="text-center font-bold bg-muted/50">CA (Avg)</TableHead>
+                                <TableHead className="text-center">Final Exam</TableHead>
+                                <TableHead className="text-center font-bold bg-muted/50">Total (Avg)</TableHead>
+                                <TableHead className="text-center">Grade</TableHead>
+                                <TableHead className="text-center min-w-[200px]">Comment</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {subjects.map(subject => {
+                            const performance = calculatePerformance(subject.id);
+                            return (
+                            <TableRow key={subject.id}>
+                                <TableCell className="font-medium">{subject.name}</TableCell>
+                                {['test1', 'test2', 'midTerm'].map(assessment => (
+                                    <TableCell key={assessment}>
+                                        <Input 
+                                            type="number"
+                                            className="w-20 text-center mx-auto"
+                                            value={results[subject.id]?.[assessment as keyof Results[string]] ?? ''}
+                                            onChange={(e) => handleResultChange(subject.id, assessment, e.target.value)}
+                                            min={0}
+                                            max={100}
+                                            disabled={!canPerformActions}
+                                        />
+                                    </TableCell>
+                                ))}
+                                <TableCell className="text-center font-bold bg-muted/50">{performance.continuousAssessment}</TableCell>
+                                <TableCell>
+                                <Input 
                                         type="number"
                                         className="w-20 text-center mx-auto"
-                                        value={results[subject.id]?.[assessment as keyof Results[string]] ?? ''}
-                                        onChange={(e) => handleResultChange(subject.id, assessment, e.target.value)}
+                                        value={results[subject.id]?.finalExam ?? ''}
+                                        onChange={(e) => handleResultChange(subject.id, 'finalExam', e.target.value)}
                                         min={0}
                                         max={100}
                                         disabled={!canPerformActions}
                                     />
                                 </TableCell>
-                            ))}
-                            <TableCell className="text-center font-bold bg-muted/50">{performance.continuousAssessment}</TableCell>
-                            <TableCell>
-                               <Input 
-                                    type="number"
-                                    className="w-20 text-center mx-auto"
-                                    value={results[subject.id]?.finalExam ?? ''}
-                                    onChange={(e) => handleResultChange(subject.id, 'finalExam', e.target.value)}
-                                    min={0}
-                                    max={100}
-                                    disabled={!canPerformActions}
-                                />
-                            </TableCell>
-                            <TableCell className="text-center font-bold bg-muted/50">{performance.total}</TableCell>
-                            <TableCell>
-                                <Input 
-                                    className="w-20 text-center mx-auto"
-                                    value={results[subject.id]?.grade ?? ''}
-                                    onChange={(e) => handleResultChange(subject.id, 'grade', e.target.value)}
-                                    disabled={!canPerformActions}
-                                />
-                            </TableCell>
-                            <TableCell>
-                                <Input 
-                                    className="w-full text-center mx-auto"
-                                    value={results[subject.id]?.comment ?? ''}
-                                    onChange={(e) => handleResultChange(subject.id, 'comment', e.target.value)}
-                                    disabled={!canPerformActions}
-                                />
-                            </TableCell>
-                        </TableRow>
-                       )})}
-                    </TableBody>
-                </Table>
-                </div>
-            </CardContent>
-        </Card>
-        
-        <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Attendance</CardTitle>
-                    <CardDescription>Enter student's term attendance record.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label>Total Days</Label>
-                            <Input type="number" value={extras.attendance?.totalDays || ''} onChange={e => handleExtrasChange('attendance', 'totalDays', e.target.value)} disabled={!canPerformActions} />
-                        </div>
-                         <div className="grid gap-2">
-                            <Label>Days Present</Label>
-                            <Input type="number" value={extras.attendance?.daysPresent || ''} onChange={e => handleExtrasChange('attendance', 'daysPresent', e.target.value)} disabled={!canPerformActions} />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label>Days Absent</Label>
-                            <Input type="number" value={extras.attendance?.daysAbsent || ''} onChange={e => handleExtrasChange('attendance', 'daysAbsent', e.target.value)} disabled={!canPerformActions} />
-                        </div>
-                         <div className="grid gap-2">
-                            <Label>Punctuality</Label>
-                            <Input value={extras.attendance?.punctuality || ''} onChange={e => handleExtrasChange('attendance', 'punctuality', e.target.value)} placeholder="e.g. Good" disabled={!canPerformActions} />
-                        </div>
+                                <TableCell className="text-center font-bold bg-muted/50">{performance.total}</TableCell>
+                                <TableCell>
+                                    <Input 
+                                        className="w-20 text-center mx-auto"
+                                        value={results[subject.id]?.grade ?? ''}
+                                        onChange={(e) => handleResultChange(subject.id, 'grade', e.target.value)}
+                                        disabled={!canPerformActions}
+                                    />
+                                </TableCell>
+                                <TableCell>
+                                    <Input 
+                                        className="w-full text-center mx-auto"
+                                        value={results[subject.id]?.comment ?? ''}
+                                        onChange={(e) => handleResultChange(subject.id, 'comment', e.target.value)}
+                                        disabled={!canPerformActions}
+                                    />
+                                </TableCell>
+                            </TableRow>
+                        )})}
+                        </TableBody>
+                    </Table>
                     </div>
                 </CardContent>
             </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Personal Development</CardTitle>
-                    <CardDescription>Enter remarks on student's development.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     <div className="grid gap-2">
-                        <Label>Class Participation</Label>
-                        <Input value={extras.development?.participation || ''} onChange={e => handleExtrasChange('development', 'participation', e.target.value)} disabled={!canPerformActions} />
-                    </div>
-                     <div className="grid gap-2">
-                        <Label>Homework & Assignments</Label>
-                        <Input value={extras.development?.homework || ''} onChange={e => handleExtrasChange('development', 'homework', e.target.value)} disabled={!canPerformActions} />
-                    </div>
-                     <div className="grid gap-2">
-                        <Label>Sports & Games</Label>
-                        <Input value={extras.development?.sports || ''} onChange={e => handleExtrasChange('development', 'sports', e.target.value)} disabled={!canPerformActions} />
-                    </div>
-                     <div className="grid gap-2">
-                        <Label>Behaviour / Social Skills</Label>
-                        <Input value={extras.development?.behaviour || ''} onChange={e => handleExtrasChange('development', 'behaviour', e.target.value)} disabled={!canPerformActions} />
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle>Comments & Next Steps</CardTitle>
-                        <CardDescription>Provide overall comments for the student.</CardDescription>
-                    </div>
-                    {canPerformActions && (
-                        <Button variant="outline" onClick={handleGenerateComments} disabled={isGenerating}>
-                           <Sparkles className="mr-2 h-4 w-4" />
-                           {isGenerating ? 'Generating...' : 'Generate with AI'}
-                        </Button>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid gap-2">
-                    <Label>Strengths</Label>
-                    <Textarea value={extras.comments?.strengths || ''} onChange={e => handleExtrasChange('comments', 'strengths', e.target.value)} disabled={!canPerformActions} />
-                </div>
-                 <div className="grid gap-2">
-                    <Label>Areas for Improvement</Label>
-                    <Textarea value={extras.comments?.improvements || ''} onChange={e => handleExtrasChange('comments', 'improvements', e.target.value)} disabled={!canPerformActions} />
-                </div>
-            </CardContent>
-        </Card>
-
-        {canPerformActions && (
-             <div className="flex justify-end mt-4">
-                <Button size="lg" onClick={handleSaveChanges} disabled={loading}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {loading ? 'Saving...' : 'Save All Changes'}
-                </Button>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Attendance</CardTitle>
+                        <CardDescription>Enter student's term attendance record.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label>Total Days</Label>
+                                <Input type="number" value={extras.attendance?.totalDays || ''} onChange={e => handleExtrasChange('attendance', 'totalDays', e.target.value)} disabled={!canPerformActions} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Days Present</Label>
+                                <Input type="number" value={extras.attendance?.daysPresent || ''} onChange={e => handleExtrasChange('attendance', 'daysPresent', e.target.value)} disabled={!canPerformActions} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label>Days Absent</Label>
+                                <Input type="number" value={extras.attendance?.daysAbsent || ''} onChange={e => handleExtrasChange('attendance', 'daysAbsent', e.target.value)} disabled={!canPerformActions} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Punctuality</Label>
+                                <Input value={extras.attendance?.punctuality || ''} onChange={e => handleExtrasChange('attendance', 'punctuality', e.target.value)} placeholder="e.g. Good" disabled={!canPerformActions} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Personal Development</CardTitle>
+                        <CardDescription>Enter remarks on student's development.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label>Class Participation</Label>
+                            <Input value={extras.development?.participation || ''} onChange={e => handleExtrasChange('development', 'participation', e.target.value)} disabled={!canPerformActions} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Homework & Assignments</Label>
+                            <Input value={extras.development?.homework || ''} onChange={e => handleExtrasChange('development', 'homework', e.target.value)} disabled={!canPerformActions} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Sports & Games</Label>
+                            <Input value={extras.development?.sports || ''} onChange={e => handleExtrasChange('development', 'sports', e.target.value)} disabled={!canPerformActions} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Behaviour / Social Skills</Label>
+                            <Input value={extras.development?.behaviour || ''} onChange={e => handleExtrasChange('development', 'behaviour', e.target.value)} disabled={!canPerformActions} />
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Comments & Next Steps</CardTitle>
+                            <CardDescription>Provide overall comments for the student.</CardDescription>
+                        </div>
+                        {canPerformActions && (
+                            <Button variant="outline" onClick={handleGenerateComments} disabled={isGenerating}>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            {isGenerating ? 'Generating...' : 'Generate with AI'}
+                            </Button>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid gap-2">
+                        <Label>Strengths</Label>
+                        <Textarea value={extras.comments?.strengths || ''} onChange={e => handleExtrasChange('comments', 'strengths', e.target.value)} disabled={!canPerformActions} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label>Areas for Improvement</Label>
+                        <Textarea value={extras.comments?.improvements || ''} onChange={e => handleExtrasChange('comments', 'improvements', e.target.value)} disabled={!canPerformActions} />
+                    </div>
+                </CardContent>
+            </Card>
+
+            {canPerformActions && (
+                <div className="flex justify-end mt-4">
+                    <Button size="lg" onClick={handleSaveChanges} disabled={loading}>
+                        <Save className="mr-2 h-4 w-4" />
+                        {loading ? 'Saving...' : 'Save All Changes'}
+                    </Button>
+                </div>
+            )}
+        </>
         )}
     </div>
   );
