@@ -29,7 +29,8 @@ import { ArrowLeft, Save, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { Textarea } from '@/components/ui/textarea';
-import { generateReportCardComments, ReportCardData } from '@/ai/flows/report-card-assistant';
+import { generateReportCardComments } from '@/ai/flows/report-card-assistant';
+import type { ReportCardData } from '@/ai/schemas/report-card-schemas';
 
 
 type Student = { id: string; name: string; classId: string; };
