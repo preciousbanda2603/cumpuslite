@@ -16,6 +16,7 @@ import {
   BookUser,
   Megaphone,
   UserPlus,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   ChartContainer,
@@ -28,6 +29,9 @@ import { onValue, ref, query, orderByChild, limitToLast } from 'firebase/databas
 import type { User } from 'firebase/auth';
 import { format, subMonths } from 'date-fns';
 import { useSchoolId } from '@/hooks/use-school-id';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 const chartConfig = {
   enrollments: {
@@ -174,6 +178,17 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold tracking-tight">School Dashboard</h1>
         <p className="text-muted-foreground">An overview of your school's key metrics and activities.</p>
       </section>
+
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>AI Features Configuration Required</AlertTitle>
+        <AlertDescription>
+          It looks like the AI services for your project are not enabled. Please follow our guide to complete the setup.
+          <Button asChild variant="link" className="p-0 h-auto ml-2">
+            <Link href="/ai-setup-guide">View Setup Guide</Link>
+          </Button>
+        </AlertDescription>
+      </Alert>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
