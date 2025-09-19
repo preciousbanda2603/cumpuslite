@@ -345,22 +345,42 @@ export default function StudentResultsPage() {
                             return (
                             <TableRow key={subject.id}>
                                 <TableCell className="font-medium">{subject.name}</TableCell>
-                                {['test1', 'test2', 'midTerm'].map(assessment => (
-                                    <TableCell key={assessment}>
-                                        <Input 
-                                            type="number"
-                                            className="w-20 text-center mx-auto"
-                                            value={results[subject.id]?.[assessment as keyof Results[string]] ?? ''}
-                                            onChange={(e) => handleResultChange(subject.id, assessment, e.target.value)}
-                                            min={0}
-                                            max={100}
-                                            disabled={!canPerformActions}
-                                        />
-                                    </TableCell>
-                                ))}
+                                <TableCell>
+                                    <Input
+                                        type="number"
+                                        className="w-20 text-center mx-auto"
+                                        value={results[subject.id]?.test1 ?? ''}
+                                        onChange={(e) => handleResultChange(subject.id, 'test1', e.target.value)}
+                                        min={0}
+                                        max={100}
+                                        disabled={!canPerformActions}
+                                    />
+                                </TableCell>
+                                 <TableCell>
+                                    <Input
+                                        type="number"
+                                        className="w-20 text-center mx-auto"
+                                        value={results[subject.id]?.test2 ?? ''}
+                                        onChange={(e) => handleResultChange(subject.id, 'test2', e.target.value)}
+                                        min={0}
+                                        max={100}
+                                        disabled={!canPerformActions}
+                                    />
+                                </TableCell>
+                                 <TableCell>
+                                    <Input
+                                        type="number"
+                                        className="w-20 text-center mx-auto"
+                                        value={results[subject.id]?.midTerm ?? ''}
+                                        onChange={(e) => handleResultChange(subject.id, 'midTerm', e.target.value)}
+                                        min={0}
+                                        max={100}
+                                        disabled={!canPerformActions}
+                                    />
+                                </TableCell>
                                 <TableCell className="text-center font-bold bg-muted/50">{performance.continuousAssessment}</TableCell>
                                 <TableCell>
-                                <Input 
+                                    <Input 
                                         type="number"
                                         className="w-20 text-center mx-auto"
                                         value={results[subject.id]?.finalExam ?? ''}
@@ -490,5 +510,3 @@ export default function StudentResultsPage() {
     </div>
   );
 }
-
-    
