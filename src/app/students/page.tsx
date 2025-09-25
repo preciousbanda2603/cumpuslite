@@ -68,6 +68,7 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [guardianshipFilter, setGuardianshipFilter] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -118,13 +119,22 @@ export default function StudentsPage() {
   }, [user, schoolId]);
 
   useEffect(() => {
-    const results = students.filter(student =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.admissionNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.disabilities?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    let results = students;
+
+    if (searchTerm) {
+        results = results.filter(student =>
+            student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            student.admissionNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            student.disabilities?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }
+
+    if (guardianshipFilter) {
+        results = results.filter(student => student.guardianshipStatus === guardianshipFilter);
+    }
+
     setFilteredStudents(results);
-  }, [searchTerm, students]);
+  }, [searchTerm, guardianshipFilter, students]);
 
   const openEditDialog = (student: Student) => {
     setSelectedStudent(student);
@@ -181,12 +191,25 @@ export default function StudentsPage() {
       </div>
       <Card>
         <CardHeader>
-           <Input
-            placeholder="Search by name, admission no, or disability..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Input
+                placeholder="Search by name, admission no, or disability..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+            />
+             <Select value={guardianshipFilter} onValueChange={setGuardianshipFilter}>
+                <SelectTrigger className="w-full sm:w-[280px]">
+                    <SelectValue placeholder="Filter by Guardianship Status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="">All Statuses</SelectItem>
+                    <SelectItem value="Both Parents">Both Parents</SelectItem>
+                    <SelectItem value="Single Parent">Single Parent</SelectItem>
+                    <SelectItem value="Guardian / Orphan">Guardian / Orphan</SelectItem>
+                </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
