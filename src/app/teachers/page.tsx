@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from "next/link";
@@ -29,6 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 type Teacher = {
   id: string;
@@ -39,6 +41,7 @@ type Teacher = {
   avatar: string;
   salary?: number;
   startDate?: string;
+  disabilities?: string;
 };
 
 
@@ -98,7 +101,8 @@ export default function TeachersPage() {
         email: teacher.email,
         subject: teacher.subject,
         qualifications: teacher.qualifications,
-        salary: teacher.salary
+        salary: teacher.salary,
+        disabilities: teacher.disabilities,
     });
     setIsDialogOpen(true);
   };
@@ -109,7 +113,7 @@ export default function TeachersPage() {
       setFormState({});
   }
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const { name, value } = e.target;
       setFormState(prev => ({ ...prev, [name]: value }));
   }
@@ -191,7 +195,8 @@ export default function TeachersPage() {
                     <CardContent className="text-center">
                         <p className="text-sm text-muted-foreground mb-2">{teacher.qualifications}</p>
                         <p className="text-sm text-muted-foreground mb-4">{teacher.email}</p>
-                         {teacher.salary && <p className="text-sm font-semibold mb-4">ZMW {teacher.salary.toFixed(2)}</p>}
+                         {teacher.salary && <p className="text-sm font-semibold mb-2">ZMW {teacher.salary.toFixed(2)}</p>}
+                         {teacher.disabilities && <p className="text-xs text-muted-foreground italic mb-4">Disabilities: {teacher.disabilities}</p>}
                         {isAdmin ? (
                             <Button variant="outline" onClick={() => openDialog(teacher)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>
                         ) : (
@@ -235,6 +240,10 @@ export default function TeachersPage() {
              <div className="grid gap-2">
                 <Label htmlFor="salary">Monthly Salary (ZMW)</Label>
                 <Input id="salary" name="salary" type="number" value={formState.salary || ''} onChange={handleFormChange} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="disabilities">Disabilities</Label>
+                <Textarea id="disabilities" name="disabilities" value={formState.disabilities || ''} onChange={handleFormChange} />
             </div>
           </div>
           <DialogFooter>

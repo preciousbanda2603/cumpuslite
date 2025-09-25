@@ -104,6 +104,7 @@ export default function AddStudentPage() {
     const parentEmail = formData.get('parent-email') as string;
     const parentNrcPassport = formData.get('parent-nrc-passport') as string;
     const healthStatus = formData.get('health-status') as string;
+    const disabilities = formData.get('disabilities') as string;
     
     const selectedClass = classes.find(c => c.id === selectedClassId);
     
@@ -146,6 +147,7 @@ export default function AddStudentPage() {
         parentEmail,
         parentNrcPassport,
         healthStatus,
+        disabilities,
         status: 'Active',
         createdAt: new Date().toISOString(),
       });
@@ -249,8 +251,14 @@ export default function AddStudentPage() {
             </div>
              <div className="space-y-2">
                 <h3 className="text-lg font-medium">Additional Information</h3>
-                <Label htmlFor="health-status">Student's Health Status</Label>
-                <Textarea id="health-status" name="health-status" placeholder="e.g. Allergies, medical conditions, etc."/>
+                <div className="space-y-2">
+                    <Label htmlFor="health-status">Student's Health Status</Label>
+                    <Textarea id="health-status" name="health-status" placeholder="e.g. Allergies, medical conditions, etc."/>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="disabilities">Disabilities (if any)</Label>
+                    <Textarea id="disabilities" name="disabilities" placeholder="e.g. Visual impairment, learning disability, etc."/>
+                </div>
             </div>
            
             <div className="flex justify-end gap-2 pt-4">

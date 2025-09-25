@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -26,6 +27,7 @@ import { useState, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
+import { Textarea } from '@/components/ui/textarea';
 
 type Subject = {
   id: string;
@@ -88,6 +90,7 @@ export default function AddTeacherPage() {
     const qualifications = formData.get('qualifications') as string;
     const salary = formData.get('salary') as string;
     const startDate = formData.get('start-date') as string;
+    const disabilities = formData.get('disabilities') as string;
     
     if (!user || !schoolId) {
         toast({
@@ -136,6 +139,7 @@ export default function AddTeacherPage() {
         qualifications,
         salary: parseFloat(salary),
         startDate,
+        disabilities,
         createdAt: new Date().toISOString(),
       });
       
@@ -250,6 +254,10 @@ export default function AddTeacherPage() {
                         required
                     />
                 </div>
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="disabilities">Disabilities (if any)</Label>
+                <Textarea id="disabilities" name="disabilities" placeholder="e.g. Visual impairment, etc."/>
             </div>
             <div className="flex justify-end gap-2 pt-4">
                <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>

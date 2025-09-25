@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from "next/link";
@@ -34,6 +35,7 @@ type Student = {
   className: string;
   enrollmentDate: string;
   status: 'Active' | 'Inactive';
+  disabilities?: string;
 };
 
 export default function StudentsPage() {
@@ -130,12 +132,13 @@ export default function StudentsPage() {
                 <TableHead>Class</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Enrollment Date</TableHead>
+                <TableHead>Disabilities</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     Loading students...
                   </TableCell>
                 </TableRow>
@@ -147,11 +150,12 @@ export default function StudentsPage() {
                     <TableCell>{student.className}</TableCell>
                     <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
                     <TableCell>{student.enrollmentDate}</TableCell>
+                    <TableCell>{student.disabilities || 'None'}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No students found.
                   </TableCell>
                 </TableRow>
