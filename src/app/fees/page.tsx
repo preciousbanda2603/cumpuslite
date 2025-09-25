@@ -287,6 +287,43 @@ export default function FeesPage() {
     }
   };
   
+  const handleMarkAsPaid = async () => {
+    if (!isAdmin || !selectedFee || selectedFee.status === 'Paid') return;
+
+    const balance = selectedFee.amount - (selectedFee.amountPaid || 0);
+
+    if (balance <= 0) {
+      // If no balance, just update status
+      const feeRef = ref(database, `schools/${schoolId}/fees/${selectedFee.id}`);
+      await update(feeRef, { status: 'Paid' });
+      toast({ title: "Success", description: "Invoice marked as paid." });
+      setIsDetailsOpen(false);
+      return;
+    }
+
+    const feeRef = ref(database, `schools/${schoolId}/fees/${selectedFee.id}`);
+
+    try {
+      const paymentRef = push(ref(database, `schools/${schoolId}/fees/${selectedFee.id}/payments`));
+      await set(paymentRef, {
+        amount: balance,
+        date: new Date().toISOString(),
+        note: 'Full balance paid',
+      });
+
+      await update(feeRef, {
+        amountPaid: selectedFee.amount,
+        status: 'Paid',
+      });
+
+      toast({ title: "Success", description: "Invoice has been fully paid." });
+      setIsDetailsOpen(false);
+    } catch (error) {
+      console.error("Failed to mark as paid:", error);
+      toast({ title: "Error", description: "Could not update invoice status.", variant: "destructive" });
+    }
+  };
+
   const openDetailsDialog = (fee: Fee) => {
       setSelectedFee(fee);
       setIsDetailsOpen(true);
@@ -522,6 +559,7 @@ export default function FeesPage() {
                                     onChange={(e) => setNewPaymentAmount(e.target.value)}
                                 />
                                 <Button onClick={handleAddPayment}>Add Payment</Button>
+                                <Button variant="secondary" onClick={handleMarkAsPaid}>Mark as Paid</Button>
                              </div>
                         </div>
                         )}
