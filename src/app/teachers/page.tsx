@@ -16,7 +16,7 @@ import { PlusCircle, Search, UserPlus, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { auth, database } from "@/lib/firebase";
-import { onValue, ref, set } from "firebase/database";
+import { onValue, ref, set, get } from "firebase/database";
 import type { User } from "firebase/auth";
 import { useSchoolId } from "@/hooks/use-school-id";
 import {
