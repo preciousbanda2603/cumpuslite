@@ -68,7 +68,7 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [guardianshipFilter, setGuardianshipFilter] = useState('');
+  const [guardianshipFilter, setGuardianshipFilter] = useState('all');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -129,7 +129,7 @@ export default function StudentsPage() {
         );
     }
 
-    if (guardianshipFilter) {
+    if (guardianshipFilter && guardianshipFilter !== 'all') {
         results = results.filter(student => student.guardianshipStatus === guardianshipFilter);
     }
 
@@ -203,7 +203,7 @@ export default function StudentsPage() {
                     <SelectValue placeholder="Filter by Guardianship Status" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">All Statuses</SelectItem>
+                    <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="Both Parents">Both Parents</SelectItem>
                     <SelectItem value="Single Parent">Single Parent</SelectItem>
                     <SelectItem value="Guardian / Orphan">Guardian / Orphan</SelectItem>
