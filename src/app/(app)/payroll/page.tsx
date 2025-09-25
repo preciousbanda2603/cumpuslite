@@ -176,7 +176,7 @@ export default function PayrollPage() {
                                 return (
                                 <TableRow key={teacher.id}>
                                     <TableCell className="font-medium">{teacher.name}</TableCell>
-                                    <TableCell>{teacher.salary?.toFixed(2) || 'Not Set'}</TableCell>
+                                    <TableCell>{teacher.salary ? `ZMW ${teacher.salary.toFixed(2)}` : 'Not Set'}</TableCell>
                                     <TableCell>
                                         <Badge variant={status === 'Paid' ? 'default' : 'secondary'}>{status}</Badge>
                                     </TableCell>
