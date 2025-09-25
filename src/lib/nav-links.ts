@@ -20,6 +20,7 @@ import {
   Palette,
   DollarSign,
   HelpCircle,
+  BookOpen,
 } from 'lucide-react';
 
 export const navLinks = [
@@ -33,6 +34,7 @@ export const navLinks = [
   { href: "/timetables", label: "Timetables", icon: CalendarDays },
   { href: "/attendance", label: "Attendance", icon: CheckSquare },
   { href: "/homework", label: "Homework", icon: ClipboardList },
+  { href: "/lesson-plans", label: "Lesson Plans", icon: BookOpen },
   { href: "/exams", label: "Quizzes & Exams", icon: FileText },
   { href: "/classes", label: "Online Classes", icon: Clapperboard, isHidden: true },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
