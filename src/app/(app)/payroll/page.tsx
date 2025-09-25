@@ -27,6 +27,7 @@ import { useSchoolId } from '@/hooks/use-school-id';
 import { DollarSign } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type Teacher = {
   id: string;
@@ -158,6 +159,7 @@ export default function PayrollPage() {
                  </div>
             </CardHeader>
             <CardContent className="p-0">
+                <TooltipProvider>
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -181,14 +183,26 @@ export default function PayrollPage() {
                                         <Badge variant={status === 'Paid' ? 'default' : 'secondary'}>{status}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {isAdmin && teacher.salary && (
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm"
-                                                onClick={() => handleStatusChange(teacher.id, teacher.salary!)}
-                                            >
-                                                Mark as {status === 'Paid' ? 'Pending' : 'Paid'}
-                                            </Button>
+                                        {isAdmin && (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <div className="inline-block">
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm"
+                                                            onClick={() => handleStatusChange(teacher.id, teacher.salary!)}
+                                                            disabled={!teacher.salary}
+                                                        >
+                                                            Mark as {status === 'Paid' ? 'Pending' : 'Paid'}
+                                                        </Button>
+                                                    </div>
+                                                </TooltipTrigger>
+                                                {!teacher.salary && (
+                                                    <TooltipContent>
+                                                        <p>Please set a salary for this teacher first.</p>
+                                                    </TooltipContent>
+                                                )}
+                                            </Tooltip>
                                         )}
                                     </TableCell>
                                 </TableRow>
@@ -198,6 +212,7 @@ export default function PayrollPage() {
                         )}
                     </TableBody>
                 </Table>
+                </TooltipProvider>
             </CardContent>
         </Card>
     </div>
