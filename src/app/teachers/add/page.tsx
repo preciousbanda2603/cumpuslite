@@ -86,6 +86,8 @@ export default function AddTeacherPage() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const qualifications = formData.get('qualifications') as string;
+    const salary = formData.get('salary') as string;
+    const startDate = formData.get('start-date') as string;
     
     if (!user || !schoolId) {
         toast({
@@ -132,6 +134,8 @@ export default function AddTeacherPage() {
         subject: selectedSubject,
         email,
         qualifications,
+        salary: parseFloat(salary),
+        startDate,
         createdAt: new Date().toISOString(),
       });
       
@@ -169,59 +173,85 @@ export default function AddTeacherPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input id="name" name="name" placeholder="e.g. Jane Doe" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="e.g. j.doe@campus.zm"
+                  required
+                />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" name="name" placeholder="e.g. Jane Doe" required />
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="e.g. j.doe@campus.zm"
-                required
-              />
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Set Initial Password</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
-                placeholder="Set a temporary password"
+                placeholder="Must be at least 6 characters"
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="subject">Primary Subject</Label>
-              <Select name="subject" required value={selectedSubject} onValueChange={setSelectedSubject}>
-                  <SelectTrigger id="subject">
-                    <SelectValue placeholder="Select a subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjects.length > 0 ? (
-                       subjects.map((subject) => (
-                        <SelectItem key={subject.id} value={subject.name}>
-                          {subject.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-subjects" disabled>No subjects configured</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                <Label htmlFor="subject">Primary Subject</Label>
+                <Select name="subject" required value={selectedSubject} onValueChange={setSelectedSubject}>
+                    <SelectTrigger id="subject">
+                        <SelectValue placeholder="Select a subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {subjects.length > 0 ? (
+                        subjects.map((subject) => (
+                            <SelectItem key={subject.id} value={subject.name}>
+                            {subject.name}
+                            </SelectItem>
+                        ))
+                        ) : (
+                        <SelectItem value="no-subjects" disabled>No subjects configured</SelectItem>
+                        )}
+                    </SelectContent>
+                    </Select>
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="qualifications">Qualifications</Label>
+                    <Input
+                        id="qualifications"
+                        name="qualifications"
+                        placeholder="e.g. M.A. in History"
+                        required
+                    />
+                </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="qualifications">Qualifications</Label>
-              <Input
-                id="qualifications"
-                name="qualifications"
-                placeholder="e.g. M.A. in History"
-                required
-              />
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <Label htmlFor="salary">Monthly Salary (ZMW)</Label>
+                    <Input
+                        id="salary"
+                        name="salary"
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 8500.00"
+                        required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="start-date">Start Date</Label>
+                    <Input
+                        id="start-date"
+                        name="start-date"
+                        type="date"
+                        required
+                    />
+                </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-4">
                <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>
                 Cancel
               </Button>
