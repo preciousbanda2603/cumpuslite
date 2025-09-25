@@ -42,13 +42,15 @@ import {
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
-import { Receipt, PlusCircle, Edit, Trash2, CalendarIcon } from 'lucide-react';
+import { Receipt, PlusCircle, Edit, Trash2, CalendarIcon, TrendingUp, TrendingDown } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, push, set, remove } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
+
 
 type Expense = {
   id: string;
@@ -60,12 +62,23 @@ type Expense = {
   updatedAt?: string;
 };
 
+type Payment = {
+  amount: number;
+  date: string; // ISO String
+};
+type Fee = {
+  id: string;
+  payments?: { [paymentId: string]: Payment };
+};
+
+
 const expenseCategories = ['Utilities', 'Salaries', 'Supplies', 'Maintenance', 'Marketing', 'Transport', 'Other'];
 
 export default function ExpensesPage() {
   const [user, setUser] = useState<User | null>(null);
   const schoolId = useSchoolId();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [fees, setFees] = useState<Fee[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
@@ -95,7 +108,10 @@ export default function ExpensesPage() {
   useEffect(() => {
     if (!user || !schoolId) return;
     setLoading(true);
+
     const expensesRef = ref(database, `schools/${schoolId}/expenses`);
+    const feesRef = ref(database, `schools/${schoolId}/fees`);
+
     const unsubscribeExpenses = onValue(expensesRef, (snapshot) => {
       const data = snapshot.val() || {};
       const list: Expense[] = Object.keys(data)
@@ -104,8 +120,17 @@ export default function ExpensesPage() {
       setExpenses(list);
       setLoading(false);
     });
+    
+    const unsubscribeFees = onValue(feesRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const list: Fee[] = Object.keys(data).map(id => ({ id, ...data[id] }));
+      setFees(list);
+    });
 
-    return () => unsubscribeExpenses();
+    return () => {
+      unsubscribeExpenses();
+      unsubscribeFees();
+    }
   }, [user, schoolId]);
 
   const filteredExpenses = useMemo(() => {
@@ -118,10 +143,29 @@ export default function ExpensesPage() {
         return true;
     });
   }, [expenses, startDate, endDate]);
+  
+  const financialSummary = useMemo(() => {
+    const start = startDate ? new Date(startDate.setHours(0, 0, 0, 0)) : null;
+    const end = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null;
 
-  const totalExpenditure = useMemo(() => {
-      return filteredExpenses.reduce((total, expense) => total + expense.amount, 0);
-  }, [filteredExpenses]);
+    const totalExpenditure = filteredExpenses.reduce((total, expense) => total + expense.amount, 0);
+
+    const totalIncome = fees.reduce((incomeTotal, fee) => {
+        if (!fee.payments) return incomeTotal;
+        const paymentsInDateRange = Object.values(fee.payments).filter(payment => {
+            const paymentDate = parseISO(payment.date);
+            if (start && paymentDate < start) return false;
+            if (end && paymentDate > end) return false;
+            return true;
+        });
+        return incomeTotal + paymentsInDateRange.reduce((paymentSum, p) => paymentSum + p.amount, 0);
+    }, 0);
+
+    const netIncome = totalIncome - totalExpenditure;
+    const expenditurePercentage = totalIncome > 0 ? (totalExpenditure / totalIncome) * 100 : 0;
+
+    return { totalIncome, totalExpenditure, netIncome, expenditurePercentage };
+  }, [filteredExpenses, fees, startDate, endDate]);
 
 
   const openDialog = (expense: Partial<Expense> | null = null) => {
@@ -199,9 +243,9 @@ export default function ExpensesPage() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                     <Receipt className="h-8 w-8" />
-                    Expense Tracking
+                    Financial Overview
                 </h1>
-                <p className="text-muted-foreground">Record and manage all school expenditures.</p>
+                <p className="text-muted-foreground">Manage school expenditures and view income analysis.</p>
             </div>
             {isAdmin && (
                 <Button onClick={() => openDialog()}>
@@ -212,17 +256,16 @@ export default function ExpensesPage() {
         </div>
         <Card>
             <CardHeader>
-                <CardTitle>Expenditure Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="flex flex-col md:flex-row gap-4 items-end">
+                <CardTitle>Financial Summary</CardTitle>
+                <CardDescription>Select a date range to analyze income and expenditure.</CardDescription>
+                 <div className="flex flex-col md:flex-row gap-4 items-end pt-4">
                     <div className="grid gap-2">
                         <Label>Start Date</Label>
                          <Popover>
                             <PopoverTrigger asChild>
                             <Button
                                 variant={"outline"}
-                                className={cn("w-[240px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                                className={cn("w-full md:w-[240px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
                             </Button>
@@ -236,7 +279,7 @@ export default function ExpensesPage() {
                             <PopoverTrigger asChild>
                             <Button
                                 variant={"outline"}
-                                className={cn("w-[240px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                                className={cn("w-full md:w-[240px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
                             </Button>
@@ -244,14 +287,39 @@ export default function ExpensesPage() {
                             <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={endDate} onSelect={setEndDate} /></PopoverContent>
                         </Popover>
                     </div>
-                    <div className="border rounded-lg p-4 flex-grow text-center md:text-left">
-                        <p className="text-sm text-muted-foreground">Total Expenditure for Period</p>
-                        <p className="text-2xl font-bold">ZMW {totalExpenditure.toFixed(2)}</p>
+                </div>
+            </CardHeader>
+            <CardContent>
+               <div className="grid gap-4 md:grid-cols-3">
+                    <div className="border rounded-lg p-4 flex flex-col justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground"><TrendingUp className="h-4 w-4 text-green-500" /> Total Income (Fees)</div>
+                        <p className="text-2xl font-bold">ZMW {financialSummary.totalIncome.toFixed(2)}</p>
+                    </div>
+                     <div className="border rounded-lg p-4 flex flex-col justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground"><TrendingDown className="h-4 w-4 text-red-500"/> Total Expenditure</div>
+                        <p className="text-2xl font-bold">ZMW {financialSummary.totalExpenditure.toFixed(2)}</p>
+                    </div>
+                     <div className="border rounded-lg p-4 flex flex-col justify-between">
+                        <div className="text-sm text-muted-foreground">Net Income</div>
+                        <p className={cn("text-2xl font-bold", financialSummary.netIncome >= 0 ? "text-green-600" : "text-red-600")}>
+                           ZMW {financialSummary.netIncome.toFixed(2)}
+                        </p>
+                    </div>
+               </div>
+                <div className="mt-4 border rounded-lg p-4">
+                    <Label className="text-sm text-muted-foreground">Expenditure as % of Income</Label>
+                    <div className="flex items-center gap-4 mt-2">
+                        <Progress value={financialSummary.expenditurePercentage} className="w-full" />
+                        <span className="font-bold text-lg">{financialSummary.expenditurePercentage.toFixed(1)}%</span>
                     </div>
                 </div>
             </CardContent>
         </Card>
         <Card>
+             <CardHeader>
+                <CardTitle>Expense Log</CardTitle>
+                <CardDescription>Detailed list of expenses for the selected period.</CardDescription>
+            </CardHeader>
             <CardContent className="p-0">
             <Table>
                 <TableHeader>
@@ -329,3 +397,5 @@ export default function ExpensesPage() {
     </div>
   );
 }
+
+    
