@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -35,13 +35,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
-import { Receipt, PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { Receipt, PlusCircle, Edit, Trash2, CalendarIcon } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, push, set, remove } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 type Expense = {
   id: string;
@@ -49,6 +56,8 @@ type Expense = {
   category: string;
   amount: number;
   expenseDate: string; // YYYY-MM-DD
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 const expenseCategories = ['Utilities', 'Salaries', 'Supplies', 'Maintenance', 'Marketing', 'Transport', 'Other'];
@@ -68,6 +77,10 @@ export default function ExpensesPage() {
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [expenseDate, setExpenseDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  
+  // Filtering state
+  const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(new Date()));
 
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
@@ -94,6 +107,22 @@ export default function ExpensesPage() {
 
     return () => unsubscribeExpenses();
   }, [user, schoolId]);
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(expense => {
+        const date = parseISO(expense.expenseDate);
+        const start = startDate ? new Date(startDate.setHours(0,0,0,0)) : null;
+        const end = endDate ? new Date(endDate.setHours(23,59,59,999)) : null;
+        if (start && date < start) return false;
+        if (end && date > end) return false;
+        return true;
+    });
+  }, [expenses, startDate, endDate]);
+
+  const totalExpenditure = useMemo(() => {
+      return filteredExpenses.reduce((total, expense) => total + expense.amount, 0);
+  }, [filteredExpenses]);
+
 
   const openDialog = (expense: Partial<Expense> | null = null) => {
     setEditingExpense(expense);
@@ -125,7 +154,7 @@ export default function ExpensesPage() {
         return;
     }
 
-    const expenseData = {
+    const expenseData: Omit<Expense, 'id'> = {
       title,
       category,
       amount: expenseAmount,
@@ -182,6 +211,47 @@ export default function ExpensesPage() {
             )}
         </div>
         <Card>
+            <CardHeader>
+                <CardTitle>Expenditure Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="grid gap-2">
+                        <Label>Start Date</Label>
+                         <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-[240px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={startDate} onSelect={setStartDate} /></PopoverContent>
+                        </Popover>
+                    </div>
+                     <div className="grid gap-2">
+                        <Label>End Date</Label>
+                         <Popover>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn("w-[240px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={endDate} onSelect={setEndDate} /></PopoverContent>
+                        </Popover>
+                    </div>
+                    <div className="border rounded-lg p-4 flex-grow text-center md:text-left">
+                        <p className="text-sm text-muted-foreground">Total Expenditure for Period</p>
+                        <p className="text-2xl font-bold">ZMW {totalExpenditure.toFixed(2)}</p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+        <Card>
             <CardContent className="p-0">
             <Table>
                 <TableHeader>
@@ -196,8 +266,8 @@ export default function ExpensesPage() {
                 <TableBody>
                 {loading ? (
                     <TableRow><TableCell colSpan={5} className="text-center">Loading expenses...</TableCell></TableRow>
-                ) : expenses.length > 0 ? (
-                    expenses.map((expense) => (
+                ) : filteredExpenses.length > 0 ? (
+                    filteredExpenses.map((expense) => (
                     <TableRow key={expense.id}>
                         <TableCell>{format(parseISO(expense.expenseDate), 'PPP')}</TableCell>
                         <TableCell className="font-medium">{expense.title}</TableCell>
@@ -212,7 +282,7 @@ export default function ExpensesPage() {
                     </TableRow>
                     ))
                 ) : (
-                    <TableRow><TableCell colSpan={5} className="text-center h-24">No expenses recorded yet.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">No expenses recorded for the selected period.</TableCell></TableRow>
                 )}
                 </TableBody>
             </Table>
