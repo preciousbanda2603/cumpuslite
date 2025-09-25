@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Edit, Trash2 } from "lucide-react";
 import { auth, database } from "@/lib/firebase";
-import { onValue, ref, set, remove } from "firebase/database";
+import { onValue, ref, set, remove, get } from "firebase/database";
 import type { User } from "firebase/auth";
 import { useSchoolId } from "@/hooks/use-school-id";
 import { Input } from "@/components/ui/input";
@@ -49,22 +49,35 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { disabilityOptions } from "@/lib/disability-options";
+import { Textarea } from "@/components/ui/textarea";
 
 type Student = {
   id: string;
   name: string;
   admissionNo: string;
+  classId: string;
   className: string;
   enrollmentDate: string;
   status: 'Active' | 'Inactive' | 'Suspended' | 'Graduated';
+  parentName?: string;
+  parentPhone?: string;
+  parentEmail?: string;
+  parentNrcPassport?: string;
+  healthStatus?: string;
   disabilities?: string;
   guardianshipStatus?: string;
+};
+
+type Class = {
+  id: string;
+  name: string;
 };
 
 export default function StudentsPage() {
   const [user, setUser] = useState<User | null>(null);
   const schoolId = useSchoolId();
   const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -74,7 +87,7 @@ export default function StudentsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [studentStatus, setStudentStatus] = useState<Student['status']>('Active');
+  const [editFormState, setEditFormState] = useState<Partial<Student>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -94,7 +107,9 @@ export default function StudentsPage() {
     if (!user || !schoolId) return;
 
     const studentsRef = ref(database, `schools/${schoolId}/students`);
-    const unsubscribe = onValue(
+    const classesRef = ref(database, `schools/${schoolId}/classes`);
+
+    const unsubscribeStudents = onValue(
       studentsRef,
       (snapshot) => {
         if (snapshot.exists()) {
@@ -117,7 +132,15 @@ export default function StudentsPage() {
       }
     );
 
-    return () => unsubscribe();
+    const unsubscribeClasses = onValue(classesRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        setClasses(Object.keys(data).map(id => ({ id, ...data[id] })));
+    });
+
+    return () => {
+        unsubscribeStudents();
+        unsubscribeClasses();
+    };
   }, [user, schoolId]);
 
   useEffect(() => {
@@ -144,7 +167,7 @@ export default function StudentsPage() {
 
   const openEditDialog = (student: Student) => {
     setSelectedStudent(student);
-    setStudentStatus(student.status);
+    setEditFormState(student);
     setIsEditDialogOpen(true);
   };
 
@@ -152,17 +175,37 @@ export default function StudentsPage() {
     setSelectedStudent(student);
     setIsDeleteDialogOpen(true);
   };
+
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setEditFormState(prev => ({ ...prev, [name]: value }));
+  };
   
-  const handleStatusChange = async () => {
+  const handleEditSelectChange = (name: keyof Student, value: string) => {
+      setEditFormState(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleUpdateStudent = async () => {
     if (!selectedStudent || !schoolId) return;
 
-    const studentRef = ref(database, `schools/${schoolId}/students/${selectedStudent.id}/status`);
+    const studentRef = ref(database, `schools/${schoolId}/students/${selectedStudent.id}`);
     try {
-        await set(studentRef, studentStatus);
-        toast({ title: "Success", description: "Student status updated." });
+        const studentSnapshot = await get(studentRef);
+        const currentData = studentSnapshot.val();
+        
+        const selectedClass = classes.find(c => c.id === editFormState.classId);
+
+        const updatedData = {
+            ...currentData,
+            ...editFormState,
+            className: selectedClass ? selectedClass.name : currentData.className, // Update className if class changed
+        };
+        
+        await set(studentRef, updatedData);
+        toast({ title: "Success", description: "Student profile updated." });
         setIsEditDialogOpen(false);
     } catch (error) {
-        toast({ title: "Error", description: "Failed to update status.", variant: "destructive" });
+        toast({ title: "Error", description: "Failed to update student profile.", variant: "destructive" });
     }
   };
   
@@ -282,28 +325,94 @@ export default function StudentsPage() {
       </Card>
       
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-                <DialogTitle>Edit Student Status</DialogTitle>
-                <DialogDescription>Change the status for {selectedStudent?.name}.</DialogDescription>
+                <DialogTitle>Edit Student Profile</DialogTitle>
+                <DialogDescription>Update the details for {selectedStudent?.name}.</DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-                <Label htmlFor="status-select">Status</Label>
-                <Select value={studentStatus} onValueChange={(value: Student['status']) => setStudentStatus(value)}>
-                    <SelectTrigger id="status-select">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
-                        <SelectItem value="Suspended">Suspended</SelectItem>
-                        <SelectItem value="Graduated">Graduated</SelectItem>
-                    </SelectContent>
-                </Select>
+            <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="name">Student's Full Name</Label>
+                        <Input id="name" name="name" value={editFormState.name || ''} onChange={handleEditFormChange} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="admissionNo">Admission Number</Label>
+                        <Input id="admissionNo" name="admissionNo" value={editFormState.admissionNo || ''} readOnly disabled />
+                    </div>
+                </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="classId">Class</Label>
+                        <Select name="classId" value={editFormState.classId || ''} onValueChange={(value) => handleEditSelectChange('classId', value)}>
+                            <SelectTrigger id="classId"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="status">Status</Label>
+                        <Select name="status" value={editFormState.status || 'Active'} onValueChange={(value: Student['status']) => handleEditSelectChange('status', value)}>
+                            <SelectTrigger id="status"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="Inactive">Inactive</SelectItem>
+                                <SelectItem value="Suspended">Suspended</SelectItem>
+                                <SelectItem value="Graduated">Graduated</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <div className="space-y-2 border-t pt-4 mt-4">
+                     <h3 className="text-md font-semibold">Parent/Guardian Details</h3>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="parentName">Parent's Full Name</Label>
+                            <Input id="parentName" name="parentName" value={editFormState.parentName || ''} onChange={handleEditFormChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="parentPhone">Parent's Phone</Label>
+                            <Input id="parentPhone" name="parentPhone" value={editFormState.parentPhone || ''} onChange={handleEditFormChange} />
+                        </div>
+                     </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="parentEmail">Parent's Email</Label>
+                            <Input id="parentEmail" name="parentEmail" type="email" value={editFormState.parentEmail || ''} onChange={handleEditFormChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="parentNrcPassport">Parent's NRC / Passport</Label>
+                            <Input id="parentNrcPassport" name="parentNrcPassport" value={editFormState.parentNrcPassport || ''} onChange={handleEditFormChange} />
+                        </div>
+                     </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="guardianshipStatus">Guardianship Status</Label>
+                        <Select name="guardianshipStatus" value={editFormState.guardianshipStatus || ''} onValueChange={(value) => handleEditSelectChange('guardianshipStatus', value)}>
+                            <SelectTrigger id="guardianshipStatus"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Both Parents">Both Parents</SelectItem>
+                                <SelectItem value="Single Parent">Single Parent</SelectItem>
+                                <SelectItem value="Guardian / Orphan">Guardian / Orphan</SelectItem>
+                            </SelectContent>
+                        </Select>
+                     </div>
+                </div>
+                 <div className="space-y-2 border-t pt-4 mt-4">
+                    <h3 className="text-md font-semibold">Additional Information</h3>
+                    <div className="space-y-2">
+                        <Label htmlFor="healthStatus">Health Status</Label>
+                        <Textarea id="healthStatus" name="healthStatus" value={editFormState.healthStatus || ''} onChange={handleEditFormChange} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="disabilities">Disabilities</Label>
+                        <Textarea id="disabilities" name="disabilities" value={editFormState.disabilities || ''} onChange={handleEditFormChange} placeholder="List any disabilities, separated by commas." />
+                    </div>
+                </div>
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleStatusChange}>Save Changes</Button>
+                <Button onClick={handleUpdateStudent}>Save Changes</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
