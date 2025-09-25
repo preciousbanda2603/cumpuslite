@@ -49,12 +49,14 @@ export default function TeachersPage() {
   const [user, setUser] = useState<User | null>(null);
   const schoolId = useSchoolId();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formState, setFormState] = useState<Partial<Teacher>>({});
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -82,8 +84,10 @@ export default function TeachersPage() {
           avatar: `https://picsum.photos/seed/${key}/100/100`, // Generate consistent avatar
         }));
         setTeachers(teachersList);
+        setFilteredTeachers(teachersList);
       } else {
         setTeachers([]);
+        setFilteredTeachers([]);
       }
       setLoading(false);
     }, (error) => {
@@ -93,6 +97,14 @@ export default function TeachersPage() {
 
     return () => unsubscribe();
   }, [user, schoolId]);
+  
+  useEffect(() => {
+    const results = teachers.filter(teacher =>
+      teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      teacher.disabilities?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredTeachers(results);
+  }, [searchTerm, teachers]);
 
   const openDialog = (teacher: Teacher) => {
     setEditingTeacher(teacher);
@@ -172,8 +184,10 @@ export default function TeachersPage() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search for a teacher..."
+            placeholder="Search by name or disability..."
             className="pl-8 w-full md:w-1/3"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -181,8 +195,8 @@ export default function TeachersPage() {
             <div className="col-span-full text-center text-muted-foreground py-12">
                 Loading teachers...
             </div>
-        ) : teachers.length > 0 ? (
-            teachers.map(teacher => (
+        ) : filteredTeachers.length > 0 ? (
+            filteredTeachers.map(teacher => (
                 <Card key={teacher.id}>
                     <CardHeader className="items-center">
                         <Avatar className="h-24 w-24 mb-2">

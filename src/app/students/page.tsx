@@ -93,7 +93,8 @@ export default function StudentsPage() {
   useEffect(() => {
     const results = students.filter(student =>
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.admissionNo?.toLowerCase().includes(searchTerm.toLowerCase())
+      student.admissionNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.disabilities?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredStudents(results);
   }, [searchTerm, students]);
@@ -117,7 +118,7 @@ export default function StudentsPage() {
       <Card>
         <CardHeader>
            <Input
-            placeholder="Search by name or admission number..."
+            placeholder="Search by name, admission no, or disability..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-sm"
