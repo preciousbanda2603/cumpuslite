@@ -40,13 +40,20 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Users, BookUser, Edit, ArrowLeft, FileText } from 'lucide-react';
+import { Users, BookUser, Edit, ArrowLeft, FileText, Printer, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSchoolId } from '@/hooks/use-school-id';
 
 type ClassInfo = { id: string; name: string; classTeacherId?: string; grade: number };
 type Teacher = { id: string; name: string; uid: string; };
-type Student = { id: string; name: string; classId: string; };
+type Student = { 
+  id: string; 
+  name: string; 
+  classId: string; 
+  admissionNo: string;
+  guardianshipStatus?: string;
+  disabilities?: string;
+};
 type SubjectAssignment = {
   subjectId: string;
   subjectName: string;
@@ -209,6 +216,36 @@ export default function ViewClassPage() {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExportCSV = () => {
+    if (!students.length || !classInfo) return;
+
+    const headers = ['Name', 'Admission No', 'Grade', 'Class', 'Guardianship', 'Disabilities'];
+    const rows = students.map(student => [
+      `"${student.name}"`,
+      `"${student.admissionNo}"`,
+      classInfo.grade,
+      `"${classInfo.name}"`,
+      `"${student.guardianshipStatus || 'N/A'}"`,
+      `"${student.disabilities || 'None'}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${classInfo.name}_students.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -230,7 +267,8 @@ export default function ViewClassPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
+    <div className="flex flex-col gap-6 print:hidden">
         <div>
             <Button variant="outline" size="sm" onClick={() => router.back()} className="mb-4">
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -265,7 +303,19 @@ export default function ViewClassPage() {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader><CardTitle>Total Students</CardTitle></CardHeader>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <CardTitle>Total Students</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={handlePrint}>
+                                <Printer className="mr-2 h-4 w-4" /> Print
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                                <Download className="mr-2 h-4 w-4" /> Export
+                            </Button>
+                        </div>
+                    </div>
+                </CardHeader>
                 <CardContent className="flex items-center gap-4">
                     <div className="bg-primary text-primary-foreground rounded-full p-4">
                         <Users className="h-8 w-8" />
@@ -387,7 +437,41 @@ export default function ViewClassPage() {
             </DialogContent>
         </Dialog>
     </div>
+     <div className="hidden print:block">
+        <style jsx global>{`
+          @media print {
+            body { margin: 1.5rem; }
+            .print-header { text-align: center; margin-bottom: 2rem; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+          }
+        `}</style>
+        <div className="print-header">
+            <h1 className="text-2xl font-bold">Student List - {classInfo.name}</h1>
+            <p>Grade {classInfo.grade}</p>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Admission No.</th>
+                    <th>Guardianship</th>
+                    <th>Disabilities</th>
+                </tr>
+            </thead>
+            <tbody>
+                {students.map(student => (
+                    <tr key={student.id}>
+                        <td>{student.name}</td>
+                        <td>{student.admissionNo}</td>
+                        <td>{student.guardianshipStatus || 'N/A'}</td>
+                        <td>{student.disabilities || 'None'}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+      </div>
+    </>
   );
 }
-
-    
