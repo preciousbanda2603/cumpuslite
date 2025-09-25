@@ -23,6 +23,7 @@ import {
   BookOpen,
   Receipt,
   TrendingUp,
+  Landmark,
 } from 'lucide-react';
 
 export const navLinks = [
@@ -43,9 +44,10 @@ export const navLinks = [
   { href: "/calendar", label: "Events Calendar", icon: Calendar },
   { href: "/communication", label: "Communication", icon: MessagesSquare },
   { href: "/fees", label: "Fee Collection", icon: CreditCard },
-  { href: "/income", label: "Income", icon: TrendingUp },
-  { href: "/expenses", label: "Financial Overview", icon: Receipt },
-  { href: "/payroll", label: "Payroll", icon: DollarSign },
+  { href: "/finance", label: "Finance", icon: Landmark },
+  { href: "/income", label: "Income", icon: TrendingUp, isHidden: true },
+  { href: "/expenses", label: "Financial Overview", icon: Receipt, isHidden: true },
+  { href: "/payroll", label: "Payroll", icon: DollarSign, isHidden: true },
   { href: "/ai-setup-guide", label: "AI Setup Guide", icon: HelpCircle, isHidden: true },
   { href: "/timetables/configure", label: "Time Slots", icon: Settings, isSettings: true, isHidden: true },
   { href: "/settings", label: "Theme Settings", icon: Palette, isSettings: true },

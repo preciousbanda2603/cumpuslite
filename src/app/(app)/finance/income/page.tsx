@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -49,6 +50,8 @@ type Income = {
   category: string;
   amount: number;
   date: string; // YYYY-MM-DD
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 const incomeCategories = ['Donation', 'Grant', 'Fundraiser', 'Other'];
@@ -126,14 +129,19 @@ export default function IncomePage() {
         return;
     }
 
-    const incomeData = {
+    const incomeData: Omit<Income, 'id' | 'createdAt' | 'updatedAt'> & { createdAt?: string, updatedAt: string } = {
       title,
       category,
       amount: incomeAmount,
       date: incomeDate,
-      createdAt: editingIncome?.id ? (editingIncome as Income).createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+    
+    if (editingIncome?.id) {
+        (incomeData as any).createdAt = (editingIncome as Income).createdAt;
+    } else {
+        (incomeData as any).createdAt = new Date().toISOString();
+    }
     
     try {
       if (editingIncome?.id) {

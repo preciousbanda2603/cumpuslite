@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -46,7 +47,7 @@ type PayrollRecord = {
     amount: number;
     month: string;
     status: PayrollStatus;
-    expenseId?: string;
+    expenseId?: string | null;
 };
 
 export default function PayrollPage() {
@@ -110,8 +111,7 @@ export default function PayrollPage() {
     
     const recordId = `${teacherId}_${selectedMonth.replace(' ', '_')}`;
     const recordRef = ref(database, `schools/${schoolId}/payroll/${recordId}`);
-    const expensesRef = ref(database, `schools/${schoolId}/expenses`);
-
+    
     try {
         const existingRecord = payroll.find(p => p.id === recordId);
         const newStatus = existingRecord?.status === 'Paid' ? 'Pending' : 'Paid';
@@ -120,6 +120,7 @@ export default function PayrollPage() {
 
         if (newStatus === 'Paid' && !expenseId) {
             // Add to expenses
+            const expensesRef = ref(database, `schools/${schoolId}/expenses`);
             const newExpenseRef = push(expensesRef);
             await set(newExpenseRef, {
                 title: `Salary for ${teacher.name} - ${selectedMonth}`,
@@ -156,19 +157,23 @@ export default function PayrollPage() {
 
       const updates: { [key: string]: any } = {};
       const expenseUpdates: { [key: string]: any } = {};
+      const expenseDeletions: string[] = [];
 
       teachers.forEach(teacher => {
           if (teacher.salary) {
             const recordId = `${teacher.id}_${selectedMonth.replace(' ', '_')}`;
+            const existingRecord = payroll.find(p => p.id === recordId);
+
             updates[`/payroll/${recordId}`] = {
                 teacherId: teacher.id,
                 teacherName: teacher.name,
                 amount: teacher.salary,
                 month: selectedMonth,
                 status: status,
+                expenseId: existingRecord?.expenseId || null
             };
 
-            if (status === 'Paid') {
+            if (status === 'Paid' && !existingRecord?.expenseId) {
                 const newExpenseRef = push(ref(database, `schools/${schoolId}/expenses`));
                 expenseUpdates[newExpenseRef.key!] = {
                    title: `Salary for ${teacher.name} - ${selectedMonth}`,
@@ -178,6 +183,9 @@ export default function PayrollPage() {
                    createdAt: new Date().toISOString()
                 };
                 updates[`/payroll/${recordId}`].expenseId = newExpenseRef.key;
+            } else if (status !== 'Paid' && existingRecord?.expenseId) {
+                updates[`/payroll/${recordId}`].expenseId = null;
+                expenseDeletions.push(existingRecord.expenseId);
             }
           }
       });
@@ -189,7 +197,16 @@ export default function PayrollPage() {
 
       try {
           const rootRef = ref(database, `schools/${schoolId}`);
-          await update(rootRef, { ...updates, [`/expenses`]: expenseUpdates });
+          await update(rootRef, updates);
+          
+          const expenseRootRef = ref(database, `schools/${schoolId}/expenses`);
+          const finalExpenseUpdates: {[key: string]: any} = {...expenseUpdates};
+          expenseDeletions.forEach(id => finalExpenseUpdates[id] = null);
+          
+          if(Object.keys(finalExpenseUpdates).length > 0) {
+              await update(expenseRootRef, finalExpenseUpdates);
+          }
+          
           toast({ title: "Success", description: `All teachers marked as ${status}.` });
       } catch (error) {
           console.error("Bulk update error:", error);
@@ -250,7 +267,7 @@ export default function PayrollPage() {
                                     <Button variant="outline" size="sm"><XCircle className="mr-2"/> Mark all Pending</Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
-                                    <AlertDialogHeader><AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle><AlertDialogDescription>This will mark all teachers with a set salary as 'Pending' for {selectedMonth}. Are you sure?</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogHeader><AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle><AlertDialogDescription>This will mark all teachers as 'Pending' for {selectedMonth} and remove any associated expense entries. Are you sure?</AlertDialogDescription></AlertDialogHeader>
                                     <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleBulkUpdate('Pending')}>Confirm</AlertDialogAction></AlertDialogFooter>
                                 </AlertDialogContent>
                              </AlertDialog>
@@ -259,7 +276,7 @@ export default function PayrollPage() {
                                     <Button variant="destructive" size="sm"><Ban className="mr-2"/> Mark all Suspended</Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
-                                    <AlertDialogHeader><AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle><AlertDialogDescription>This will mark all teachers with a set salary as 'Suspended' for {selectedMonth}. Are you sure?</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogHeader><AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle><AlertDialogDescription>This will mark all teachers as 'Suspended' for {selectedMonth} and remove any associated expense entries. Are you sure?</AlertDialogDescription></AlertDialogHeader>
                                     <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleBulkUpdate('Suspended')}>Confirm</AlertDialogAction></AlertDialogFooter>
                                 </AlertDialogContent>
                              </AlertDialog>
@@ -327,5 +344,3 @@ export default function PayrollPage() {
     </div>
   );
 }
-
-    
