@@ -29,6 +29,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { disabilityOptions } from '@/lib/disability-options';
 
 type Subject = {
   id: string;
@@ -42,17 +43,6 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 const secondaryApp = getApps().length > 1 ? getApp("secondary") : initializeApp(auth.app.options, "secondary");
 const secondaryAuth = getAuth(secondaryApp);
-
-const disabilityOptions = [
-    { id: 'visual', label: 'Visual Impairment' },
-    { id: 'hearing', label: 'Hearing Impairment' },
-    { id: 'physical', label: 'Physical/Motor Disability' },
-    { id: 'speech', label: 'Speech and Language Disorder' },
-    { id: 'learning', label: 'Learning Disability' },
-    { id: 'asd', label: 'Autism Spectrum Disorder (ASD)' },
-    { id: 'adhd', label: 'Attention-Deficit/Hyperactivity Disorder (ADHD)' },
-];
-
 
 export default function AddTeacherPage() {
   const { toast } = useToast();

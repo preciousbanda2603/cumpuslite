@@ -31,6 +31,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
+import { disabilityOptions } from "@/lib/disability-options";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 type Teacher = {
   id: string;
@@ -57,6 +60,8 @@ export default function TeachersPage() {
   const [formState, setFormState] = useState<Partial<Teacher>>({});
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  const [disabilityFilter, setDisabilityFilter] = useState('all');
+
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -99,12 +104,20 @@ export default function TeachersPage() {
   }, [user, schoolId]);
   
   useEffect(() => {
-    const results = teachers.filter(teacher =>
-      teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      teacher.disabilities?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    let results = teachers;
+    
+    if (searchTerm) {
+        results = results.filter(teacher =>
+            teacher.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }
+    
+    if (disabilityFilter && disabilityFilter !== 'all') {
+        results = results.filter(teacher => teacher.disabilities?.includes(disabilityFilter));
+    }
+
     setFilteredTeachers(results);
-  }, [searchTerm, teachers]);
+  }, [searchTerm, disabilityFilter, teachers]);
 
   const openDialog = (teacher: Teacher) => {
     setEditingTeacher(teacher);
@@ -180,15 +193,28 @@ export default function TeachersPage() {
             </div>
         )}
       </div>
-       <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search by name or disability..."
-            className="pl-8 w-full md:w-1/3"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+       <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-grow">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+                type="search"
+                placeholder="Search by name..."
+                className="pl-8 w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+           <Select value={disabilityFilter} onValueChange={setDisabilityFilter}>
+                <SelectTrigger className="w-full sm:w-[240px]">
+                    <SelectValue placeholder="Filter by Disability" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Disabilities</SelectItem>
+                    {disabilityOptions.map(option => (
+                        <SelectItem key={option.id} value={option.label}>{option.label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
         </div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {loading ? (

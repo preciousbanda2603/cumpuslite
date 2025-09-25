@@ -48,6 +48,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { disabilityOptions } from "@/lib/disability-options";
 
 type Student = {
   id: string;
@@ -69,6 +70,7 @@ export default function StudentsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [guardianshipFilter, setGuardianshipFilter] = useState('all');
+  const [disabilityFilter, setDisabilityFilter] = useState('all');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -124,17 +126,21 @@ export default function StudentsPage() {
     if (searchTerm) {
         results = results.filter(student =>
             student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.admissionNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.disabilities?.toLowerCase().includes(searchTerm.toLowerCase())
+            student.admissionNo?.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }
 
     if (guardianshipFilter && guardianshipFilter !== 'all') {
         results = results.filter(student => student.guardianshipStatus === guardianshipFilter);
     }
+    
+    if (disabilityFilter && disabilityFilter !== 'all') {
+        results = results.filter(student => student.disabilities?.includes(disabilityFilter));
+    }
+
 
     setFilteredStudents(results);
-  }, [searchTerm, guardianshipFilter, students]);
+  }, [searchTerm, guardianshipFilter, disabilityFilter, students]);
 
   const openEditDialog = (student: Student) => {
     setSelectedStudent(student);
@@ -193,20 +199,31 @@ export default function StudentsPage() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row gap-4">
             <Input
-                placeholder="Search by name, admission no, or disability..."
+                placeholder="Search by name or admission no..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="max-w-sm"
             />
              <Select value={guardianshipFilter} onValueChange={setGuardianshipFilter}>
-                <SelectTrigger className="w-full sm:w-[280px]">
-                    <SelectValue placeholder="Filter by Guardianship Status" />
+                <SelectTrigger className="w-full sm:w-[240px]">
+                    <SelectValue placeholder="Filter by Guardianship" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="all">All Guardianships</SelectItem>
                     <SelectItem value="Both Parents">Both Parents</SelectItem>
                     <SelectItem value="Single Parent">Single Parent</SelectItem>
                     <SelectItem value="Guardian / Orphan">Guardian / Orphan</SelectItem>
+                </SelectContent>
+            </Select>
+            <Select value={disabilityFilter} onValueChange={setDisabilityFilter}>
+                <SelectTrigger className="w-full sm:w-[240px]">
+                    <SelectValue placeholder="Filter by Disability" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Disabilities</SelectItem>
+                    {disabilityOptions.map(option => (
+                        <SelectItem key={option.id} value={option.label}>{option.label}</SelectItem>
+                    ))}
                 </SelectContent>
             </Select>
           </div>

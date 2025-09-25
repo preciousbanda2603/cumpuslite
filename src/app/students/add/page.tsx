@@ -30,6 +30,7 @@ import { useSchoolId } from '@/hooks/use-school-id';
 import { customAlphabet } from 'nanoid';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { Checkbox } from '@/components/ui/checkbox';
+import { disabilityOptions } from '@/lib/disability-options';
 
 // Create a secondary auth instance for creating student accounts
 // This prevents the admin from being logged out
@@ -45,17 +46,6 @@ type Class = {
 
 // Generate a unique, human-readable admission number
 const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
-
-const disabilityOptions = [
-    { id: 'visual', label: 'Visual Impairment' },
-    { id: 'hearing', label: 'Hearing Impairment' },
-    { id: 'physical', label: 'Physical/Motor Disability' },
-    { id: 'speech', label: 'Speech and Language Disorder' },
-    { id: 'learning', label: 'Learning Disability (e.g., Dyslexia)' },
-    { id: 'asd', label: 'Autism Spectrum Disorder (ASD)' },
-    { id: 'adhd', label: 'Attention-Deficit/Hyperactivity Disorder (ADHD)' },
-];
-
 
 export default function AddStudentPage() {
   const { toast } = useToast();
