@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { auth, database } from '@/lib/firebase';
-import { ref, onValue, set, get, push } from 'firebase/database';
+import { ref, onValue, set, get, push, update } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { PlusCircle, Edit, Info, School } from 'lucide-react';
@@ -46,13 +46,20 @@ type Student = {
   className: string;
   status: 'Active' | 'Inactive';
 };
+type Payment = {
+    id: string;
+    amount: number;
+    date: string;
+};
 type Fee = {
   id: string;
   studentId: string;
   amount: number;
   dueDate: string;
-  status: 'Paid' | 'Pending' | 'Overdue';
+  status: 'Paid' | 'Pending' | 'Overdue' | 'Partially Paid';
   term: string;
+  amountPaid: number;
+  payments?: { [paymentId: string]: Payment };
 };
 type FeeSettings = { defaultAmount: number; defaultDueDate: string; isFreeEducation?: boolean; };
 type StudentFeeSummary = {
@@ -76,6 +83,7 @@ export default function FeesPage() {
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedFee, setSelectedFee] = useState<Fee | null>(null);
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
 
   const [feeSettings, setFeeSettings] = useState<Partial<FeeSettings>>({});
   
@@ -200,6 +208,7 @@ export default function FeesPage() {
                     dueDate: feeSettings.defaultDueDate,
                     status: 'Pending',
                     term: termNameWithYear,
+                    amountPaid: 0,
                     createdAt: new Date().toISOString()
                 });
             }
@@ -223,28 +232,56 @@ export default function FeesPage() {
     }
   };
   
-  const handleMarkAsPaid = async (feeId: string) => {
-    if (!isAdmin) return;
-    const feeRef = ref(database, `schools/${schoolId}/fees/${feeId}/status`);
+  const handleAddPayment = async () => {
+    if (!isAdmin || !selectedFee || !newPaymentAmount) return;
+
+    const paymentAmount = parseFloat(newPaymentAmount);
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        toast({ title: "Invalid Amount", description: "Please enter a valid payment amount.", variant: "destructive" });
+        return;
+    }
+    
+    const feeRef = ref(database, `schools/${schoolId}/fees/${selectedFee.id}`);
+    const currentPaid = selectedFee.amountPaid || 0;
+    const newTotalPaid = currentPaid + paymentAmount;
+    const newStatus = newTotalPaid >= selectedFee.amount ? 'Paid' : 'Partially Paid';
+    
     try {
-        await set(feeRef, 'Paid');
-        toast({ title: "Success", description: "Fee marked as paid." });
+        const paymentRef = push(ref(database, `schools/${schoolId}/fees/${selectedFee.id}/payments`));
+        await set(paymentRef, {
+            amount: paymentAmount,
+            date: new Date().toISOString()
+        });
+        
+        await update(feeRef, {
+            amountPaid: newTotalPaid,
+            status: newStatus
+        });
+        
+        toast({ title: "Success", description: "Payment recorded successfully." });
+        setNewPaymentAmount('');
         setIsDetailsOpen(false);
         setSelectedFee(null);
+
     } catch (error) {
-        toast({ title: "Error", description: "Could not update fee status.", variant: "destructive" });
+        console.error("Failed to add payment:", error);
+        toast({ title: "Error", description: "Could not record payment.", variant: "destructive" });
     }
   };
   
   const openDetailsDialog = (fee: Fee) => {
       setSelectedFee(fee);
       setIsDetailsOpen(true);
+      setNewPaymentAmount('');
   }
 
   const getStatusBadge = (fee: Fee | undefined) => {
       if (!fee) return <Badge variant="secondary">N/A</Badge>;
       
-      const variant: "default" | "destructive" | "secondary" = fee.status === 'Paid' ? 'default' : fee.status === 'Overdue' ? 'destructive' : 'secondary';
+      const variant: "default" | "destructive" | "secondary" = fee.status === 'Paid' ? 'default' : fee.status === 'Overdue' ? 'destructive' : fee.status === 'Partially Paid' ? 'secondary': 'secondary';
+      if (fee.status === 'Partially Paid') {
+         return <Badge variant="secondary">Partially Paid</Badge>
+      }
       return <Badge variant={variant}>{fee.status}</Badge>;
   }
 
@@ -408,24 +445,51 @@ export default function FeesPage() {
                 </DialogHeader>
                 {selectedFee && (
                     <div className="space-y-4 py-4">
-                        <div><span className="font-semibold">Student:</span> {students.find(s => s.id === selectedFee.studentId)?.name}</div>
-                        <div><span className="font-semibold">Term:</span> {selectedFee.term}</div>
-                        <div><span className="font-semibold">Amount:</span> ZMW {selectedFee.amount.toFixed(2)}</div>
-                        <div><span className="font-semibold">Due Date:</span> {format(new Date(selectedFee.dueDate), 'PPP')}</div>
-                        <div><span className="font-semibold">Status:</span> {getStatusBadge(selectedFee)}</div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><span className="font-semibold block">Student:</span> {students.find(s => s.id === selectedFee.studentId)?.name}</div>
+                            <div><span className="font-semibold block">Term:</span> {selectedFee.term}</div>
+                            <div><span className="font-semibold block">Total Due:</span> ZMW {selectedFee.amount.toFixed(2)}</div>
+                            <div><span className="font-semibold block">Amount Paid:</span> ZMW {(selectedFee.amountPaid || 0).toFixed(2)}</div>
+                            <div><span className="font-semibold block">Balance:</span> ZMW {(selectedFee.amount - (selectedFee.amountPaid || 0)).toFixed(2)}</div>
+                            <div><span className="font-semibold block">Status:</span> {getStatusBadge(selectedFee)}</div>
+                        </div>
+
+                         <div className="border-t pt-4">
+                            <h4 className="font-semibold mb-2">Payment History</h4>
+                            {selectedFee.payments ? (
+                                <ul className="list-disc pl-5 text-sm space-y-1">
+                                {Object.values(selectedFee.payments).map(p => (
+                                    <li key={p.id}>ZMW {p.amount.toFixed(2)} on {format(new Date(p.date), 'PPP')}</li>
+                                ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
+                            )}
+                        </div>
+
+                        {selectedFee.status !== 'Paid' && (
+                        <div className="border-t pt-4 space-y-2">
+                             <h4 className="font-semibold">Record New Payment</h4>
+                             <div className="flex items-center gap-2">
+                                <Label htmlFor="payment-amount" className="sr-only">Amount</Label>
+                                <Input 
+                                    id="payment-amount"
+                                    type="number"
+                                    placeholder="Enter amount"
+                                    value={newPaymentAmount}
+                                    onChange={(e) => setNewPaymentAmount(e.target.value)}
+                                />
+                                <Button onClick={handleAddPayment}>Add Payment</Button>
+                             </div>
+                        </div>
+                        )}
                     </div>
                 )}
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>Close</Button>
-                    {selectedFee?.status !== 'Paid' && isAdmin && (
-                        <Button onClick={() => handleMarkAsPaid(selectedFee!.id)}>Mark as Paid</Button>
-                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-
     </div>
   );
 }
-
-    
