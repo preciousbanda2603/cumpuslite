@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -47,7 +48,6 @@ type Student = {
   status: 'Active' | 'Inactive';
 };
 type Payment = {
-    id: string;
     amount: number;
     date: string;
 };
@@ -458,8 +458,8 @@ export default function FeesPage() {
                             <h4 className="font-semibold mb-2">Payment History</h4>
                             {selectedFee.payments ? (
                                 <ul className="list-disc pl-5 text-sm space-y-1">
-                                {Object.values(selectedFee.payments).map(p => (
-                                    <li key={p.id}>ZMW {p.amount.toFixed(2)} on {format(new Date(p.date), 'PPP')}</li>
+                                {Object.entries(selectedFee.payments).map(([paymentId, payment]) => (
+                                    <li key={paymentId}>ZMW {payment.amount.toFixed(2)} on {format(new Date(payment.date), 'PPP')}</li>
                                 ))}
                                 </ul>
                             ) : (
