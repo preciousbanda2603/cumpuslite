@@ -22,6 +22,7 @@ import {
   HelpCircle,
   BookOpen,
   Receipt,
+  TrendingUp,
 } from 'lucide-react';
 
 export const navLinks = [
@@ -42,7 +43,8 @@ export const navLinks = [
   { href: "/calendar", label: "Events Calendar", icon: Calendar },
   { href: "/communication", label: "Communication", icon: MessagesSquare },
   { href: "/fees", label: "Fee Collection", icon: CreditCard },
-  { href: "/expenses", label: "Expenses", icon: Receipt },
+  { href: "/income", label: "Income", icon: TrendingUp },
+  { href: "/expenses", label: "Financial Overview", icon: Receipt },
   { href: "/payroll", label: "Payroll", icon: DollarSign },
   { href: "/ai-setup-guide", label: "AI Setup Guide", icon: HelpCircle, isHidden: true },
   { href: "/timetables/configure", label: "Time Slots", icon: Settings, isSettings: true, isHidden: true },

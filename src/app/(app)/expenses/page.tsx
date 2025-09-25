@@ -70,6 +70,11 @@ type Fee = {
   id: string;
   payments?: { [paymentId: string]: Payment };
 };
+type Income = {
+    id: string;
+    amount: number;
+    date: string; // YYYY-MM-DD
+};
 
 
 const expenseCategories = ['Utilities', 'Salaries', 'Supplies', 'Maintenance', 'Marketing', 'Transport', 'Other'];
@@ -79,6 +84,7 @@ export default function ExpensesPage() {
   const schoolId = useSchoolId();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [fees, setFees] = useState<Fee[]>([]);
+  const [income, setIncome] = useState<Income[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
@@ -111,6 +117,7 @@ export default function ExpensesPage() {
 
     const expensesRef = ref(database, `schools/${schoolId}/expenses`);
     const feesRef = ref(database, `schools/${schoolId}/fees`);
+    const incomeRef = ref(database, `schools/${schoolId}/income`);
 
     const unsubscribeExpenses = onValue(expensesRef, (snapshot) => {
       const data = snapshot.val() || {};
@@ -118,7 +125,6 @@ export default function ExpensesPage() {
         .map(id => ({ id, ...data[id] }))
         .sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
       setExpenses(list);
-      setLoading(false);
     });
     
     const unsubscribeFees = onValue(feesRef, (snapshot) => {
@@ -127,9 +133,22 @@ export default function ExpensesPage() {
       setFees(list);
     });
 
+    const unsubscribeIncome = onValue(incomeRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const list: Income[] = Object.keys(data).map(id => ({ id, ...data[id] }));
+        setIncome(list);
+    });
+
+    Promise.all([
+        new Promise(res => onValue(expensesRef, res, { onlyOnce: true })),
+        new Promise(res => onValue(feesRef, res, { onlyOnce: true })),
+        new Promise(res => onValue(incomeRef, res, { onlyOnce: true }))
+    ]).finally(() => setLoading(false));
+
     return () => {
       unsubscribeExpenses();
       unsubscribeFees();
+      unsubscribeIncome();
     }
   }, [user, schoolId]);
 
@@ -150,7 +169,7 @@ export default function ExpensesPage() {
 
     const totalExpenditure = filteredExpenses.reduce((total, expense) => total + expense.amount, 0);
 
-    const totalIncome = fees.reduce((incomeTotal, fee) => {
+    const feesIncome = fees.reduce((incomeTotal, fee) => {
         if (!fee.payments) return incomeTotal;
         const paymentsInDateRange = Object.values(fee.payments).filter(payment => {
             const paymentDate = parseISO(payment.date);
@@ -161,11 +180,20 @@ export default function ExpensesPage() {
         return incomeTotal + paymentsInDateRange.reduce((paymentSum, p) => paymentSum + p.amount, 0);
     }, 0);
 
+    const manualIncome = income.reduce((total, inc) => {
+        const incDate = parseISO(inc.date);
+        if (start && incDate < start) return total;
+        if (end && incDate > end) return total;
+        return total + inc.amount;
+    }, 0);
+
+    const totalIncome = feesIncome + manualIncome;
+
     const netIncome = totalIncome - totalExpenditure;
     const expenditurePercentage = totalIncome > 0 ? (totalExpenditure / totalIncome) * 100 : 0;
 
     return { totalIncome, totalExpenditure, netIncome, expenditurePercentage };
-  }, [filteredExpenses, fees, startDate, endDate]);
+  }, [filteredExpenses, fees, income, startDate, endDate]);
 
 
   const openDialog = (expense: Partial<Expense> | null = null) => {
@@ -292,7 +320,7 @@ export default function ExpensesPage() {
             <CardContent>
                <div className="grid gap-4 md:grid-cols-3">
                     <div className="border rounded-lg p-4 flex flex-col justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground"><TrendingUp className="h-4 w-4 text-green-500" /> Total Income (Fees)</div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground"><TrendingUp className="h-4 w-4 text-green-500" /> Total Income</div>
                         <p className="text-2xl font-bold">ZMW {financialSummary.totalIncome.toFixed(2)}</p>
                     </div>
                      <div className="border rounded-lg p-4 flex flex-col justify-between">
@@ -397,5 +425,3 @@ export default function ExpensesPage() {
     </div>
   );
 }
-
-    
