@@ -119,7 +119,7 @@ export default function AddStudentPage() {
     
     const selectedClass = classes.find(c => c.id === selectedClassId);
     
-    if (!name || !selectedClassId || !enrollmentDate || !parentName || !parentPhone || !parentEmail || !password) {
+    if (!name || !selectedClassId || !enrollmentDate || !parentName || !parentPhone || !password) {
         toast({
             title: 'Missing Information',
             description: 'Please fill out all required fields, including password.',
@@ -249,7 +249,7 @@ export default function AddStudentPage() {
                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="parent-email">Parent's Email</Label>
-                        <Input id="parent-email" name="parent-email" type="email" placeholder="parent@example.com" required />
+                        <Input id="parent-email" name="parent-email" type="email" placeholder="parent@example.com" />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="parent-phone">Parent's Phone</Label>
