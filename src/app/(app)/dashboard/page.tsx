@@ -179,17 +179,6 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">An overview of your school's key metrics and activities.</p>
       </section>
 
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>AI Features Configuration Required</AlertTitle>
-        <AlertDescription>
-          It looks like the AI services for your project are not enabled. Please follow our guide to complete the setup.
-          <Button asChild variant="link" className="p-0 h-auto ml-2">
-            <Link href="/ai-setup-guide">View Setup Guide</Link>
-          </Button>
-        </AlertDescription>
-      </Alert>
-
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
