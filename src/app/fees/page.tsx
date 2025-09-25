@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -155,6 +155,24 @@ export default function FeesPage() {
       setFeeSummaries([]);
     }
   }, [students, fees, currentYear]);
+
+  const termFinancials = useMemo(() => {
+    return terms.map(term => {
+        const termNameWithYear = `${term} ${currentYear}`;
+        const termFees = fees.filter(fee => fee.term === termNameWithYear);
+
+        const totalExpected = termFees.reduce((acc, fee) => acc + fee.amount, 0);
+        const totalCollected = termFees.reduce((acc, fee) => acc + (fee.amountPaid || 0), 0);
+        const totalOutstanding = totalExpected - totalCollected;
+
+        return {
+            term,
+            totalExpected,
+            totalCollected,
+            totalOutstanding,
+        };
+    });
+  }, [fees, currentYear]);
 
   const handleSaveSettings = async () => {
     if (!isAdmin) return;
@@ -314,6 +332,30 @@ export default function FeesPage() {
                 </AlertDescription>
             </Alert>
         )}
+
+        <div className="grid gap-4 md:grid-cols-3">
+            {termFinancials.map(tf => (
+                <Card key={tf.term}>
+                    <CardHeader>
+                        <CardTitle>{tf.term} ({currentYear})</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Total Collected</span>
+                            <span className="font-medium">ZMW {tf.totalCollected.toFixed(2)}</span>
+                        </div>
+                         <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Total Outstanding</span>
+                            <span className="font-medium">ZMW {tf.totalOutstanding.toFixed(2)}</span>
+                        </div>
+                         <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Total Invoiced</span>
+                            <span className="font-medium">ZMW {tf.totalExpected.toFixed(2)}</span>
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
 
         <Card>
             <CardHeader>
