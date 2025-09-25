@@ -45,6 +45,7 @@ type Teacher = {
   salary?: number;
   startDate?: string;
   disabilities?: string;
+  role?: 'admin' | 'teacher';
 };
 
 
@@ -55,6 +56,7 @@ export default function TeachersPage() {
   const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isMainAdmin, setIsMainAdmin] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formState, setFormState] = useState<Partial<Teacher>>({});
@@ -72,7 +74,25 @@ export default function TeachersPage() {
   
   useEffect(() => {
     if (user && schoolId) {
-        setIsAdmin(user.uid === schoolId);
+      const mainAdmin = user.uid === schoolId;
+      setIsMainAdmin(mainAdmin);
+      
+      if (mainAdmin) {
+          setIsAdmin(true);
+      } else {
+        const teacherRef = ref(database, `schools/${schoolId}/teachers`);
+        get(teacherRef).then(snapshot => {
+            if (snapshot.exists()) {
+                const teachersData = snapshot.val();
+                const currentTeacher = Object.values(teachersData).find((t: any) => t.uid === user.uid) as Teacher;
+                if (currentTeacher?.role === 'admin') {
+                    setIsAdmin(true);
+                } else {
+                    setIsAdmin(false);
+                }
+            }
+        });
+      }
     }
   }, [user, schoolId]);
 
@@ -128,6 +148,7 @@ export default function TeachersPage() {
         qualifications: teacher.qualifications,
         salary: teacher.salary,
         disabilities: teacher.disabilities,
+        role: teacher.role || 'teacher'
     });
     setIsDialogOpen(true);
   };
@@ -141,6 +162,10 @@ export default function TeachersPage() {
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const { name, value } = e.target;
       setFormState(prev => ({ ...prev, [name]: value }));
+  }
+  
+  const handleRoleChange = (role: 'admin' | 'teacher') => {
+      setFormState(prev => ({ ...prev, role }));
   }
 
   const handleSaveChanges = async () => {
@@ -230,7 +255,7 @@ export default function TeachersPage() {
                             <AvatarFallback>{teacher.name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                         </Avatar>
                         <CardTitle>{teacher.name}</CardTitle>
-                        <CardDescription>{teacher.subject}</CardDescription>
+                        <CardDescription>{teacher.subject} {teacher.role === 'admin' && <span className="font-semibold text-primary">(Admin)</span>}</CardDescription>
                     </CardHeader>
                     <CardContent className="text-center">
                         <p className="text-sm text-muted-foreground mb-2">{teacher.qualifications}</p>
@@ -285,6 +310,21 @@ export default function TeachersPage() {
                 <Label htmlFor="disabilities">Disabilities</Label>
                 <Textarea id="disabilities" name="disabilities" value={formState.disabilities || ''} onChange={handleFormChange} placeholder="List any disabilities, separated by commas."/>
             </div>
+            {isMainAdmin && (
+                 <div className="grid gap-2 border-t pt-4 mt-2">
+                    <Label htmlFor="role">System Role</Label>
+                     <Select value={formState.role || 'teacher'} onValueChange={handleRoleChange}>
+                        <SelectTrigger id="role">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="teacher">Teacher</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                    </Select>
+                     <p className="text-xs text-muted-foreground">Assigning the 'Admin' role gives this teacher full access to the system.</p>
+                </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>

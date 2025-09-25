@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Megaphone, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { auth, database } from '@/lib/firebase';
-import { ref, onValue, push, set, remove } from 'firebase/database';
+import { ref, onValue, push, set, remove, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
 
@@ -34,6 +35,9 @@ type Announcement = {
   content: string;
   createdAt: string;
 };
+
+type Teacher = { role?: 'admin' | 'teacher' };
+
 
 export default function AnnouncementsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -55,9 +59,24 @@ export default function AnnouncementsPage() {
   }, []);
   
   useEffect(() => {
-      if (user && schoolId) {
-          setIsAdmin(user.uid === schoolId);
+    if (user && schoolId) {
+      if (user.uid === schoolId) {
+          setIsAdmin(true);
+      } else {
+        const teacherRef = ref(database, `schools/${schoolId}/teachers`);
+        get(teacherRef).then(snapshot => {
+            if (snapshot.exists()) {
+                const teachersData = snapshot.val();
+                const currentTeacher = Object.values(teachersData).find((t: any) => t.uid === user.uid) as Teacher;
+                if (currentTeacher?.role === 'admin') {
+                    setIsAdmin(true);
+                } else {
+                    setIsAdmin(false);
+                }
+            }
+        });
       }
+    }
   }, [user, schoolId]);
 
   useEffect(() => {
