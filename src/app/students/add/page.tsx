@@ -116,6 +116,7 @@ export default function AddStudentPage() {
     const parentEmail = formData.get('parent-email') as string;
     const parentNrcPassport = formData.get('parent-nrc-passport') as string;
     const healthStatus = formData.get('health-status') as string;
+    const guardianshipStatus = formData.get('guardianship-status') as string;
     
     const selectedDisabilities = disabilityOptions
         .filter(option => formData.get(option.id))
@@ -168,6 +169,7 @@ export default function AddStudentPage() {
         parentNrcPassport,
         healthStatus,
         disabilities,
+        guardianshipStatus,
         status: 'Active',
         createdAt: new Date().toISOString(),
       });
@@ -264,10 +266,25 @@ export default function AddStudentPage() {
                         <Input id="parent-phone" name="parent-phone" type="tel" placeholder="+260 97 123 4567" required />
                     </div>
                 </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="parent-nrc-passport">Parent's NRC / Passport</Label>
-                    <Input id="parent-nrc-passport" name="parent-nrc-passport" placeholder="Enter ID number" />
-                </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="parent-nrc-passport">Parent's NRC / Passport</Label>
+                        <Input id="parent-nrc-passport" name="parent-nrc-passport" placeholder="Enter ID number" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="guardianship-status">Guardianship Status</Label>
+                        <Select name="guardianship-status">
+                            <SelectTrigger id="guardianship-status">
+                                <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Both Parents">Both Parents</SelectItem>
+                                <SelectItem value="Single Parent">Single Parent</SelectItem>
+                                <SelectItem value="Guardian / Orphan">Guardian / Orphan</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                 </div>
             </div>
              <div className="space-y-4">
                 <h3 className="text-lg font-medium">Additional Information</h3>

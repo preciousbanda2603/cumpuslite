@@ -57,6 +57,7 @@ type Student = {
   enrollmentDate: string;
   status: 'Active' | 'Inactive' | 'Suspended' | 'Graduated';
   disabilities?: string;
+  guardianshipStatus?: string;
 };
 
 export default function StudentsPage() {
@@ -195,7 +196,7 @@ export default function StudentsPage() {
                 <TableHead>Admission No.</TableHead>
                 <TableHead>Class</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Enrollment Date</TableHead>
+                <TableHead>Guardianship</TableHead>
                 <TableHead>Disabilities</TableHead>
                 {isAdmin && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
@@ -214,7 +215,7 @@ export default function StudentsPage() {
                     <TableCell>{student.admissionNo}</TableCell>
                     <TableCell>{student.className}</TableCell>
                     <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
-                    <TableCell>{student.enrollmentDate}</TableCell>
+                    <TableCell>{student.guardianshipStatus || 'N/A'}</TableCell>
                     <TableCell>{student.disabilities || 'None'}</TableCell>
                     {isAdmin && (
                         <TableCell className="text-right space-x-2">
