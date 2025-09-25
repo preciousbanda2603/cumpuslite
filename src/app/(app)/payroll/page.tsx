@@ -21,13 +21,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { auth, database } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
+import { ref, onValue, set, update } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, CheckCheck, XCircle, Ban } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 type Teacher = {
   id: string;
@@ -35,13 +36,15 @@ type Teacher = {
   salary?: number;
 };
 
+type PayrollStatus = 'Paid' | 'Pending' | 'Suspended';
+
 type PayrollRecord = {
     id: string;
     teacherId: string;
     teacherName: string;
     amount: number;
     month: string;
-    status: 'Paid' | 'Pending';
+    status: PayrollStatus;
 };
 
 export default function PayrollPage() {
@@ -120,8 +123,39 @@ export default function PayrollPage() {
         toast({ title: "Error", description: "Failed to update status.", variant: "destructive" });
     }
   };
+
+  const handleBulkUpdate = async (status: PayrollStatus) => {
+      if (!isAdmin || teachers.length === 0) return;
+
+      const updates: { [key: string]: any } = {};
+      teachers.forEach(teacher => {
+          if (teacher.salary) {
+            const recordId = `${teacher.id}_${selectedMonth.replace(' ', '_')}`;
+            updates[`/${recordId}`] = {
+                teacherId: teacher.id,
+                teacherName: teacher.name,
+                amount: teacher.salary,
+                month: selectedMonth,
+                status: status,
+            };
+          }
+      });
+
+      if (Object.keys(updates).length === 0) {
+        toast({ title: "No Action Taken", description: "No teachers with salaries found to update.", variant: "destructive"});
+        return;
+      }
+
+      try {
+          const payrollRef = ref(database, `schools/${schoolId}/payroll`);
+          await update(payrollRef, updates);
+          toast({ title: "Success", description: `All teachers marked as ${status}.` });
+      } catch (error) {
+          toast({ title: "Error", description: "Failed to perform bulk update.", variant: "destructive" });
+      }
+  };
   
-  const getPaymentStatus = (teacherId: string) => {
+  const getPaymentStatus = (teacherId: string): PayrollStatus => {
       const record = payroll.find(p => p.teacherId === teacherId && p.month === selectedMonth);
       return record ? record.status : 'Pending';
   }
@@ -144,19 +178,52 @@ export default function PayrollPage() {
 
         <Card>
             <CardHeader>
-                <div className="flex items-center gap-4">
-                    <div className="grid gap-2">
-                        <Label>Month</Label>
-                        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Select Month" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {months.map(month => <SelectItem key={month} value={month}>{month}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="grid gap-2">
+                            <Label>Month</Label>
+                            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Select Month" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {months.map(month => <SelectItem key={month} value={month}>{month}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                 </div>
+                    {isAdmin && (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm"><CheckCheck className="mr-2"/> Mark all Paid</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader><AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle><AlertDialogDescription>This will mark all teachers with a set salary as 'Paid' for {selectedMonth}. Are you sure?</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleBulkUpdate('Paid')}>Confirm</AlertDialogAction></AlertDialogFooter>
+                                </AlertDialogContent>
+                             </AlertDialog>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm"><XCircle className="mr-2"/> Mark all Pending</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader><AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle><AlertDialogDescription>This will mark all teachers with a set salary as 'Pending' for {selectedMonth}. Are you sure?</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleBulkUpdate('Pending')}>Confirm</AlertDialogAction></AlertDialogFooter>
+                                </AlertDialogContent>
+                             </AlertDialog>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm"><Ban className="mr-2"/> Mark all Suspended</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader><AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle><AlertDialogDescription>This will mark all teachers with a set salary as 'Suspended' for {selectedMonth}. Are you sure?</AlertDialogDescription></AlertDialogHeader>
+                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleBulkUpdate('Suspended')}>Confirm</AlertDialogAction></AlertDialogFooter>
+                                </AlertDialogContent>
+                             </AlertDialog>
+                        </div>
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="p-0">
                 <TooltipProvider>
@@ -180,7 +247,7 @@ export default function PayrollPage() {
                                     <TableCell className="font-medium">{teacher.name}</TableCell>
                                     <TableCell>{teacher.salary ? `ZMW ${teacher.salary.toFixed(2)}` : 'Not Set'}</TableCell>
                                     <TableCell>
-                                        <Badge variant={status === 'Paid' ? 'default' : 'secondary'}>{status}</Badge>
+                                        <Badge variant={status === 'Paid' ? 'default' : status === 'Suspended' ? 'destructive' : 'secondary'}>{status}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {isAdmin && (
