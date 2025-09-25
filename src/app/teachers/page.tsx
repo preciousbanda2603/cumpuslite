@@ -6,18 +6,29 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Search, UserPlus } from "lucide-react";
+import { PlusCircle, Search, UserPlus, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { auth, database } from "@/lib/firebase";
-import { onValue, ref } from "firebase/database";
+import { onValue, ref, set } from "firebase/database";
 import type { User } from "firebase/auth";
 import { useSchoolId } from "@/hooks/use-school-id";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 type Teacher = {
   id: string;
@@ -26,6 +37,8 @@ type Teacher = {
   email: string;
   qualifications: string;
   avatar: string;
+  salary?: number;
+  startDate?: string;
 };
 
 
@@ -35,6 +48,10 @@ export default function TeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [formState, setFormState] = useState<Partial<Teacher>>({});
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -73,6 +90,54 @@ export default function TeachersPage() {
 
     return () => unsubscribe();
   }, [user, schoolId]);
+
+  const openDialog = (teacher: Teacher) => {
+    setEditingTeacher(teacher);
+    setFormState({
+        name: teacher.name,
+        email: teacher.email,
+        subject: teacher.subject,
+        qualifications: teacher.qualifications,
+        salary: teacher.salary
+    });
+    setIsDialogOpen(true);
+  };
+  
+  const closeDialog = () => {
+      setIsDialogOpen(false);
+      setEditingTeacher(null);
+      setFormState({});
+  }
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = e.target;
+      setFormState(prev => ({ ...prev, [name]: value }));
+  }
+
+  const handleSaveChanges = async () => {
+    if (!editingTeacher || !schoolId) return;
+    
+    const teacherRef = ref(database, `schools/${schoolId}/teachers/${editingTeacher.id}`);
+    
+    try {
+        const teacherDataSnapshot = await get(teacherRef);
+        const currentData = teacherDataSnapshot.val();
+        
+        const updatedData = {
+            ...currentData,
+            ...formState,
+            salary: formState.salary ? parseFloat(formState.salary.toString()) : currentData.salary,
+        };
+        
+        await set(teacherRef, updatedData);
+        
+        toast({ title: "Success", description: "Teacher details updated." });
+        closeDialog();
+    } catch (error) {
+        console.error("Failed to update teacher:", error);
+        toast({ title: "Error", description: "Could not save changes.", variant: "destructive" });
+    }
+  };
 
 
   return (
@@ -126,7 +191,12 @@ export default function TeachersPage() {
                     <CardContent className="text-center">
                         <p className="text-sm text-muted-foreground mb-2">{teacher.qualifications}</p>
                         <p className="text-sm text-muted-foreground mb-4">{teacher.email}</p>
-                        <Button variant="outline">View Profile</Button>
+                         {teacher.salary && <p className="text-sm font-semibold mb-4">ZMW {teacher.salary.toFixed(2)}</p>}
+                        {isAdmin ? (
+                            <Button variant="outline" onClick={() => openDialog(teacher)}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Button>
+                        ) : (
+                            <Button variant="outline">View Profile</Button>
+                        )}
                     </CardContent>
                 </Card>
             ))
@@ -136,6 +206,43 @@ export default function TeachersPage() {
             </div>
         )}
       </div>
+
+       <Dialog open={isDialogOpen} onOpenChange={closeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Teacher Profile</DialogTitle>
+            <DialogDescription>
+              Update the details for {editingTeacher?.name}. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input id="name" name="name" value={formState.name || ''} onChange={handleFormChange} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" name="email" type="email" value={formState.email || ''} onChange={handleFormChange} />
+            </div>
+             <div className="grid gap-2">
+                <Label htmlFor="subject">Primary Subject</Label>
+                <Input id="subject" name="subject" value={formState.subject || ''} onChange={handleFormChange} />
+            </div>
+             <div className="grid gap-2">
+                <Label htmlFor="qualifications">Qualifications</Label>
+                <Input id="qualifications" name="qualifications" value={formState.qualifications || ''} onChange={handleFormChange} />
+            </div>
+             <div className="grid gap-2">
+                <Label htmlFor="salary">Monthly Salary (ZMW)</Label>
+                <Input id="salary" name="salary" type="number" value={formState.salary || ''} onChange={handleFormChange} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button onClick={handleSaveChanges}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
