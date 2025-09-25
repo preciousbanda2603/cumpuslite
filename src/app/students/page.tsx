@@ -21,12 +21,33 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Edit, Trash2 } from "lucide-react";
 import { auth, database } from "@/lib/firebase";
-import { onValue, ref } from "firebase/database";
+import { onValue, ref, set, remove } from "firebase/database";
 import type { User } from "firebase/auth";
 import { useSchoolId } from "@/hooks/use-school-id";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 type Student = {
   id: string;
@@ -34,7 +55,7 @@ type Student = {
   admissionNo: string;
   className: string;
   enrollmentDate: string;
-  status: 'Active' | 'Inactive';
+  status: 'Active' | 'Inactive' | 'Suspended' | 'Graduated';
   disabilities?: string;
 };
 
@@ -46,6 +67,11 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [studentStatus, setStudentStatus] = useState<Student['status']>('Active');
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -99,6 +125,43 @@ export default function StudentsPage() {
     setFilteredStudents(results);
   }, [searchTerm, students]);
 
+  const openEditDialog = (student: Student) => {
+    setSelectedStudent(student);
+    setStudentStatus(student.status);
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (student: Student) => {
+    setSelectedStudent(student);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const handleStatusChange = async () => {
+    if (!selectedStudent || !schoolId) return;
+
+    const studentRef = ref(database, `schools/${schoolId}/students/${selectedStudent.id}/status`);
+    try {
+        await set(studentRef, studentStatus);
+        toast({ title: "Success", description: "Student status updated." });
+        setIsEditDialogOpen(false);
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to update status.", variant: "destructive" });
+    }
+  };
+  
+  const handleDeleteStudent = async () => {
+    if (!selectedStudent || !schoolId) return;
+    
+    const studentRef = ref(database, `schools/${schoolId}/students/${selectedStudent.id}`);
+    try {
+        await remove(studentRef);
+        toast({ title: "Success", description: "Student record has been deleted." });
+        setIsDeleteDialogOpen(false);
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to delete student.", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -134,12 +197,13 @@ export default function StudentsPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Enrollment Date</TableHead>
                 <TableHead>Disabilities</TableHead>
+                {isAdmin && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     Loading students...
                   </TableCell>
                 </TableRow>
@@ -152,11 +216,21 @@ export default function StudentsPage() {
                     <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
                     <TableCell>{student.enrollmentDate}</TableCell>
                     <TableCell>{student.disabilities || 'None'}</TableCell>
+                    {isAdmin && (
+                        <TableCell className="text-right space-x-2">
+                            <Button variant="outline" size="icon" onClick={() => openEditDialog(student)}>
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="destructive" size="icon" onClick={() => openDeleteDialog(student)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No students found.
                   </TableCell>
                 </TableRow>
@@ -165,6 +239,49 @@ export default function StudentsPage() {
           </Table>
         </CardContent>
       </Card>
+      
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Edit Student Status</DialogTitle>
+                <DialogDescription>Change the status for {selectedStudent?.name}.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <Label htmlFor="status-select">Status</Label>
+                <Select value={studentStatus} onValueChange={(value: Student['status']) => setStudentStatus(value)}>
+                    <SelectTrigger id="status-select">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="Inactive">Inactive</SelectItem>
+                        <SelectItem value="Suspended">Suspended</SelectItem>
+                        <SelectItem value="Graduated">Graduated</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleStatusChange}>Save Changes</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the student record for {selectedStudent?.name}.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteStudent}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
