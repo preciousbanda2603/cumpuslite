@@ -28,6 +28,7 @@ import type { User } from 'firebase/auth';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Subject = {
   id: string;
@@ -41,6 +42,16 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 const secondaryApp = getApps().length > 1 ? getApp("secondary") : initializeApp(auth.app.options, "secondary");
 const secondaryAuth = getAuth(secondaryApp);
+
+const disabilityOptions = [
+    { id: 'visual', label: 'Visual Impairment' },
+    { id: 'hearing', label: 'Hearing Impairment' },
+    { id: 'physical', label: 'Physical/Motor Disability' },
+    { id: 'speech', label: 'Speech and Language Disorder' },
+    { id: 'learning', label: 'Learning Disability' },
+    { id: 'asd', label: 'Autism Spectrum Disorder (ASD)' },
+    { id: 'adhd', label: 'Attention-Deficit/Hyperactivity Disorder (ADHD)' },
+];
 
 
 export default function AddTeacherPage() {
@@ -90,7 +101,15 @@ export default function AddTeacherPage() {
     const qualifications = formData.get('qualifications') as string;
     const salary = formData.get('salary') as string;
     const startDate = formData.get('start-date') as string;
-    const disabilities = formData.get('disabilities') as string;
+    
+    const selectedDisabilities = disabilityOptions
+        .filter(option => formData.get(option.id))
+        .map(option => option.label);
+    const otherDisability = formData.get('disabilities-other') as string;
+    if (otherDisability) {
+        selectedDisabilities.push(otherDisability);
+    }
+    const disabilities = selectedDisabilities.join(', ');
     
     if (!user || !schoolId) {
         toast({
@@ -255,9 +274,22 @@ export default function AddTeacherPage() {
                     />
                 </div>
             </div>
-             <div className="space-y-2">
-                <Label htmlFor="disabilities">Disabilities (if any)</Label>
-                <Textarea id="disabilities" name="disabilities" placeholder="e.g. Visual impairment, etc."/>
+            <div className="space-y-2">
+                <Label>Disabilities (if any)</Label>
+                <div className="space-y-2 p-4 border rounded-md">
+                    {disabilityOptions.map((option) => (
+                        <div key={option.id} className="flex items-center space-x-2">
+                            <Checkbox id={option.id} name={option.id} />
+                            <label htmlFor={option.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                {option.label}
+                            </label>
+                        </div>
+                    ))}
+                    <div className="pt-2">
+                        <Label htmlFor="disabilities-other">Other</Label>
+                        <Input id="disabilities-other" name="disabilities-other" placeholder="Please specify" />
+                    </div>
+                </div>
             </div>
             <div className="flex justify-end gap-2 pt-4">
                <Button type="button" variant="outline" onClick={() => router.back()} disabled={loading}>

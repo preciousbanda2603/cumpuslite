@@ -29,6 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { customAlphabet } from 'nanoid';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Create a secondary auth instance for creating student accounts
 // This prevents the admin from being logged out
@@ -44,6 +45,17 @@ type Class = {
 
 // Generate a unique, human-readable admission number
 const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
+
+const disabilityOptions = [
+    { id: 'visual', label: 'Visual Impairment' },
+    { id: 'hearing', label: 'Hearing Impairment' },
+    { id: 'physical', label: 'Physical/Motor Disability' },
+    { id: 'speech', label: 'Speech and Language Disorder' },
+    { id: 'learning', label: 'Learning Disability (e.g., Dyslexia)' },
+    { id: 'asd', label: 'Autism Spectrum Disorder (ASD)' },
+    { id: 'adhd', label: 'Attention-Deficit/Hyperactivity Disorder (ADHD)' },
+];
+
 
 export default function AddStudentPage() {
   const { toast } = useToast();
@@ -104,7 +116,15 @@ export default function AddStudentPage() {
     const parentEmail = formData.get('parent-email') as string;
     const parentNrcPassport = formData.get('parent-nrc-passport') as string;
     const healthStatus = formData.get('health-status') as string;
-    const disabilities = formData.get('disabilities') as string;
+    
+    const selectedDisabilities = disabilityOptions
+        .filter(option => formData.get(option.id))
+        .map(option => option.label);
+    const otherDisability = formData.get('disabilities-other') as string;
+    if (otherDisability) {
+        selectedDisabilities.push(otherDisability);
+    }
+    const disabilities = selectedDisabilities.join(', ');
     
     const selectedClass = classes.find(c => c.id === selectedClassId);
     
@@ -249,15 +269,28 @@ export default function AddStudentPage() {
                     <Input id="parent-nrc-passport" name="parent-nrc-passport" placeholder="Enter ID number" />
                 </div>
             </div>
-             <div className="space-y-2">
+             <div className="space-y-4">
                 <h3 className="text-lg font-medium">Additional Information</h3>
                 <div className="space-y-2">
                     <Label htmlFor="health-status">Student's Health Status</Label>
                     <Textarea id="health-status" name="health-status" placeholder="e.g. Allergies, medical conditions, etc."/>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="disabilities">Disabilities (if any)</Label>
-                    <Textarea id="disabilities" name="disabilities" placeholder="e.g. Visual impairment, learning disability, etc."/>
+                    <Label>Disabilities (if any)</Label>
+                    <div className="space-y-2 p-4 border rounded-md">
+                        {disabilityOptions.map((option) => (
+                            <div key={option.id} className="flex items-center space-x-2">
+                                <Checkbox id={option.id} name={option.id} />
+                                <label htmlFor={option.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    {option.label}
+                                </label>
+                            </div>
+                        ))}
+                        <div className="pt-2">
+                            <Label htmlFor="disabilities-other">Other</Label>
+                            <Input id="disabilities-other" name="disabilities-other" placeholder="Please specify" />
+                        </div>
+                    </div>
                 </div>
             </div>
            

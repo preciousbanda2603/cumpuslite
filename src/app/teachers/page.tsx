@@ -234,7 +234,7 @@ export default function TeachersPage() {
               Update the details for {editingTeacher?.name}. Click save when you're done.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
             <div className="grid gap-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input id="name" name="name" value={formState.name || ''} onChange={handleFormChange} />
@@ -257,7 +257,7 @@ export default function TeachersPage() {
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="disabilities">Disabilities</Label>
-                <Textarea id="disabilities" name="disabilities" value={formState.disabilities || ''} onChange={handleFormChange} />
+                <Textarea id="disabilities" name="disabilities" value={formState.disabilities || ''} onChange={handleFormChange} placeholder="List any disabilities, separated by commas."/>
             </div>
           </div>
           <DialogFooter>
