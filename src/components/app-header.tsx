@@ -106,9 +106,9 @@ export function AppHeader() {
               A modern school management system.
             </SheetDescription>
           </SheetHeader>
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
-              <nav className="grid gap-2 text-lg font-medium pt-4 pr-4">
+          <div className="flex-1 overflow-auto">
+            <ScrollArea className="h-full pr-4">
+              <nav className="grid gap-2 text-lg font-medium pt-4">
                 {mainLinks.map((link) => {
                   const isActive = pathname === link.href;
                   return (
@@ -127,7 +127,7 @@ export function AppHeader() {
                 })}
               </nav>
                {settingsLinks.length > 0 && (
-                <div className="mt-4 pr-4">
+                <div className="mt-4">
                     <Separator />
                     <p className="px-2 pt-4 text-sm font-semibold uppercase text-muted-foreground tracking-wider">Settings</p>
                      <nav className="grid gap-2 text-lg font-medium mt-2">
