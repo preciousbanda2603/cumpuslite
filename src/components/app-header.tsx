@@ -106,50 +106,52 @@ export function AppHeader() {
               A modern school management system.
             </SheetDescription>
           </SheetHeader>
-          <ScrollArea className="flex-1">
-            <nav className="grid gap-2 text-lg font-medium pt-4">
-              {mainLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.label}
-                    href={link.href}
-                    className={cn(
-                      'mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground',
-                      isActive && 'bg-muted text-foreground'
-                    )}
-                  >
-                    <link.icon className="h-5 w-5" />
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
-            {settingsLinks.length > 0 && (
-            <div className="mt-4">
-                <Separator />
-                <p className="px-2 pt-4 text-sm font-semibold uppercase text-muted-foreground tracking-wider">Settings</p>
-                  <nav className="grid gap-2 text-lg font-medium mt-2">
-                    {settingsLinks.map((link) => {
-                        const isActive = pathname.startsWith(link.href);
-                        return (
-                        <Link
-                            key={link.label}
-                            href={link.href}
-                            className={cn(
-                            'mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground',
-                            isActive && 'bg-muted text-foreground'
-                            )}
-                        >
-                            <link.icon className="h-5 w-5" />
-                            {link.label}
-                        </Link>
-                        );
-                    })}
-                </nav>
-            </div>
-            )}
-          </ScrollArea>
+          <div className="flex-1 overflow-auto">
+            <ScrollArea className="h-full pr-4">
+              <nav className="grid gap-2 text-lg font-medium pt-4">
+                {mainLinks.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.label}
+                      href={link.href}
+                      className={cn(
+                        'mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground',
+                        isActive && 'bg-muted text-foreground'
+                      )}
+                    >
+                      <link.icon className="h-5 w-5" />
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              {settingsLinks.length > 0 && (
+              <div className="mt-4">
+                  <Separator />
+                  <p className="px-2 pt-4 text-sm font-semibold uppercase text-muted-foreground tracking-wider">Settings</p>
+                    <nav className="grid gap-2 text-lg font-medium mt-2">
+                      {settingsLinks.map((link) => {
+                          const isActive = pathname.startsWith(link.href);
+                          return (
+                          <Link
+                              key={link.label}
+                              href={link.href}
+                              className={cn(
+                              'mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground',
+                              isActive && 'bg-muted text-foreground'
+                              )}
+                          >
+                              <link.icon className="h-5 w-5" />
+                              {link.label}
+                          </Link>
+                          );
+                      })}
+                  </nav>
+              </div>
+              )}
+            </ScrollArea>
+          </div>
         </SheetContent>
       </Sheet>
 
