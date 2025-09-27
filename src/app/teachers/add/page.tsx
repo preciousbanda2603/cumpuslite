@@ -91,6 +91,8 @@ export default function AddTeacherPage() {
     const qualifications = formData.get('qualifications') as string;
     const salary = formData.get('salary') as string;
     const startDate = formData.get('start-date') as string;
+    const dob = formData.get('dob') as string;
+    const gender = formData.get('gender') as string;
     
     const selectedDisabilities = disabilityOptions
         .filter(option => formData.get(option.id))
@@ -112,10 +114,10 @@ export default function AddTeacherPage() {
         return;
     }
 
-    if (!selectedSubject) {
+    if (!selectedSubject || !dob || !gender) {
         toast({
             title: 'Missing Information',
-            description: 'Please select a primary subject.',
+            description: 'Please select a primary subject, gender, and date of birth.',
             variant: 'destructive',
         });
         setLoading(false);
@@ -148,6 +150,8 @@ export default function AddTeacherPage() {
         qualifications,
         salary: parseFloat(salary),
         startDate,
+        dob,
+        gender,
         disabilities,
         createdAt: new Date().toISOString(),
       });
@@ -201,6 +205,24 @@ export default function AddTeacherPage() {
                   required
                 />
               </div>
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="dob">Date of Birth</Label>
+                    <Input id="dob" name="dob" type="date" required />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select name="gender" required>
+                        <SelectTrigger id="gender">
+                            <SelectValue placeholder="Select Gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Female">Female</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Set Initial Password</Label>

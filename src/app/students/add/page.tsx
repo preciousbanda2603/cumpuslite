@@ -101,6 +101,8 @@ export default function AddStudentPage() {
     const password = formData.get('password') as string;
     const admissionNo = formData.get('admission-no') as string;
     const enrollmentDate = formData.get('enrollment-date') as string;
+    const dob = formData.get('dob') as string;
+    const gender = formData.get('gender') as string;
     const parentName = formData.get('parent-name') as string;
     const parentPhone = formData.get('parent-phone') as string;
     const parentEmail = formData.get('parent-email') as string;
@@ -119,10 +121,10 @@ export default function AddStudentPage() {
     
     const selectedClass = classes.find(c => c.id === selectedClassId);
     
-    if (!name || !selectedClassId || !enrollmentDate || !parentName || !parentPhone || !password) {
+    if (!name || !selectedClassId || !enrollmentDate || !parentName || !parentPhone || !password || !dob || !gender) {
         toast({
             title: 'Missing Information',
-            description: 'Please fill out all required fields, including password.',
+            description: 'Please fill out all required fields, including password, gender, and date of birth.',
             variant: 'destructive',
         });
         setLoading(false);
@@ -153,6 +155,8 @@ export default function AddStudentPage() {
         classId: selectedClassId,
         className: selectedClass?.name,
         enrollmentDate,
+        dob,
+        gender,
         parentName,
         parentPhone,
         parentEmail,
@@ -202,6 +206,24 @@ export default function AddStudentPage() {
                  <div className="space-y-2">
                     <Label htmlFor="name">Student's Full Name</Label>
                     <Input id="name" name="name" placeholder="e.g. John Smith" required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="dob">Date of Birth</Label>
+                        <Input id="dob" name="dob" type="date" required />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="gender">Gender</Label>
+                        <Select name="gender" required>
+                            <SelectTrigger id="gender">
+                                <SelectValue placeholder="Select Gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Male">Male</SelectItem>
+                                <SelectItem value="Female">Female</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

@@ -44,6 +44,8 @@ type Teacher = {
   avatar: string;
   salary?: number;
   startDate?: string;
+  dob?: string;
+  gender?: string;
   disabilities?: string;
   role?: 'admin' | 'teacher';
 };
@@ -147,6 +149,8 @@ export default function TeachersPage() {
         subject: teacher.subject,
         qualifications: teacher.qualifications,
         salary: teacher.salary,
+        dob: teacher.dob,
+        gender: teacher.gender,
         disabilities: teacher.disabilities,
         role: teacher.role || 'teacher'
     });
@@ -167,6 +171,10 @@ export default function TeachersPage() {
   const handleRoleChange = (role: 'admin' | 'teacher') => {
       setFormState(prev => ({ ...prev, role }));
   }
+  
+  const handleSelectChange = (name: keyof Teacher, value: string) => {
+      setFormState(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSaveChanges = async () => {
     if (!editingTeacher || !schoolId) return;
@@ -293,6 +301,22 @@ export default function TeachersPage() {
             <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" name="email" type="email" value={formState.email || ''} onChange={handleFormChange} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                 <div className="grid gap-2">
+                    <Label htmlFor="dob">Date of Birth</Label>
+                    <Input id="dob" name="dob" type="date" value={formState.dob || ''} onChange={handleFormChange} />
+                </div>
+                 <div className="grid gap-2">
+                    <Label htmlFor="gender">Gender</Label>
+                     <Select name="gender" value={formState.gender || ''} onValueChange={(value) => handleSelectChange('gender', value)}>
+                        <SelectTrigger id="gender"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Female">Female</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="subject">Primary Subject</Label>

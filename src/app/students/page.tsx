@@ -58,6 +58,8 @@ type Student = {
   classId: string;
   className: string;
   enrollmentDate: string;
+  dob?: string;
+  gender?: string;
   status: 'Active' | 'Inactive' | 'Suspended' | 'Graduated';
   parentName?: string;
   parentPhone?: string;
@@ -339,6 +341,22 @@ export default function StudentsPage() {
                     <div className="space-y-2">
                         <Label htmlFor="admissionNo">Admission Number</Label>
                         <Input id="admissionNo" name="admissionNo" value={editFormState.admissionNo || ''} readOnly disabled />
+                    </div>
+                </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="dob">Date of Birth</Label>
+                        <Input id="dob" name="dob" type="date" value={editFormState.dob || ''} onChange={handleEditFormChange} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="gender">Gender</Label>
+                        <Select name="gender" value={editFormState.gender || ''} onValueChange={(value) => handleEditSelectChange('gender', value)}>
+                            <SelectTrigger id="gender"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Male">Male</SelectItem>
+                                <SelectItem value="Female">Female</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
                  <div className="grid grid-cols-2 gap-4">
