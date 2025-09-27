@@ -23,7 +23,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import { auth, database } from '@/lib/firebase';
 import { onValue, ref, query, orderByChild, limitToLast, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
@@ -37,6 +37,17 @@ const chartConfig = {
   enrollments: {
     label: 'Students',
     color: 'hsl(var(--primary))',
+  },
+  students: {
+    label: 'Students',
+  },
+  male: {
+    label: 'Male',
+    color: 'hsl(var(--chart-1))',
+  },
+  female: {
+    label: 'Female',
+    color: 'hsl(var(--chart-2))',
   },
 };
 
@@ -65,6 +76,7 @@ export default function DashboardPage() {
     femaleStudents: 0,
   });
   const [chartData, setChartData] = useState<{ month: string, enrollments: number }[]>([]);
+  const [genderChartData, setGenderChartData] = useState<{ name: string, value: number, fill: string }[]>([]);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -90,6 +102,11 @@ export default function DashboardPage() {
         maleStudents: maleCount,
         femaleStudents: femaleCount
       }));
+
+      setGenderChartData([
+        { name: 'Male', value: maleCount, fill: 'hsl(var(--chart-1))' },
+        { name: 'Female', value: femaleCount, fill: 'hsl(var(--chart-2))' },
+      ]);
 
 
       // Chart Processing
@@ -201,60 +218,90 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">An overview of your school's key metrics and activities.</p>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-6 md:grid-cols-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Students
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle>Total Students</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.students}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.students === 0 ? 'No students enrolled' : 'Currently enrolled'}
-            </p>
+            <ChartContainer config={chartConfig} className="mx-auto aspect-square h-full max-h-[250px]">
+              <RadialBarChart
+                data={[{ name: 'students', value: stats.students, fill: 'hsl(var(--primary))' }]}
+                startAngle={-90}
+                endAngle={270}
+                innerRadius="70%"
+                outerRadius="100%"
+                barSize={20}
+              >
+                <PolarAngleAxis type="number" domain={[0, stats.students > 0 ? stats.students : 1]} tick={false} />
+                <RadialBar dataKey="value" background cornerRadius={10} />
+                 <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel nameKey="name" />}
+                />
+              </RadialBarChart>
+            </ChartContainer>
           </CardContent>
+          <CardHeader className="items-center pb-6 -mt-12">
+            <p className="text-5xl font-bold">{loading ? '...' : stats.students}</p>
+          </CardHeader>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Male Students
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle>Student Gender Ratio</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.maleStudents}</div>
-             <p className="text-xs text-muted-foreground">
-                {stats.students > 0 ? `${((stats.maleStudents / stats.students) * 100).toFixed(0)}% of total` : 'No students'}
-            </p>
+            <ChartContainer config={chartConfig} className="mx-auto aspect-square h-full max-h-[250px]">
+              <RadialBarChart
+                data={genderChartData}
+                startAngle={-90}
+                endAngle={270}
+                innerRadius="70%"
+                outerRadius="100%"
+                barSize={20}
+              >
+                <PolarAngleAxis type="number" domain={[0, stats.students]} tick={false} />
+                <RadialBar dataKey="value" background cornerRadius={10} />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel nameKey="name" />}
+                />
+              </RadialBarChart>
+            </ChartContainer>
           </CardContent>
+          <CardHeader className="items-center pb-6 -mt-12">
+             <div className="text-center">
+              <p className="text-2xl font-bold">{loading ? '...' : `${stats.maleStudents} Male`}</p>
+              <p className="text-2xl font-bold">{loading ? '...' : `${stats.femaleStudents} Female`}</p>
+             </div>
+          </CardHeader>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Female Students
-            </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+         <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Active Teachers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.femaleStudents}</div>
-            <p className="text-xs text-muted-foreground">
-                {stats.students > 0 ? `${((stats.femaleStudents / stats.students) * 100).toFixed(0)}% of total` : 'No students'}
-            </p>
+            <ChartContainer config={chartConfig} className="mx-auto aspect-square h-full max-h-[250px]">
+              <RadialBarChart
+                data={[{ name: 'teachers', value: stats.teachers, fill: 'hsl(var(--primary))' }]}
+                startAngle={-90}
+                endAngle={270}
+                innerRadius="70%"
+                outerRadius="100%"
+                barSize={20}
+              >
+                <PolarAngleAxis type="number" domain={[0, stats.teachers > 0 ? stats.teachers : 1]} tick={false} />
+                <RadialBar dataKey="value" background cornerRadius={10} />
+                 <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel nameKey="name" />}
+                />
+              </RadialBarChart>
+            </ChartContainer>
           </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Teachers</CardTitle>
-            <BookUser className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="items-center pb-6 -mt-12">
+            <p className="text-5xl font-bold">{loading ? '...' : stats.teachers}</p>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.teachers}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.teachers === 0 ? 'No teachers registered' : 'Currently active'}
-            </p>
-          </CardContent>
         </Card>
       </section>
 
