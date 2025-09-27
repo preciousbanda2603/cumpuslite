@@ -17,6 +17,8 @@ import {
   Megaphone,
   UserPlus,
   AlertTriangle,
+  Male,
+  Female,
 } from 'lucide-react';
 import {
   ChartContainer,
@@ -45,9 +47,11 @@ type DashboardStats = {
   classes: number;
   teachers: number;
   events: number;
+  maleStudents: number;
+  femaleStudents: number;
 };
 
-type Student = { name: string; enrollmentDate: string; createdAt: string; };
+type Student = { name: string; enrollmentDate: string; createdAt: string; gender?: 'Male' | 'Female' };
 type Teacher = { name: string; createdAt: string; };
 type Activity = { id: string, type: 'student' | 'teacher', text: string, time: string };
 
@@ -59,6 +63,8 @@ export default function DashboardPage() {
     classes: 0,
     teachers: 0,
     events: 0,
+    maleStudents: 0,
+    femaleStudents: 0,
   });
   const [chartData, setChartData] = useState<{ month: string, enrollments: number }[]>([]);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
@@ -74,7 +80,21 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !schoolId) return;
 
-    const processStudentDataForChart = (studentsData: { [key: string]: Student }) => {
+    const processStudentData = (studentsData: { [key: string]: Student }) => {
+      const studentsArray = Object.values(studentsData);
+      const studentCount = studentsArray.length;
+      const maleCount = studentsArray.filter(s => s.gender === 'Male').length;
+      const femaleCount = studentsArray.filter(s => s.gender === 'Female').length;
+      
+      setStats(prevStats => ({ 
+        ...prevStats, 
+        students: studentCount,
+        maleStudents: maleCount,
+        femaleStudents: femaleCount
+      }));
+
+
+      // Chart Processing
       const enrollmentsByMonth: { [key: string]: number } = {};
       const today = new Date();
       const last6Months: { month: string, enrollments: number }[] = [];
@@ -86,7 +106,7 @@ export default function DashboardPage() {
         last6Months.push({ month: format(monthDate, 'MMMM'), enrollments: 0 });
       }
 
-      Object.values(studentsData).forEach(student => {
+      studentsArray.forEach(student => {
         if (student.enrollmentDate) {
           const enrollmentMonth = format(new Date(student.enrollmentDate), 'yyyy-MM');
           if (enrollmentsByMonth.hasOwnProperty(enrollmentMonth)) {
@@ -104,36 +124,34 @@ export default function DashboardPage() {
       });
 
       setChartData(updatedChartData);
-      setLoading(false);
     };
 
     setLoading(true);
-    const statsToFetch = [
-      { key: 'students', path: `schools/${schoolId}/students` },
+    const pathsToFetch = [
       { key: 'classes', path: `schools/${schoolId}/classes` },
       { key: 'teachers', path: `schools/${schoolId}/teachers` },
       { key: 'events', path: `schools/${schoolId}/events` },
     ];
+    
+    // Separate listener for students to handle complex processing
+    const studentsRef = ref(database, `schools/${schoolId}/students`);
+    const unsubscribeStudents = onValue(studentsRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        processStudentData(data);
+    });
 
-    const listeners = statsToFetch.map(({ key, path }) => {
+    const otherListeners = pathsToFetch.map(({ key, path }) => {
       const dbRef = ref(database, path);
       return onValue(dbRef, (snapshot) => {
-        const data = snapshot.val();
-        const count = snapshot.exists() ? Object.keys(data).length : 0;
+        const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
         setStats((prevStats) => ({ ...prevStats, [key]: count }));
-
-        if (key === 'students' && data) {
-           processStudentDataForChart(data);
-        } else if (key === 'students' && !data) {
-           processStudentDataForChart({}); // Handle case with no students
-        }
       });
     });
 
-    const studentsRef = query(ref(database, `schools/${schoolId}/students`), orderByChild('createdAt'), limitToLast(3));
-    const teachersRef = query(ref(database, `schools/${schoolId}/teachers`), orderByChild('createdAt'), limitToLast(2));
+    const studentsActivityRef = query(ref(database, `schools/${schoolId}/students`), orderByChild('createdAt'), limitToLast(3));
+    const teachersActivityRef = query(ref(database, `schools/${schoolId}/teachers`), orderByChild('createdAt'), limitToLast(2));
 
-    const unsubscribeStudentsActivity = onValue(studentsRef, (snapshot) => {
+    const unsubscribeStudentsActivity = onValue(studentsActivityRef, (snapshot) => {
         const newActivities: Activity[] = [];
         if (snapshot.exists()) {
             snapshot.forEach(childSnapshot => {
@@ -149,7 +167,7 @@ export default function DashboardPage() {
         setRecentActivity(prev => [...prev.filter(a => a.type !== 'student'), ...newActivities].sort((a,b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
     });
     
-    const unsubscribeTeachersActivity = onValue(teachersRef, (snapshot) => {
+    const unsubscribeTeachersActivity = onValue(teachersActivityRef, (snapshot) => {
         const newActivities: Activity[] = [];
         if (snapshot.exists()) {
              snapshot.forEach(childSnapshot => {
@@ -164,9 +182,15 @@ export default function DashboardPage() {
         }
         setRecentActivity(prev => [...prev.filter(a => a.type !== 'teacher'), ...newActivities].sort((a,b) => new Date(b.time).getTime() - new Date(a.time).getTime()));
     });
+    
+     Promise.all([
+        get(studentsRef),
+        ...pathsToFetch.map(({path}) => get(ref(database, path)))
+    ]).finally(() => setLoading(false));
 
     return () => {
-      listeners.forEach((unsubscribe) => unsubscribe());
+      unsubscribeStudents();
+      otherListeners.forEach((unsubscribe) => unsubscribe());
       unsubscribeStudentsActivity();
       unsubscribeTeachersActivity();
     };
@@ -197,14 +221,28 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Classes
+              Male Students
             </CardTitle>
-            <Clapperboard className="h-4 w-4 text-muted-foreground" />
+            <Male className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.classes}</div>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.maleStudents}</div>
+             <p className="text-xs text-muted-foreground">
+                {stats.students > 0 ? `${((stats.maleStudents / stats.students) * 100).toFixed(0)}% of total` : 'No students'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Female Students
+            </CardTitle>
+            <Female className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{loading ? '...' : stats.femaleStudents}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.classes === 0 ? 'No classes available' : 'Active classes'}
+                {stats.students > 0 ? `${((stats.femaleStudents / stats.students) * 100).toFixed(0)}% of total` : 'No students'}
             </p>
           </CardContent>
         </Card>
@@ -217,20 +255,6 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">{loading ? '...' : stats.teachers}</div>
             <p className="text-xs text-muted-foreground">
               {stats.teachers === 0 ? 'No teachers registered' : 'Currently active'}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Upcoming Events
-            </CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.events}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.events === 0 ? 'No upcoming events' : 'Scheduled events'}
             </p>
           </CardContent>
         </Card>
@@ -296,3 +320,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
