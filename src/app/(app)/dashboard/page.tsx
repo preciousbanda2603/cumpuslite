@@ -23,7 +23,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
+import { AreaChart, Area, CartesianGrid, XAxis, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import { auth, database } from '@/lib/firebase';
 import { onValue, ref, query, orderByChild, limitToLast, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
@@ -315,20 +315,37 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="w-full h-[300px]">
-              <BarChart accessibilityLayer data={chartData} >
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent />}
-                />
-                <Bar dataKey="enrollments" fill="var(--color-enrollments)" radius={4} />
-              </BarChart>
+                <AreaChart accessibilityLayer data={chartData} margin={{ left: 12, right: 12 }}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                    <defs>
+                        <linearGradient id="fillEnrollments" x1="0" y1="0" x2="0" y2="1">
+                            <stop
+                                offset="5%"
+                                stopColor="var(--color-enrollments)"
+                                stopOpacity={0.8}
+                            />
+                            <stop
+                                offset="95%"
+                                stopColor="var(--color-enrollments)"
+                                stopOpacity={0.1}
+                            />
+                        </linearGradient>
+                    </defs>
+                    <Area
+                        dataKey="enrollments"
+                        type="natural"
+                        fill="url(#fillEnrollments)"
+                        stroke="var(--color-enrollments)"
+                        stackId="a"
+                    />
+                </AreaChart>
             </ChartContainer>
           </CardContent>
         </Card>
