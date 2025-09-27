@@ -50,6 +50,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { disabilityOptions } from "@/lib/disability-options";
 import { Textarea } from "@/components/ui/textarea";
+import { differenceInYears } from "date-fns";
 
 type Student = {
   id: string;
@@ -68,6 +69,7 @@ type Student = {
   healthStatus?: string;
   disabilities?: string;
   guardianshipStatus?: string;
+  age?: number;
 };
 
 type Class = {
@@ -84,6 +86,7 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [ageFilter, setAgeFilter] = useState('');
   const [guardianshipFilter, setGuardianshipFilter] = useState('all');
   const [disabilityFilter, setDisabilityFilter] = useState('all');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -116,10 +119,15 @@ export default function StudentsPage() {
       (snapshot) => {
         if (snapshot.exists()) {
           const studentsData = snapshot.val();
-          const studentsList: Student[] = Object.keys(studentsData).map((key) => ({
-            id: key,
-            ...studentsData[key],
-          }));
+          const studentsList: Student[] = Object.keys(studentsData).map((key) => {
+            const student = studentsData[key];
+            const age = student.dob ? differenceInYears(new Date(), new Date(student.dob)) : undefined;
+            return {
+                id: key,
+                ...student,
+                age: age,
+            };
+          });
           setStudents(studentsList);
           setFilteredStudents(studentsList);
         } else {
@@ -154,6 +162,13 @@ export default function StudentsPage() {
             student.admissionNo?.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }
+    
+    if (ageFilter) {
+        const ageNum = parseInt(ageFilter, 10);
+        if (!isNaN(ageNum)) {
+            results = results.filter(student => student.age === ageNum);
+        }
+    }
 
     if (guardianshipFilter && guardianshipFilter !== 'all') {
         results = results.filter(student => student.guardianshipStatus === guardianshipFilter);
@@ -165,7 +180,7 @@ export default function StudentsPage() {
 
 
     setFilteredStudents(results);
-  }, [searchTerm, guardianshipFilter, disabilityFilter, students]);
+  }, [searchTerm, ageFilter, guardianshipFilter, disabilityFilter, students]);
 
   const openEditDialog = (student: Student) => {
     setSelectedStudent(student);
@@ -242,15 +257,20 @@ export default function StudentsPage() {
       </div>
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Input
                 placeholder="Search by name or admission no..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
+            />
+            <Input
+                placeholder="Filter by age..."
+                type="number"
+                value={ageFilter}
+                onChange={(e) => setAgeFilter(e.target.value)}
             />
              <Select value={guardianshipFilter} onValueChange={setGuardianshipFilter}>
-                <SelectTrigger className="w-full sm:w-[240px]">
+                <SelectTrigger>
                     <SelectValue placeholder="Filter by Guardianship" />
                 </SelectTrigger>
                 <SelectContent>
@@ -261,7 +281,7 @@ export default function StudentsPage() {
                 </SelectContent>
             </Select>
             <Select value={disabilityFilter} onValueChange={setDisabilityFilter}>
-                <SelectTrigger className="w-full sm:w-[240px]">
+                <SelectTrigger>
                     <SelectValue placeholder="Filter by Disability" />
                 </SelectTrigger>
                 <SelectContent>
@@ -279,6 +299,7 @@ export default function StudentsPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Admission No.</TableHead>
+                <TableHead>Age</TableHead>
                 <TableHead>Class</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Guardianship</TableHead>
@@ -289,7 +310,7 @@ export default function StudentsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     Loading students...
                   </TableCell>
                 </TableRow>
@@ -298,6 +319,7 @@ export default function StudentsPage() {
                   <TableRow key={student.id}>
                     <TableCell className="font-medium">{student.name}</TableCell>
                     <TableCell>{student.admissionNo}</TableCell>
+                    <TableCell>{student.age}</TableCell>
                     <TableCell>{student.className}</TableCell>
                     <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
                     <TableCell>{student.guardianshipStatus || 'N/A'}</TableCell>
@@ -316,7 +338,7 @@ export default function StudentsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     No students found.
                   </TableCell>
                 </TableRow>
