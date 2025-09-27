@@ -93,6 +93,7 @@ export default function AddTeacherPage() {
     const startDate = formData.get('start-date') as string;
     const dob = formData.get('dob') as string;
     const gender = formData.get('gender') as string;
+    const totalLeaveDays = formData.get('totalLeaveDays') as string;
     
     const selectedDisabilities = disabilityOptions
         .filter(option => formData.get(option.id))
@@ -153,6 +154,7 @@ export default function AddTeacherPage() {
         dob,
         gender,
         disabilities,
+        totalLeaveDays: parseInt(totalLeaveDays, 10) || 0,
         createdAt: new Date().toISOString(),
       });
       
@@ -285,6 +287,10 @@ export default function AddTeacherPage() {
                         required
                     />
                 </div>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="totalLeaveDays">Total Annual Leave Days</Label>
+                <Input id="totalLeaveDays" name="totalLeaveDays" type="number" placeholder="e.g. 24" />
             </div>
             <div className="space-y-2">
                 <Label>Disabilities (if any)</Label>

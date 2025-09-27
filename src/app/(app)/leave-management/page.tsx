@@ -44,7 +44,7 @@ import { ref, onValue, get, push, set, update } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, differenceInBusinessDays, getYear, parseISO } from 'date-fns';
 
 type UserRole = 'admin' | 'teacher' | null;
 type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
@@ -59,6 +59,18 @@ type LeaveRequest = {
   status: LeaveStatus;
   createdAt: string;
 };
+type TeacherProfile = {
+  id: string;
+  name: string;
+  uid: string;
+  totalLeaveDays?: number;
+  usedLeaveDays?: { [year: string]: number };
+};
+type LeaveBalance = {
+    total: number;
+    used: number;
+    remaining: number;
+};
 
 const leaveTypes = ['Annual', 'Sick', 'Maternity', 'Paternity', 'Unpaid', 'Other'];
 
@@ -67,9 +79,9 @@ export default function LeaveManagementPage() {
   const schoolId = useSchoolId();
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [teacherId, setTeacherId] = useState<string | null>(null);
-  const [teacherName, setTeacherName] = useState<string | null>(null);
+  const [currentTeacher, setCurrentTeacher] = useState<TeacherProfile | null>(null);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -102,8 +114,7 @@ export default function LeaveManagementPage() {
         );
         if (foundTeacherId) {
           setUserRole('teacher');
-          setTeacherId(foundTeacherId);
-          setTeacherName(teachersData[foundTeacherId].name);
+          setCurrentTeacher({ id: foundTeacherId, ...teachersData[foundTeacherId] });
         }
       }
     };
@@ -124,15 +135,28 @@ export default function LeaveManagementPage() {
 
         if (userRole === 'admin') {
             setLeaveRequests(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-        } else if (userRole === 'teacher' && teacherId) {
-            setLeaveRequests(list.filter(req => req.teacherId === teacherId).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        } else if (userRole === 'teacher' && currentTeacher) {
+            setLeaveRequests(list.filter(req => req.teacherId === currentTeacher.id).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         }
         setLoading(false);
     });
 
     return () => unsubscribe();
 
-  }, [userRole, schoolId, teacherId]);
+  }, [userRole, schoolId, currentTeacher]);
+  
+  useEffect(() => {
+      if (userRole === 'teacher' && currentTeacher) {
+          const currentYear = getYear(new Date()).toString();
+          const total = currentTeacher.totalLeaveDays || 0;
+          const used = currentTeacher.usedLeaveDays?.[currentYear] || 0;
+          setLeaveBalance({
+              total,
+              used,
+              remaining: total - used
+          });
+      }
+  }, [currentTeacher, userRole]);
 
   const openDialog = () => setIsDialogOpen(true);
   const closeDialog = () => {
@@ -144,14 +168,14 @@ export default function LeaveManagementPage() {
   };
 
   const handleSubmitRequest = async () => {
-    if (!user || !schoolId || !teacherId || !leaveType || !startDate || !endDate || !reason) {
+    if (!user || !schoolId || !currentTeacher || !leaveType || !startDate || !endDate || !reason) {
         toast({ title: 'Error', description: 'Please fill out all fields.', variant: 'destructive' });
         return;
     }
     
     const requestData = {
-        teacherId,
-        teacherName,
+        teacherId: currentTeacher.id,
+        teacherName: currentTeacher.name,
         leaveType,
         startDate: format(startDate, 'yyyy-MM-dd'),
         endDate: format(endDate, 'yyyy-MM-dd'),
@@ -171,11 +195,30 @@ export default function LeaveManagementPage() {
     }
   };
   
-  const handleUpdateRequestStatus = async (requestId: string, status: LeaveStatus) => {
+  const handleUpdateRequestStatus = async (request: LeaveRequest, status: LeaveStatus) => {
     if (userRole !== 'admin' || !schoolId) return;
+
     try {
-        const requestRef = ref(database, `schools/${schoolId}/leaveRequests/${requestId}/status`);
+        const requestRef = ref(database, `schools/${schoolId}/leaveRequests/${request.id}/status`);
         await set(requestRef, status);
+
+        if (status === 'Approved' && request.leaveType === 'Annual') {
+            const leaveDuration = differenceInBusinessDays(parseISO(request.endDate), parseISO(request.startDate)) + 1;
+            const yearOfLeave = getYear(parseISO(request.startDate)).toString();
+
+            const teacherRef = ref(database, `schools/${schoolId}/teachers/${request.teacherId}`);
+            const teacherSnap = await get(teacherRef);
+            if (teacherSnap.exists()) {
+                const teacherData = teacherSnap.val();
+                const usedDays = (teacherData.usedLeaveDays?.[yearOfLeave] || 0) + leaveDuration;
+                
+                const updates: { [key: string]: any } = {};
+                updates[`/usedLeaveDays/${yearOfLeave}`] = usedDays;
+
+                await update(teacherRef, updates);
+            }
+        }
+        
         toast({ title: 'Success', description: `Request has been ${status.toLowerCase()}.` });
     } catch (error) {
         toast({ title: 'Error', description: 'Failed to update request status.', variant: 'destructive' });
@@ -208,6 +251,23 @@ export default function LeaveManagementPage() {
             </Button>
         )}
       </div>
+
+        {leaveBalance && userRole === 'teacher' && (
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader><CardTitle>Total Annual Leave</CardTitle></CardHeader>
+                    <CardContent><p className="text-2xl font-bold">{leaveBalance.total} days</p></CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>Leave Days Used</CardTitle></CardHeader>
+                    <CardContent><p className="text-2xl font-bold">{leaveBalance.used} days</p></CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>Remaining Leave</CardTitle></CardHeader>
+                    <CardContent><p className="text-2xl font-bold text-primary">{leaveBalance.remaining} days</p></CardContent>
+                </Card>
+            </div>
+        )}
 
        <Card>
         <CardHeader>
@@ -242,8 +302,8 @@ export default function LeaveManagementPage() {
                                     <TableCell className="text-right">
                                         {req.status === 'Pending' ? (
                                             <div className="flex gap-2 justify-end">
-                                                <Button size="icon" variant="outline" onClick={() => handleUpdateRequestStatus(req.id, 'Approved')}><Check className="h-4 w-4 text-green-600"/></Button>
-                                                <Button size="icon" variant="outline" onClick={() => handleUpdateRequestStatus(req.id, 'Rejected')}><X className="h-4 w-4 text-red-600" /></Button>
+                                                <Button size="icon" variant="outline" onClick={() => handleUpdateRequestStatus(req, 'Approved')}><Check className="h-4 w-4 text-green-600"/></Button>
+                                                <Button size="icon" variant="outline" onClick={() => handleUpdateRequestStatus(req, 'Rejected')}><X className="h-4 w-4 text-red-600" /></Button>
                                             </div>
                                         ) : 'N/A'}
                                     </TableCell>

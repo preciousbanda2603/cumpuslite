@@ -48,6 +48,7 @@ type Teacher = {
   gender?: string;
   disabilities?: string;
   role?: 'admin' | 'teacher';
+  totalLeaveDays?: number;
 };
 
 
@@ -152,7 +153,8 @@ export default function TeachersPage() {
         dob: teacher.dob,
         gender: teacher.gender,
         disabilities: teacher.disabilities,
-        role: teacher.role || 'teacher'
+        role: teacher.role || 'teacher',
+        totalLeaveDays: teacher.totalLeaveDays,
     });
     setIsDialogOpen(true);
   };
@@ -189,6 +191,7 @@ export default function TeachersPage() {
             ...currentData,
             ...formState,
             salary: formState.salary ? parseFloat(formState.salary.toString()) : currentData.salary,
+            totalLeaveDays: formState.totalLeaveDays ? parseInt(formState.totalLeaveDays.toString(), 10) : currentData.totalLeaveDays,
         };
         
         await set(teacherRef, updatedData);
@@ -326,9 +329,15 @@ export default function TeachersPage() {
                 <Label htmlFor="qualifications">Qualifications</Label>
                 <Input id="qualifications" name="qualifications" value={formState.qualifications || ''} onChange={handleFormChange} />
             </div>
-             <div className="grid gap-2">
-                <Label htmlFor="salary">Monthly Salary (ZMW)</Label>
-                <Input id="salary" name="salary" type="number" value={formState.salary || ''} onChange={handleFormChange} />
+             <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="salary">Monthly Salary (ZMW)</Label>
+                    <Input id="salary" name="salary" type="number" value={formState.salary || ''} onChange={handleFormChange} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="totalLeaveDays">Total Annual Leave</Label>
+                    <Input id="totalLeaveDays" name="totalLeaveDays" type="number" value={formState.totalLeaveDays || ''} onChange={handleFormChange} />
+                </div>
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="disabilities">Disabilities</Label>
