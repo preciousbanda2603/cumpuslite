@@ -87,6 +87,7 @@ export default function StudentsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [ageFilter, setAgeFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('all');
   const [guardianshipFilter, setGuardianshipFilter] = useState('all');
   const [disabilityFilter, setDisabilityFilter] = useState('all');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -169,6 +170,10 @@ export default function StudentsPage() {
             results = results.filter(student => student.age === ageNum);
         }
     }
+    
+    if (genderFilter && genderFilter !== 'all') {
+        results = results.filter(student => student.gender === genderFilter);
+    }
 
     if (guardianshipFilter && guardianshipFilter !== 'all') {
         results = results.filter(student => student.guardianshipStatus === guardianshipFilter);
@@ -180,7 +185,7 @@ export default function StudentsPage() {
 
 
     setFilteredStudents(results);
-  }, [searchTerm, ageFilter, guardianshipFilter, disabilityFilter, students]);
+  }, [searchTerm, ageFilter, genderFilter, guardianshipFilter, disabilityFilter, students]);
 
   const openEditDialog = (student: Student) => {
     setSelectedStudent(student);
@@ -262,11 +267,12 @@ export default function StudentsPage() {
       </div>
       <Card>
         <CardHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <Input
                 placeholder="Search by name or admission no..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="lg:col-span-2"
             />
             <Input
                 placeholder="Filter by age..."
@@ -274,6 +280,16 @@ export default function StudentsPage() {
                 value={ageFilter}
                 onChange={(e) => setAgeFilter(e.target.value)}
             />
+             <Select value={genderFilter} onValueChange={setGenderFilter}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Filter by Gender" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Genders</SelectItem>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                </SelectContent>
+            </Select>
              <Select value={guardianshipFilter} onValueChange={setGuardianshipFilter}>
                 <SelectTrigger>
                     <SelectValue placeholder="Filter by Guardianship" />
@@ -286,7 +302,7 @@ export default function StudentsPage() {
                 </SelectContent>
             </Select>
             <Select value={disabilityFilter} onValueChange={setDisabilityFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="lg:col-span-2">
                     <SelectValue placeholder="Filter by Disability" />
                 </SelectTrigger>
                 <SelectContent>
@@ -305,6 +321,7 @@ export default function StudentsPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Admission No.</TableHead>
                 <TableHead>Age</TableHead>
+                <TableHead>Gender</TableHead>
                 <TableHead>Class</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Guardianship</TableHead>
@@ -315,7 +332,7 @@ export default function StudentsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     Loading students...
                   </TableCell>
                 </TableRow>
@@ -325,6 +342,7 @@ export default function StudentsPage() {
                     <TableCell className="font-medium">{student.name}</TableCell>
                     <TableCell>{student.admissionNo}</TableCell>
                     <TableCell>{student.age}</TableCell>
+                    <TableCell>{student.gender}</TableCell>
                     <TableCell>{student.className}</TableCell>
                     <TableCell><Badge variant={student.status === 'Active' ? 'default' : 'secondary'}>{student.status}</Badge></TableCell>
                     <TableCell>{student.guardianshipStatus || 'N/A'}</TableCell>
@@ -343,7 +361,7 @@ export default function StudentsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={9} className="h-24 text-center">
                     No students found.
                   </TableCell>
                 </TableRow>
