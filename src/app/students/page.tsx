@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Edit, Trash2 } from "lucide-react";
 import { auth, database } from "@/lib/firebase";
-import { onValue, ref, set, remove, get } from "firebase/database";
+import { onValue, ref, set, remove, get, update } from "firebase/database";
 import type { User } from "firebase/auth";
 import { useSchoolId } from "@/hooks/use-school-id";
 import { Input } from "@/components/ui/input";
@@ -204,25 +204,30 @@ export default function StudentsPage() {
   
   const handleUpdateStudent = async () => {
     if (!selectedStudent || !schoolId) return;
-
+  
     const studentRef = ref(database, `schools/${schoolId}/students/${selectedStudent.id}`);
     try {
-        const studentSnapshot = await get(studentRef);
-        const currentData = studentSnapshot.val();
-        
-        const selectedClass = classes.find(c => c.id === editFormState.classId);
+      const selectedClass = classes.find(c => c.id === editFormState.classId);
+      
+      const updatePayload: Partial<Student> = {
+        ...editFormState,
+      };
 
-        const updatedData = {
-            ...currentData,
-            ...editFormState,
-            className: selectedClass ? selectedClass.name : currentData.className, // Update className if class changed
-        };
-        
-        await set(studentRef, updatedData);
-        toast({ title: "Success", description: "Student profile updated." });
-        setIsEditDialogOpen(false);
+      if (selectedClass && selectedClass.id !== selectedStudent.classId) {
+        updatePayload.className = selectedClass.name;
+      }
+      
+      // Remove id and age from the payload as they are client-side only
+      delete updatePayload.id;
+      delete updatePayload.age;
+
+      await update(studentRef, updatePayload);
+      
+      toast({ title: "Success", description: "Student profile updated." });
+      setIsEditDialogOpen(false);
     } catch (error) {
-        toast({ title: "Error", description: "Failed to update student profile.", variant: "destructive" });
+      console.error("Failed to update student:", error);
+      toast({ title: "Error", description: "Failed to update student profile.", variant: "destructive" });
     }
   };
   
@@ -474,4 +479,5 @@ export default function StudentsPage() {
 
     </div>
   );
-}
+
+    
