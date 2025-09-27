@@ -17,8 +17,6 @@ import {
   Megaphone,
   UserPlus,
   AlertTriangle,
-  Male,
-  Female,
 } from 'lucide-react';
 import {
   ChartContainer,
@@ -223,7 +221,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">
               Male Students
             </CardTitle>
-            <Male className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '...' : stats.maleStudents}</div>
@@ -237,7 +235,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">
               Female Students
             </CardTitle>
-            <Female className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loading ? '...' : stats.femaleStudents}</div>
@@ -320,5 +318,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
