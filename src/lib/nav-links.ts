@@ -24,6 +24,7 @@ import {
   Receipt,
   TrendingUp,
   Landmark,
+  CalendarCheck,
 } from 'lucide-react';
 
 export const navLinks = [
@@ -45,6 +46,7 @@ export const navLinks = [
   { href: "/communication", label: "Communication", icon: MessagesSquare },
   { href: "/fees", label: "Fee Collection", icon: CreditCard },
   { href: "/finance", label: "Finance", icon: Landmark },
+  { href: "/leave-management", label: "Leave Management", icon: CalendarCheck },
   { href: "/income", label: "Income", icon: TrendingUp, isHidden: true },
   { href: "/expenses", label: "Financial Overview", icon: Receipt, isHidden: true },
   { href: "/payroll", label: "Payroll", icon: DollarSign, isHidden: true },
