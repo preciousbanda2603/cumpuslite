@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import { auth, database } from '@/lib/firebase';
-import { onValue, ref, query, orderByChild, limitToLast } from 'firebase/database';
+import { onValue, ref, query, orderByChild, limitToLast, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { format, subMonths } from 'date-fns';
 import { useSchoolId } from '@/hooks/use-school-id';
