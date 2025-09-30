@@ -180,13 +180,13 @@ export default function TeachersPage() {
 
   const handleSaveChanges = async () => {
     if (!editingTeacher || !schoolId) return;
-    
+
     const teacherRef = ref(database, `schools/${schoolId}/teachers/${editingTeacher.id}`);
-    
+
     try {
         const teacherDataSnapshot = await get(teacherRef);
         const currentData = teacherDataSnapshot.val();
-        
+
         const updatedData = {
             ...currentData,
             ...formState,
