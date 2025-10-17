@@ -34,7 +34,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { getSchools } from '@/app/actions';
+import { getSchools, linkChildToParent } from '@/app/actions';
 
 type Announcement = {
   id: string;
@@ -66,15 +66,32 @@ function LinkChildDialog() {
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setLoading(true);
-        
-        toast({
-            title: "Feature Unavailable",
-            description: "Linking another child should be done through the Parent Registration page for now.",
-            variant: "destructive"
-        });
 
-        setLoading(false);
-        setOpen(false);
+        const formData = new FormData(event.currentTarget);
+        const schoolUid = formData.get('school') as string;
+        const admissionNo = formData.get('admission-no') as string;
+        const currentUser = auth.currentUser;
+
+        if (!schoolUid || !admissionNo || !currentUser) {
+            toast({ title: "Error", description: "All fields are required and you must be logged in.", variant: "destructive" });
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const result = await linkChildToParent({ schoolUid, admissionNo, parentUid: currentUser.uid });
+            if (result.success) {
+                toast({ title: "Success", description: "New child linked successfully! The page will now reload." });
+                window.location.reload();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+            toast({ title: "Linking Failed", description: error.message, variant: "destructive" });
+        } finally {
+            setLoading(false);
+            setOpen(false);
+        }
     };
 
     return (
@@ -86,13 +103,32 @@ function LinkChildDialog() {
                 <DialogHeader>
                     <DialogTitle>Link Another Child</DialogTitle>
                     <DialogDescription>
-                        To link another child, please go to the Parent Registration page and use your existing email and password. This will connect the new student to your account.
+                        Enter the admission number and school for the child you want to link to your account.
                     </DialogDescription>
                 </DialogHeader>
-                 <DialogFooter>
+                <form onSubmit={handleSubmit}>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="school">School</Label>
+                            <Select name="school" required>
+                                <SelectTrigger id="school"><SelectValue placeholder="Select your child's school" /></SelectTrigger>
+                                <SelectContent>
+                                    {schools.map(school => (
+                                        <SelectItem key={school.uid} value={school.uid}>{school.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="admission-no">Student's Admission Number</Label>
+                            <Input id="admission-no" name="admission-no" placeholder="Enter the student's unique ID" required />
+                        </div>
+                    </div>
+                    <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                        <Button type="button" onClick={() => router.push('/parent-register')}>Go to Registration</Button>
-                </DialogFooter>
+                        <Button type="submit" disabled={loading}>{loading ? "Linking..." : "Link Child"}</Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );

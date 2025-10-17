@@ -106,7 +106,7 @@ export default function ParentRegisterPage() {
         <CardHeader>
             <CardTitle className="text-xl">Create Parent Account</CardTitle>
             <CardDescription>
-            Register to link with your child and access the parent portal.
+            Register to link with your child and access the parent portal. If you already have an account, you can link another child from your dashboard.
             </CardDescription>
         </CardHeader>
         <CardContent>
