@@ -69,20 +69,8 @@ function LinkChildDialog() {
         const schoolUid = formData.get('school') as string;
         const admissionNo = formData.get('admission-no') as string;
         
-        const user = auth.currentUser;
-        if (!user) {
-             toast({
-                title: "Authentication Error",
-                description: "You must be logged in to link a child.",
-                variant: "destructive",
-            });
-            setLoading(false);
-            return;
-        }
-
         try {
-            const idToken = await user.getIdToken();
-            const result = await linkChildToParent({ schoolUid, admissionNo, idToken });
+            const result = await linkChildToParent({ schoolUid, admissionNo });
             if (result.success) {
                 toast({
                     title: "Success!",

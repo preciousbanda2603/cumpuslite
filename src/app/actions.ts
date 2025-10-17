@@ -5,7 +5,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { getDatabase, ref, get, query, orderByChild, equalTo, update } from 'firebase/database';
 import { auth as adminAuth } from '@/lib/firebase'; // Main app auth
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { admin } from '@/lib/firebase-admin'; // Admin SDK
 
 // Initialize a secondary Firebase app for creating users without affecting admin session
@@ -80,7 +80,7 @@ export async function createParentUser(params: CreateParentUserParams) {
 
     // Step 3: Update student record with parent's UID
     const studentRef = ref(database, `schools/${schoolUid}/students/${studentId}`);
-    await update(studentRef, { parentUid: user.uid });
+    await update(studentRef, { parentUid: user.uid, parentName: user.displayName || email.split('@')[0] });
 
     return { success: true };
   } catch (error: any) {
@@ -99,15 +99,15 @@ export async function createParentUser(params: CreateParentUserParams) {
 type LinkChildParams = {
     schoolUid: string;
     admissionNo: string;
-    idToken: string;
 };
 
 export async function linkChildToParent(params: LinkChildParams) {
-    const { schoolUid, admissionNo, idToken } = params;
+    const { schoolUid, admissionNo } = params;
 
     let parentUid: string;
     try {
-        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const sessionCookie = cookies().get('__session')?.value || '';
+        const decodedToken = await admin.auth().verifySessionCookie(sessionCookie, true);
         parentUid = decodedToken.uid;
     } catch (error) {
         console.error("Token verification failed:", error);
