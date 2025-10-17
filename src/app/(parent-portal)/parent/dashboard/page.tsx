@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -49,6 +50,7 @@ type School = {
 
 function LinkChildDialog() {
     const { toast } = useToast();
+    const router = useRouter();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [schools, setSchools] = useState<School[]>([]);
