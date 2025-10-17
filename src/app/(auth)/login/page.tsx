@@ -81,6 +81,7 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const loggedInUserUid = userCredential.user.uid;
 
+      // Check if the user is the admin for the selected school
       if (loggedInUserUid === schoolUid) {
         localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolUid);
         toast({ title: "Success!", description: "Admin logged in." });
@@ -88,6 +89,7 @@ export default function LoginPage() {
         return;
       }
 
+      // Check if the user is a teacher for the selected school
       const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
       const teacherSnapshot = await get(teachersRef);
 
@@ -103,6 +105,7 @@ export default function LoginPage() {
         }
       }
 
+      // If not admin and not a teacher for the school, sign out and show error
       await auth.signOut();
       throw new Error("Your account is not associated with the selected school.");
 

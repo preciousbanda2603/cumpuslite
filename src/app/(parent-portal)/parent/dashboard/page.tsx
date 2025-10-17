@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useStudentSelection } from '@/hooks/use-student-selection';
+import { cn } from '@/lib/utils';
 
 type Announcement = {
   id: string;
