@@ -46,19 +46,26 @@ export async function createParentUser(params: CreateParentUserParams) {
   try {
     // Step 1: Find the student by admission number within the specific school
     const studentsRef = ref(database, `schools/${schoolUid}/students`);
-    const studentQuery = query(studentsRef, orderByChild('admissionNo'), equalTo(admissionNo));
-    const studentSnapshot = await get(studentQuery);
+    const studentSnapshot = await get(studentsRef);
 
     if (!studentSnapshot.exists()) {
-      throw new Error("No student found with that Admission Number at the selected school.");
+      throw new Error("No students found at the selected school.");
+    }
+    
+    const studentsData = studentSnapshot.val();
+    let studentId: string | null = null;
+    let studentData: any = null;
+
+    for (const id in studentsData) {
+      if (studentsData[id].admissionNo === admissionNo) {
+        studentId = id;
+        studentData = studentsData[id];
+        break;
+      }
     }
 
-    const studentsData = studentSnapshot.val();
-    const studentId = Object.keys(studentsData)[0];
-    const studentData = studentsData[studentId];
-    
     if (!studentId || !studentData) {
-       throw new Error("Could not retrieve student data.");
+       throw new Error("No student found with that Admission Number at the selected school.");
     }
 
     if (studentData.parentUid) {
