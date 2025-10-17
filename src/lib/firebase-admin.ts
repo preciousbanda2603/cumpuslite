@@ -1,14 +1,18 @@
 
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    databaseURL: `https://studio-2119893974-60441-default-rtdb.firebaseio.com`,
-  });
+  try {
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+      databaseURL: `https://studio-2119893974-60441-default-rtdb.firebaseio.com`,
+    });
+  } catch (error: any) {
+    console.error('Firebase admin initialization error', error.stack);
+  }
 }
 
-const db = admin.database();
-const auth = admin.auth();
+const dbAdmin = admin.database();
+const authAdmin = admin.auth();
 
-export { admin, db, auth };
+export { admin, dbAdmin, authAdmin };
