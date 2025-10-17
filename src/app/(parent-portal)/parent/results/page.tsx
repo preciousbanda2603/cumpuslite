@@ -238,7 +238,17 @@ export default function ParentReportCardPage() {
         </Button>
       </div>
 
-       <style jsx global>{\`
+       
+      {availableTerms.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+              <p className="text-lg">No Results Found</p>
+              <p>There are no report cards available for this student yet.</p>
+          </div>
+      ) : loading ? (
+          <div className="p-8"><Skeleton className="h-[800px] w-full" /></div>
+      ) : (
+      <>
+        <style jsx global>{`
           @media print {
             body { background: white; }
             .report-card { border: none; margin: 0; padding: 0; box-shadow: none; }
@@ -266,122 +276,116 @@ export default function ParentReportCardPage() {
           .report-card .section-title { font-weight: bold; margin-bottom: 10px; text-decoration: underline; }
           .report-card .signatures div { display: inline-block; width: 45%; margin-top: 40px; }
           .report-card .footer { text-align: center; font-size: 0.9em; color: #666; margin-top: 40px; }
-      \`}</style>
+        `}</style>
+        <div className="print-container">
+          <div className="report-card">
+              <div className="school-info">
+                  <h1>Ministry of Education - Zambia</h1>
+                  <h2>{school?.name}</h2>
+                  <p>{school?.address} • {school?.contactPhone}</p>
+                  <h3>Term Report Card – {selectedTerm}</h3>
+              </div>
 
-      {availableTerms.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-              <p className="text-lg">No Results Found</p>
-              <p>There are no report cards available for this student yet.</p>
+              <div className="student-info">
+                  <p><strong>Student Name:</strong> {student?.name}</p>
+                  <p><strong>Grade:</strong> {classInfo?.name} &nbsp;&nbsp; <strong>Admission No:</strong> {student?.admissionNo || 'N/A'}</p>
+                  <p><strong>Class Teacher:</strong> {classTeacher?.name || 'N/A'}</p>
+              </div>
+
+              <div className="attendance">
+                  <div className="section-title">Attendance</div>
+                  <table>
+                  <thead>
+                      <tr>
+                          <th>Total School Days</th>
+                          <th>Days Present</th>
+                          <th>Days Absent</th>
+                          <th>Punctuality</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <tr>
+                          <td>{extras.attendance?.totalDays || '-'}</td>
+                          <td>{extras.attendance?.daysPresent || '-'}</td>
+                          <td>{daysAbsent()}</td>
+                          <td>{extras.attendance?.punctuality || '-'}</td>
+                      </tr>
+                  </tbody>
+                  </table>
+              </div>
+
+              <div className="grades">
+                  <div className="section-title">Academic Performance</div>
+                  <table>
+                      <thead>
+                          <tr>
+                              <th>Subject</th>
+                              <th>Continuous Assessment (Avg)</th>
+                              <th>Exam Marks</th>
+                              <th>Total (Avg)</th>
+                              <th>Grade</th>
+                              <th>Teacher’s Comment</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                        {performanceData.map(p => (
+                          <tr key={p.subjectName}>
+                              <td>{p.subjectName}</td>
+                              <td>{p.continuousAssessment}</td>
+                              <td>{p.examMarks}</td>
+                              <td>{p.total}</td>
+                              <td>{p.grade}</td>
+                              <td>{p.comment}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                  </table>
+              </div>
+              
+              <div className="development">
+                  <div className="section-title">Personal & Co-Curricular Development</div>
+                  <table>
+                  <thead>
+                      <tr>
+                          <th>Area</th>
+                          <th>Remarks</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <tr><td>Class Participation</td><td>{extras.development?.participation || '-'}</td></tr>
+                      <tr><td>Homework & Assignments</td><td>{extras.development?.homework || '-'}</td></tr>
+                      <tr><td>Behaviour / Social Skills</td><td>{extras.development?.behaviour || '-'}</td></tr>
+                  </tbody>
+                  </table>
+              </div>
+
+              <div className="comments">
+                  <div className="section-title">Final Comments</div>
+                  <p><strong>Class Teacher's Comment on Strengths:</strong> {extras.comments?.strengths || ''}</p>
+                  <p><strong>Class Teacher's Comment on Areas for Improvement:</strong> {extras.comments?.improvements || ''}</p>
+                  <p className="mt-4"><strong>Head Teacher / Principal's Comment:</strong> {extras.comments?.principalComment || ''}</p>
+              </div>
+
+              <div className="signatures">
+                  <div>
+                  ___________________________<br />
+                  <strong>Class Teacher</strong>
+                  </div>
+                  <div>
+                  ___________________________<br />
+                  <strong>Head Teacher / Principal</strong>
+                  </div>
+              </div>
+
+              <div className="footer">
+                  This is a computer-generated report card for internal use only.
+              </div>
           </div>
-      ) : loading ? (
-          <div className="p-8"><Skeleton className="h-[800px] w-full" /></div>
-      ) : (
-      <div className="print-container">
-        <div className="report-card">
-            <div className="school-info">
-                <h1>Ministry of Education - Zambia</h1>
-                <h2>{school?.name}</h2>
-                <p>{school?.address} • {school?.contactPhone}</p>
-                <h3>Term Report Card – {selectedTerm}</h3>
-            </div>
-
-            <div className="student-info">
-                <p><strong>Student Name:</strong> {student?.name}</p>
-                <p><strong>Grade:</strong> {classInfo?.name} &nbsp;&nbsp; <strong>Admission No:</strong> {student?.admissionNo || 'N/A'}</p>
-                <p><strong>Class Teacher:</strong> {classTeacher?.name || 'N/A'}</p>
-            </div>
-
-            <div className="attendance">
-                <div className="section-title">Attendance</div>
-                <table>
-                <thead>
-                    <tr>
-                        <th>Total School Days</th>
-                        <th>Days Present</th>
-                        <th>Days Absent</th>
-                        <th>Punctuality</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>{extras.attendance?.totalDays || '-'}</td>
-                        <td>{extras.attendance?.daysPresent || '-'}</td>
-                        <td>{daysAbsent()}</td>
-                        <td>{extras.attendance?.punctuality || '-'}</td>
-                    </tr>
-                </tbody>
-                </table>
-            </div>
-
-            <div className="grades">
-                <div className="section-title">Academic Performance</div>
-                 <table>
-                    <thead>
-                        <tr>
-                            <th>Subject</th>
-                            <th>Continuous Assessment (Avg)</th>
-                            <th>Exam Marks</th>
-                            <th>Total (Avg)</th>
-                            <th>Grade</th>
-                            <th>Teacher’s Comment</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                       {performanceData.map(p => (
-                         <tr key={p.subjectName}>
-                            <td>{p.subjectName}</td>
-                            <td>{p.continuousAssessment}</td>
-                            <td>{p.examMarks}</td>
-                            <td>{p.total}</td>
-                            <td>{p.grade}</td>
-                            <td>{p.comment}</td>
-                        </tr>
-                       ))}
-                    </tbody>
-                </table>
-            </div>
-            
-            <div className="development">
-                <div className="section-title">Personal & Co-Curricular Development</div>
-                <table>
-                <thead>
-                    <tr>
-                        <th>Area</th>
-                        <th>Remarks</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td>Class Participation</td><td>{extras.development?.participation || '-'}</td></tr>
-                    <tr><td>Homework & Assignments</td><td>{extras.development?.homework || '-'}</td></tr>
-                    <tr><td>Behaviour / Social Skills</td><td>{extras.development?.behaviour || '-'}</td></tr>
-                </tbody>
-                </table>
-            </div>
-
-            <div className="comments">
-                <div className="section-title">Final Comments</div>
-                <p><strong>Class Teacher's Comment on Strengths:</strong> {extras.comments?.strengths || ''}</p>
-                <p><strong>Class Teacher's Comment on Areas for Improvement:</strong> {extras.comments?.improvements || ''}</p>
-                 <p className="mt-4"><strong>Head Teacher / Principal's Comment:</strong> {extras.comments?.principalComment || ''}</p>
-            </div>
-
-            <div className="signatures">
-                <div>
-                ___________________________<br />
-                <strong>Class Teacher</strong>
-                </div>
-                <div>
-                ___________________________<br />
-                <strong>Head Teacher / Principal</strong>
-                </div>
-            </div>
-
-            <div className="footer">
-                This is a computer-generated report card for internal use only.
-            </div>
         </div>
-      </div>
+      </>
       )}
     </>
   );
 }
+
+    
