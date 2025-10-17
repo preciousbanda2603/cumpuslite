@@ -19,8 +19,8 @@ import {
   FileText,
   CheckSquare
 } from 'lucide-react';
-import { auth, database } from '@/lib/firebase';
-import { ref, onValue, query, orderByChild, equalTo, get } from 'firebase/database';
+import { database } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +28,12 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useStudentSelection } from '@/hooks/use-student-selection';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { getSchools, linkChildToParent } from '@/app/actions';
 
 type Announcement = {
   id: string;
@@ -35,6 +41,98 @@ type Announcement = {
   content: string;
   createdAt: string;
 };
+
+type School = {
+    uid: string;
+    name: string;
+};
+
+function LinkChildDialog() {
+    const { toast } = useToast();
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [schools, setSchools] = useState<School[]>([]);
+
+    useEffect(() => {
+        const fetchSchools = async () => {
+            const schoolsList = await getSchools();
+            setSchools(schoolsList);
+        };
+        fetchSchools();
+    }, []);
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setLoading(true);
+
+        const formData = new FormData(event.currentTarget);
+        const schoolUid = formData.get('school') as string;
+        const admissionNo = formData.get('admission-no') as string;
+
+        try {
+            const result = await linkChildToParent({ schoolUid, admissionNo });
+            if (result.success) {
+                toast({
+                    title: "Success!",
+                    description: "New child has been linked to your account. The page will now reload.",
+                });
+                // Reload the page to refetch student list
+                window.location.reload();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+            toast({
+                title: "Linking Failed",
+                description: error.message,
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Link Another Child</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Link Another Child</DialogTitle>
+                    <DialogDescription>
+                        Enter the admission number and school for another child to link them to your account.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit}>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="school">School</Label>
+                            <Select name="school" required>
+                                <SelectTrigger id="school">
+                                    <SelectValue placeholder="Select your child's school" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {schools.map(school => (
+                                        <SelectItem key={school.uid} value={school.uid}>{school.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="admission-no">Student's Admission Number</Label>
+                            <Input name="admission-no" id="admission-no" placeholder="Enter your child's unique ID" required />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                        <Button type="submit" disabled={loading}>{loading ? "Linking..." : "Link Child"}</Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 
 export default function ParentDashboardPage() {
@@ -90,12 +188,17 @@ export default function ParentDashboardPage() {
   return (
     <div className="flex flex-col gap-8">
        <section>
-        <h1 className="text-3xl font-bold tracking-tight">Parent Dashboard</h1>
-        {selectedStudent ? (
-             <p className="text-muted-foreground">Welcome! Here's a quick overview for <span className="font-semibold text-primary">{selectedStudent.name}</span> ({selectedStudent.className}).</p>
-        ) : (
-            <p className="text-muted-foreground">Welcome! Please select a child from the dropdown above to view their information.</p>
-        )}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Parent Dashboard</h1>
+                {selectedStudent ? (
+                    <p className="text-muted-foreground">Welcome! Here's a quick overview for <span className="font-semibold text-primary">{selectedStudent.name}</span> ({selectedStudent.className}).</p>
+                ) : (
+                    <p className="text-muted-foreground">Welcome! Please select a child from the dropdown above to view their information.</p>
+                )}
+            </div>
+            <LinkChildDialog />
+        </div>
       </section>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

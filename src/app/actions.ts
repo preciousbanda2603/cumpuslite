@@ -5,6 +5,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { getDatabase, ref, get, query, orderByChild, equalTo, update } from 'firebase/database';
 import { auth as adminAuth } from '@/lib/firebase'; // Main app auth
+import { headers } from 'next/headers';
+import { admin } from '@/lib/firebase-admin'; // Admin SDK
 
 // Initialize a secondary Firebase app for creating users without affecting admin session
 const secondaryAppConfig = {
@@ -92,4 +94,67 @@ export async function createParentUser(params: CreateParentUserParams) {
     }
     return { success: false, error: errorMessage };
   }
+}
+
+type LinkChildParams = {
+    schoolUid: string;
+    admissionNo: string;
+};
+
+export async function linkChildToParent(params: LinkChildParams) {
+    const { schoolUid, admissionNo } = params;
+
+    // 1. Get the parent's UID from their session token
+    const authorization = headers().get("Authorization");
+    if (!authorization?.startsWith("Bearer ")) {
+        return { success: false, error: "Unauthorized. Please log in again." };
+    }
+    const idToken = authorization.split("Bearer ")[1];
+    
+    let parentUid: string;
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        parentUid = decodedToken.uid;
+    } catch (error) {
+        console.error("Token verification failed:", error);
+        return { success: false, error: "Session invalid. Please log in again." };
+    }
+
+    try {
+        // 2. Find the student
+        const studentsRef = ref(database, `schools/${schoolUid}/students`);
+        const studentSnapshot = await get(studentsRef);
+
+        if (!studentSnapshot.exists()) {
+            throw new Error("No students found at the selected school.");
+        }
+        
+        const studentsData = studentSnapshot.val();
+        let studentId: string | null = null;
+        let studentData: any = null;
+
+        for (const id in studentsData) {
+            if (studentsData[id].admissionNo === admissionNo) {
+                studentId = id;
+                studentData = studentsData[id];
+                break;
+            }
+        }
+
+        if (!studentId || !studentData) {
+            throw new Error("No student found with that Admission Number at the selected school.");
+        }
+
+        if (studentData.parentUid) {
+            throw new Error("This student is already linked to another parent account.");
+        }
+
+        // 3. Link the student to the parent
+        const studentRef = ref(database, `schools/${schoolUid}/students/${studentId}`);
+        await update(studentRef, { parentUid: parentUid });
+
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
 }
