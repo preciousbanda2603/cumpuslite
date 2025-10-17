@@ -22,8 +22,7 @@ const secondaryAuth = getAuth(secondaryApp);
 const database = getDatabase(secondaryApp);
 
 export async function getSchools() {
-  const dbRef = ref(database);
-  const snapshot = await get(ref(dbRef, 'schools'));
+  const snapshot = await get(ref(database, 'schools'));
   if (snapshot.exists()) {
     const schoolsData = snapshot.val();
     return Object.keys(schoolsData).map(key => ({
