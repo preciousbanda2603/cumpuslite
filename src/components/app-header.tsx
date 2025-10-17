@@ -7,6 +7,7 @@ import {
   Menu,
   Search,
   School,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +33,7 @@ import { ref, onValue } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { Separator } from './ui/separator';
 import { useSchoolId, SCHOOL_ID_LOCAL_STORAGE_KEY } from '@/hooks/use-school-id';
+import { useStudentSelection } from '@/hooks/use-student-selection';
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -39,6 +41,7 @@ export function AppHeader() {
   const [user, setUser] = useState<User | null>(null);
   const [schoolName, setSchoolName] = useState('Your School');
   const schoolId = useSchoolId();
+  const { students, selectedStudent, selectStudent } = useStudentSelection();
   
   const isParentPortal = pathname.startsWith('/parent');
   const isStudentPortal = pathname.startsWith('/student');
@@ -72,6 +75,7 @@ export function AppHeader() {
     try {
       await auth.signOut();
       localStorage.removeItem(SCHOOL_ID_LOCAL_STORAGE_KEY);
+      localStorage.removeItem('selected-student-id'); // Clear selected student on logout
       router.push('/login');
     } catch (error) {
       console.error("Failed to log out:", error);
@@ -157,11 +161,33 @@ export function AppHeader() {
 
       <div className="w-full flex-1">
         <div className="flex items-center gap-4">
-           <Button variant="outline" className="flex items-center gap-2 cursor-default">
-              <School className="h-4 w-4" />
-              <span>{schoolName}</span>
-            </Button>
+           {!isParentPortal && (
+             <Button variant="outline" className="flex items-center gap-2 cursor-default">
+                <School className="h-4 w-4" />
+                <span>{schoolName}</span>
+              </Button>
+           )}
 
+           {isParentPortal && students.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  {selectedStudent ? selectedStudent.name : "Select a Child"}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuLabel>My Children</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {students.map(student => (
+                  <DropdownMenuItem key={student.id} onSelect={() => selectStudent(student)}>
+                    {student.name} ({student.className})
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+           )}
+          
           <form className="ml-auto flex-1 sm:flex-initial">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -179,7 +205,7 @@ export function AppHeader() {
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="icon" className="rounded-full">
             <Avatar>
-                <AvatarImage src="https://picsum.photos/seed/admin/100/100" data-ai-hint="person avatar" alt="User" />
+                <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/100/100`} data-ai-hint="person avatar" alt="User" />
                 <AvatarFallback>{user?.email?.[0].toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
             <span className="sr-only">Toggle user menu</span>

@@ -3,15 +3,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth, database } from '@/lib/firebase';
+import { database } from '@/lib/firebase';
 import { ref, get, query, orderByChild, equalTo } from 'firebase/database';
-import type { User } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Printer, ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useStudentSelection } from '@/hooks/use-student-selection';
 
 type School = { name: string, address: string, contactPhone: string };
 type Student = { id: string; name: string; classId: string; admissionNo?: string, schoolId: string };
@@ -37,9 +37,8 @@ type PerformanceData = {
 export default function ParentReportCardPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { selectedStudent } = useStudentSelection();
 
-  const [user, setUser] = useState<User | null>(null);
-  const [student, setStudent] = useState<Student | null>(null);
   const [school, setSchool] = useState<School | null>(null);
   const [classInfo, setClassInfo] = useState<Class | null>(null);
   const [classTeacher, setClassTeacher] = useState<Teacher | null>(null);
@@ -50,76 +49,47 @@ export default function ParentReportCardPage() {
   const [selectedTerm, setSelectedTerm] = useState('');
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => setUser(user));
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
+    if (!selectedStudent) {
         setLoading(false);
+        setAvailableTerms([]);
+        setPerformanceData([]);
         return;
     }
     
-    const findStudentAndTerms = async () => {
-        const schoolsRef = ref(database, 'schools');
-        const schoolsSnap = await get(schoolsRef);
-        if(!schoolsSnap.exists()) {
-            toast({ title: 'Error', description: 'Could not find school data.', variant: 'destructive' });
-            setLoading(false);
-            return;
-        }
-
-        const schoolsData = schoolsSnap.val();
-        let foundStudent: Student | null = null;
-        for (const schoolId in schoolsData) {
-            const students = schoolsData[schoolId].students || {};
-            for (const studentId in students) {
-                if (students[studentId].parentUid === user.uid) {
-                    foundStudent = { id: studentId, ...students[studentId], schoolId };
-                    break;
-                }
-            }
-            if (foundStudent) break;
-        }
-
-        if (foundStudent) {
-            setStudent(foundStudent);
-            const resultsRef = ref(database, `schools/${foundStudent.schoolId}/results/${foundStudent.id}`);
-            const resultsSnap = await get(resultsRef);
-            if (resultsSnap.exists()) {
-                const terms = Object.keys(resultsSnap.val());
-                const sortedTerms = terms.sort((a,b) => {
-                    const yearA = parseInt(a.split(' ')[2]);
-                    const termA = parseInt(a.split(' ')[1]);
-                    const yearB = parseInt(b.split(' ')[2]);
-                    const termB = parseInt(b.split(' ')[1]);
-                    if (yearA !== yearB) return yearB - yearA;
-                    return termB - termA;
-                });
-                setAvailableTerms(sortedTerms);
-                if (sortedTerms.length > 0) {
-                    setSelectedTerm(sortedTerms[0]);
-                } else {
-                    setLoading(false);
-                }
-            } else {
-                setLoading(false);
+    const findTerms = async () => {
+        const resultsRef = ref(database, `schools/${selectedStudent.schoolId}/results/${selectedStudent.id}`);
+        const resultsSnap = await get(resultsRef);
+        if (resultsSnap.exists()) {
+            const terms = Object.keys(resultsSnap.val());
+            const sortedTerms = terms.sort((a,b) => {
+                const yearA = parseInt(a.split(' ')[2]);
+                const termA = parseInt(a.split(' ')[1]);
+                const yearB = parseInt(b.split(' ')[2]);
+                const termB = parseInt(b.split(' ')[1]);
+                if (yearA !== yearB) return yearB - yearA;
+                return termB - termA;
+            });
+            setAvailableTerms(sortedTerms);
+            if (sortedTerms.length > 0 && !selectedTerm) {
+                setSelectedTerm(sortedTerms[0]);
             }
         } else {
-            toast({ title: 'Error', description: 'Could not find a linked student.', variant: 'destructive' });
+            setAvailableTerms([]);
+            setSelectedTerm('');
             setLoading(false);
         }
     };
 
-    findStudentAndTerms();
-  }, [user, toast]);
+    findTerms();
+  }, [selectedStudent, selectedTerm]);
 
   useEffect(() => {
-    if (!student || !selectedTerm) {
-      return;
+    if (!selectedStudent || !selectedTerm) {
+        setLoading(false);
+        return;
     }
-    fetchData(student, selectedTerm);
-  }, [student, selectedTerm]);
+    fetchData(selectedStudent, selectedTerm);
+  }, [selectedStudent, selectedTerm]);
 
   const fetchData = async (currentStudent: Student, term: string) => {
       const { schoolId, id: studentId } = currentStudent;
@@ -200,13 +170,13 @@ export default function ParentReportCardPage() {
     if (isNaN(present) || isNaN(total) || total === 0) return '-';
     return total - present;
   }
-
-  if (loading && availableTerms.length === 0) {
-      return <div className="p-8"><Skeleton className="h-[800px] w-full" /></div>
-  }
   
-  if (!student) {
-      return <div className="p-8 text-center text-muted-foreground">No student data found for this account.</div>
+  if (!selectedStudent) {
+      return (
+          <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+              <p>Please select a child from the header to view their report card.</p>
+          </div>
+      )
   }
 
   return (
@@ -239,7 +209,7 @@ export default function ParentReportCardPage() {
       </div>
 
        
-      {availableTerms.length === 0 ? (
+      {!selectedTerm ? (
           <div className="text-center py-20 text-muted-foreground">
               <p className="text-lg">No Results Found</p>
               <p>There are no report cards available for this student yet.</p>
@@ -287,8 +257,8 @@ export default function ParentReportCardPage() {
               </div>
 
               <div className="student-info">
-                  <p><strong>Student Name:</strong> {student?.name}</p>
-                  <p><strong>Grade:</strong> {classInfo?.name} &nbsp;&nbsp; <strong>Admission No:</strong> {student?.admissionNo || 'N/A'}</p>
+                  <p><strong>Student Name:</strong> {selectedStudent?.name}</p>
+                  <p><strong>Grade:</strong> {classInfo?.name} &nbsp;&nbsp; <strong>Admission No:</strong> {selectedStudent?.admissionNo || 'N/A'}</p>
                   <p><strong>Class Teacher:</strong> {classTeacher?.name || 'N/A'}</p>
               </div>
 
@@ -387,5 +357,3 @@ export default function ParentReportCardPage() {
     </>
   );
 }
-
-    

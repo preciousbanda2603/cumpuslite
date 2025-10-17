@@ -10,10 +10,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
-import { auth, database } from '@/lib/firebase';
-import { ref, onValue, get } from 'firebase/database';
-import type { User } from 'firebase/auth';
+import { database } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 import { format, parseISO } from 'date-fns';
+import { useStudentSelection } from '@/hooks/use-student-selection';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type SchoolEvent = {
   id: string;
@@ -22,67 +23,47 @@ type SchoolEvent = {
   date: string; // YYYY-MM-DD
 };
 
-type Student = {
-    schoolId: string;
-}
-
 export default function ParentEventsPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [student, setStudent] = useState<Student | null>(null);
+  const { selectedStudent, loading: studentLoading } = useStudentSelection();
   const [events, setEvents] = useState<SchoolEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged(setUser);
-    return () => unsubscribeAuth();
-  }, []);
-
-   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
+    if (!selectedStudent) {
+        setEvents([]);
+        setLoading(false);
+        return;
     }
-
+    
     setLoading(true);
-    const schoolsRef = ref(database, 'schools');
-    get(schoolsRef).then(snapshot => {
-        if (snapshot.exists()) {
-            const schoolsData = snapshot.val();
-            let foundStudent: Student | null = null;
-            for (const schoolId in schoolsData) {
-                const students = schoolsData[schoolId].students || {};
-                for (const studentId in students) {
-                    if (students[studentId].parentUid === user.uid) {
-                        foundStudent = { schoolId };
-                        break;
-                    }
-                }
-                if (foundStudent) break;
-            }
-            setStudent(foundStudent);
-            
-            if (foundStudent) {
-                 const eventsRef = ref(database, `schools/${foundStudent.schoolId}/events`);
-                 const unsubscribeEvents = onValue(eventsRef, (snapshot) => {
-                    const data = snapshot.val() || {};
-                    const list: SchoolEvent[] = Object.keys(data)
-                        .map(id => ({ id, ...data[id] }))
-                        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                    setEvents(list);
-                    setLoading(false);
-                });
-                return () => unsubscribeEvents();
-            } else {
-                 setLoading(false);
-            }
-        } else {
-            setLoading(false);
-        }
+    const eventsRef = ref(database, `schools/${selectedStudent.schoolId}/events`);
+    const unsubscribeEvents = onValue(eventsRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const list: SchoolEvent[] = Object.keys(data)
+            .map(id => ({ id, ...data[id] }))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        setEvents(list);
+        setLoading(false);
     });
-  }, [user]);
+    return () => unsubscribeEvents();
+    
+  }, [selectedStudent]);
   
   const eventDays = events.map(event => parseISO(event.date));
+
+  if (studentLoading) {
+      return (
+           <div className="space-y-6">
+              <Skeleton className="h-8 w-1/3" />
+              <Skeleton className="h-4 w-1/2" />
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <Skeleton className="lg:col-span-2 h-96" />
+                <Skeleton className="h-96" />
+              </div>
+          </div>
+      )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -92,6 +73,11 @@ export default function ParentEventsPage() {
             <p className="text-muted-foreground">Key school dates and deadlines.</p>
             </div>
       </div>
+       {!selectedStudent ? (
+           <div className="flex items-center justify-center h-64 text-center text-muted-foreground">
+              <p>Please select a child to view the school's event calendar.</p>
+          </div>
+        ) : (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>
@@ -138,6 +124,7 @@ export default function ParentEventsPage() {
           </Card>
         </div>
       </div>
+      )}
     </div>
   );
 }

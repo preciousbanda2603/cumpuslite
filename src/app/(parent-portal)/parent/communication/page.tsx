@@ -14,12 +14,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, MessagesSquare } from 'lucide-react';
-import { useSchoolId } from '@/hooks/use-school-id';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue, push, set, serverTimestamp, query, orderByChild, get } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useStudentSelection } from '@/hooks/use-student-selection';
 
 type UserProfile = {
   id: string;
@@ -37,6 +37,7 @@ type ChatMessage = {
 
 export default function ParentCommunicationPage() {
   const [user, setUser] = useState<User | null>(null);
+  const { selectedStudent, loading: studentLoading } = useStudentSelection();
   const [contacts, setContacts] = useState<UserProfile[]>([]);
   const [activeChat, setActiveChat] = useState<UserProfile | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -52,79 +53,63 @@ export default function ParentCommunicationPage() {
   }, []);
   
   useEffect(() => {
-    if (!user) return;
+    if (!user || !selectedStudent) {
+        setContacts([]);
+        setActiveChat(null);
+        setLoading(false);
+        return;
+    };
 
     setLoading(true);
-    const findStudentAndContacts = async () => {
-        const schoolsRef = ref(database, 'schools');
-        const schoolsSnap = await get(schoolsRef);
-        if(!schoolsSnap.exists()) {
-            setLoading(false);
-            return;
-        }
-
-        const schoolsData = schoolsSnap.val();
-        let studentData: any = null;
-        let schoolId: string | null = null;
+    const findContacts = async () => {
+        const { schoolId, classId } = selectedStudent;
+        const schoolAdminRef = ref(database, `schools/${schoolId}`);
+        const classRef = ref(database, `schools/${schoolId}/classes/${classId}`);
         
-        for (const sId in schoolsData) {
-            const students = schoolsData[sId].students || {};
-            for (const studentId in students) {
-                if (students[studentId].parentUid === user.uid) {
-                    studentData = students[studentId];
-                    schoolId = sId;
-                    break;
-                }
-            }
-            if (studentData) break;
+        const [schoolSnap, classSnap] = await Promise.all([get(schoolAdminRef), get(classRef)]);
+        
+        const fetchedContacts: UserProfile[] = [];
+        
+        // Add Admin
+        const schoolData = schoolSnap.val();
+        if(schoolData) {
+            fetchedContacts.push({ id: schoolId, uid: schoolId, name: `${schoolData.name} (Admin)`, role: 'Admin' });
         }
 
-        if (studentData && schoolId) {
-            const schoolAdminRef = ref(database, `schools/${schoolId}`);
-            const classRef = ref(database, `schools/${schoolId}/classes/${studentData.classId}`);
-            
-            const [schoolSnap, classSnap] = await Promise.all([get(schoolAdminRef), get(classRef)]);
-            
-            const fetchedContacts: UserProfile[] = [];
-            
-            // Add Admin
-            const schoolData = schoolSnap.val();
-            fetchedContacts.push({ id: schoolId, uid: schoolId, name: `${schoolData.name} (Admin)`, role: 'Admin' });
-
-            // Add Class Teacher
-            const classData = classSnap.val();
-            if (classData.classTeacherId) {
-                const teacherRef = ref(database, `schools/${schoolId}/teachers/${classData.classTeacherId}`);
-                const teacherSnap = await get(teacherRef);
-                if (teacherSnap.exists()) {
-                    const teacherData = teacherSnap.val();
-                    fetchedContacts.push({
-                        id: classData.classTeacherId,
-                        uid: teacherData.uid,
-                        name: `${teacherData.name} (Class Teacher)`,
-                        role: 'Teacher',
-                    });
-                }
+        // Add Class Teacher
+        const classData = classSnap.val();
+        if (classData && classData.classTeacherId) {
+            const teacherRef = ref(database, `schools/${schoolId}/teachers/${classData.classTeacherId}`);
+            const teacherSnap = await get(teacherRef);
+            if (teacherSnap.exists()) {
+                const teacherData = teacherSnap.val();
+                fetchedContacts.push({
+                    id: classData.classTeacherId,
+                    uid: teacherData.uid,
+                    name: `${teacherData.name} (Class Teacher)`,
+                    role: 'Teacher',
+                });
             }
-            setContacts(fetchedContacts);
+        }
+        setContacts(fetchedContacts);
+        if (fetchedContacts.length > 0 && !activeChat) {
+            setActiveChat(fetchedContacts[0]);
         }
         setLoading(false);
     };
 
-    findStudentAndContacts();
+    findContacts();
 
-  }, [user]);
+  }, [user, selectedStudent, activeChat]);
 
 
   useEffect(() => {
-    if (!activeChat || !user || !contacts.length) return;
+    if (!activeChat || !user || !selectedStudent) {
+        setMessages([]);
+        return;
+    };
     
-    // We need the schoolId to construct the path, which we don't have here.
-    // The admin profile conveniently uses the schoolId as its ID.
-    const adminContact = contacts.find(c => c.role === 'Admin');
-    if (!adminContact) return;
-    const schoolId = adminContact.id;
-
+    const { schoolId } = selectedStudent;
 
     const getChatId = (uid1: string, uid2: string) => {
         return [uid1, uid2].sort().join('_');
@@ -141,7 +126,7 @@ export default function ParentCommunicationPage() {
     
     return () => unsubscribeMessages();
 
-  }, [activeChat, user, contacts]);
+  }, [activeChat, user, selectedStudent]);
   
    useEffect(() => {
     // Scroll to bottom when messages change
@@ -155,11 +140,9 @@ export default function ParentCommunicationPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !activeChat || !contacts.length) return;
+    if (!newMessage.trim() || !user || !activeChat || !selectedStudent) return;
     
-    const adminContact = contacts.find(c => c.role === 'Admin');
-    if (!adminContact) return;
-    const schoolId = adminContact.id;
+    const { schoolId } = selectedStudent;
     
     const getChatId = (uid1: string, uid2: string) => {
         return [uid1, uid2].sort().join('_');
@@ -192,7 +175,7 @@ export default function ParentCommunicationPage() {
         <CardContent className="flex-1 overflow-auto">
             <ScrollArea className="h-full pr-4">
             <div className="space-y-2">
-            {loading ? (
+            {studentLoading || loading ? (
                 Array.from({ length: 2 }).map((_, i) => (
                    <div key={i} className="flex items-center gap-4 p-2 rounded-lg">
                      <Skeleton className="h-12 w-12 rounded-full" />
@@ -202,6 +185,8 @@ export default function ParentCommunicationPage() {
                      </div>
                    </div>
                 ))
+            ) : !selectedStudent ? (
+                <p className="text-center text-muted-foreground pt-10">Select a child to view contacts.</p>
             ) : contacts.length > 0 ? (
                  contacts.map(chatUser => (
                      <div 
@@ -254,7 +239,7 @@ export default function ParentCommunicationPage() {
                             </div>
                              {isSender && (
                                 <Avatar>
-                                    <AvatarImage src={`https://picsum.photos/seed/${senderProfile.id}/100/100`} data-ai-hint="person avatar" />
+                                    <AvatarImage src={`https://picsum.photos/seed/${user.uid}/100/100`} data-ai-hint="person avatar" />
                                     <AvatarFallback>Me</AvatarFallback>
                                 </Avatar>
                             )}
@@ -271,8 +256,9 @@ export default function ParentCommunicationPage() {
                         className="pr-12"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
+                        disabled={!selectedStudent}
                     />
-                    <Button type="submit" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
+                    <Button type="submit" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" disabled={!selectedStudent}>
                         <Send className="h-4 w-4"/>
                     </Button>
                 </form>
@@ -282,7 +268,7 @@ export default function ParentCommunicationPage() {
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
              <MessagesSquare className="h-12 w-12 mb-4"/>
              <h3 className="text-lg font-semibold">Welcome to the Chat</h3>
-             <p>Select a contact from the left to start messaging.</p>
+             <p>Select a child from the header and then a contact from the left to start messaging.</p>
           </div>
        )}
       </Card>

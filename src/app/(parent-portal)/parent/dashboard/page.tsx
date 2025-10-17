@@ -26,14 +26,7 @@ import { useSchoolId } from '@/hooks/use-school-id';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-
-type Student = {
-    id: string;
-    name: string;
-    className: string;
-    classId: string;
-    schoolId: string;
-};
+import { useStudentSelection } from '@/hooks/use-student-selection';
 
 type Announcement = {
   id: string;
@@ -44,64 +37,31 @@ type Announcement = {
 
 
 export default function ParentDashboardPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [student, setStudent] = useState<Student | null>(null);
+  const { selectedStudent, students, loading: studentLoading } = useStudentSelection();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-      } else {
-        // Handle user not logged in
-        setLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+    if (selectedStudent) {
+      setLoadingAnnouncements(true);
+      const announcementsRef = ref(database, `schools/${selectedStudent.schoolId}/announcements`);
+      const unsubscribe = onValue(announcementsRef, (announcementSnapshot) => {
+          const data = announcementSnapshot.val() || {};
+          const list = Object.keys(data)
+              .map(id => ({ id, ...data[id] }))
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .slice(0, 3); // Get latest 3
+          setAnnouncements(list);
+          setLoadingAnnouncements(false);
+      });
+      return () => unsubscribe();
+    } else {
+        setAnnouncements([]);
+        setLoadingAnnouncements(false);
+    }
+  }, [selectedStudent]);
 
-  useEffect(() => {
-    if (!user) return;
-
-    setLoading(true);
-    // Find the student linked to the logged-in parent
-    const schoolsRef = ref(database, 'schools');
-    get(schoolsRef).then(snapshot => {
-        if (snapshot.exists()) {
-            const schoolsData = snapshot.val();
-            let foundStudent: Student | null = null;
-
-            for (const schoolId in schoolsData) {
-                if(foundStudent) break;
-                const students = schoolsData[schoolId].students || {};
-                for (const studentId in students) {
-                    if (students[studentId].parentUid === user.uid) {
-                        foundStudent = { id: studentId, ...students[studentId], schoolId };
-                        break;
-                    }
-                }
-            }
-            
-            if (foundStudent) {
-                setStudent(foundStudent);
-                // Fetch announcements for the student's school
-                const announcementsRef = ref(database, `schools/${foundStudent.schoolId}/announcements`);
-                onValue(announcementsRef, (announcementSnapshot) => {
-                    const data = announcementSnapshot.val() || {};
-                    const list = Object.keys(data)
-                        .map(id => ({ id, ...data[id] }))
-                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                        .slice(0, 3); // Get latest 3
-                    setAnnouncements(list);
-                });
-            }
-        }
-    }).finally(() => setLoading(false));
-
-  }, [user]);
-
-  if (loading) {
+  if (studentLoading) {
       return (
           <div className="space-y-4">
               <Skeleton className="h-8 w-1/4" />
@@ -117,7 +77,7 @@ export default function ParentDashboardPage() {
       );
   }
   
-  if (!user || !student) {
+  if (students.length === 0) {
       return (
           <div className="text-center">
               <p className="text-lg text-muted-foreground">Could not find linked student information.</p>
@@ -130,12 +90,16 @@ export default function ParentDashboardPage() {
     <div className="flex flex-col gap-8">
        <section>
         <h1 className="text-3xl font-bold tracking-tight">Parent Dashboard</h1>
-        <p className="text-muted-foreground">Welcome! Here's a quick overview for <span className="font-semibold text-primary">{student.name}</span> ({student.className}).</p>
+        {selectedStudent ? (
+             <p className="text-muted-foreground">Welcome! Here's a quick overview for <span className="font-semibold text-primary">{selectedStudent.name}</span> ({selectedStudent.className}).</p>
+        ) : (
+            <p className="text-muted-foreground">Welcome! Please select a child from the dropdown above to view their information.</p>
+        )}
       </section>
 
       <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Link href="/parent/results">
-            <Card className="hover:bg-muted/50 transition-colors">
+        <Link href="/parent/results" className={!selectedStudent ? 'pointer-events-none' : ''}>
+            <Card className={cn("hover:bg-muted/50 transition-colors", !selectedStudent && 'opacity-50')}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Results</CardTitle>
                     <FileText className="h-4 w-4 text-muted-foreground" />
@@ -145,8 +109,8 @@ export default function ParentDashboardPage() {
                 </CardContent>
             </Card>
         </Link>
-         <Link href="/parent/attendance">
-            <Card className="hover:bg-muted/50 transition-colors">
+         <Link href="/parent/attendance" className={!selectedStudent ? 'pointer-events-none' : ''}>
+            <Card className={cn("hover:bg-muted/50 transition-colors", !selectedStudent && 'opacity-50')}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Attendance</CardTitle>
                     <CheckSquare className="h-4 w-4 text-muted-foreground" />
@@ -156,8 +120,8 @@ export default function ParentDashboardPage() {
                 </CardContent>
             </Card>
         </Link>
-        <Link href="/parent/fees">
-            <Card className="hover:bg-muted/50 transition-colors">
+        <Link href="/parent/fees" className={!selectedStudent ? 'pointer-events-none' : ''}>
+            <Card className={cn("hover:bg-muted/50 transition-colors", !selectedStudent && 'opacity-50')}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Fees</CardTitle>
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -167,8 +131,8 @@ export default function ParentDashboardPage() {
                 </CardContent>
             </Card>
         </Link>
-         <Link href="/parent/events">
-            <Card className="hover:bg-muted/50 transition-colors">
+         <Link href="/parent/events" className={!selectedStudent ? 'pointer-events-none' : ''}>
+            <Card className={cn("hover:bg-muted/50 transition-colors", !selectedStudent && 'opacity-50')}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">School Events</CardTitle>
                     <CalendarDays className="h-4 w-4 text-muted-foreground" />
@@ -186,7 +150,11 @@ export default function ParentDashboardPage() {
                 <CardTitle>Recent School Announcements</CardTitle>
             </CardHeader>
             <CardContent>
-                {announcements.length > 0 ? (
+                {!selectedStudent ? (
+                    <p className="text-muted-foreground">Select a child to view school announcements.</p>
+                ) : loadingAnnouncements ? (
+                    <p className="text-muted-foreground">Loading announcements...</p>
+                ) : announcements.length > 0 ? (
                     <div className="space-y-4">
                         {announcements.map(ann => (
                             <div key={ann.id} className="border-b pb-2">

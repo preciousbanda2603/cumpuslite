@@ -9,73 +9,36 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Calendar } from '@/components/ui/calendar';
-import { auth, database } from '@/lib/firebase';
-import { ref, onValue, get, query, orderByChild, equalTo } from 'firebase/database';
-import type { User } from 'firebase/auth';
+import { database } from '@/lib/firebase';
+import { ref, onValue, query } from 'firebase/database';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+import { useStudentSelection } from '@/hooks/use-student-selection';
 
-type Student = { id: string; name: string; classId: string, schoolId: string };
+
 type AttendanceRecord = { [date: string]: 'present' | 'absent' | 'late' | 'sick' };
 
 export default function ParentAttendancePage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [student, setStudent] = useState<Student | null>(null);
+  const { selectedStudent, loading: studentLoading } = useStudentSelection();
   const [attendance, setAttendance] = useState<AttendanceRecord | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(setUser);
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
+    if (!selectedStudent) {
       setLoading(false);
+      setAttendance(null);
       return;
-    }
-
+    };
+    
     setLoading(true);
-    const schoolsRef = ref(database, 'schools');
-    get(schoolsRef).then(snapshot => {
-        if (snapshot.exists()) {
-            const schoolsData = snapshot.val();
-            let foundStudent: Student | null = null;
-            for (const schoolId in schoolsData) {
-                const students = schoolsData[schoolId].students || {};
-                for (const studentId in students) {
-                    if (students[studentId].parentUid === user.uid) {
-                        foundStudent = { id: studentId, ...students[studentId], schoolId };
-                        break;
-                    }
-                }
-                if (foundStudent) break;
-            }
-            setStudent(foundStudent);
-        }
-    }).finally(() => setLoading(false));
-  }, [user]);
-
-  useEffect(() => {
-    if (!student) return;
 
     const monthStart = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
     const monthEnd = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
 
     const attendanceRef = query(
-        ref(database, `schools/${student.schoolId}/attendance/${student.classId}`),
-        orderByChild('date'),
+        ref(database, `schools/${selectedStudent.schoolId}/attendance/${selectedStudent.classId}`),
     );
 
     const unsubscribe = onValue(attendanceRef, (snapshot) => {
@@ -85,17 +48,18 @@ export default function ParentAttendancePage() {
           const date = dateSnapshot.key;
           if(date && date >= monthStart && date <= monthEnd) {
             const data = dateSnapshot.val();
-            if (data[student.id]) {
-              records[date] = data[student.id];
+            if (data[selectedStudent.id]) {
+              records[date] = data[selectedStudent.id];
             }
           }
         });
       }
       setAttendance(records);
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [student, selectedDate]);
+  }, [selectedStudent, selectedDate]);
   
   const getStatusForDay = (day: Date) => {
     if (!attendance) return 'default';
@@ -109,22 +73,33 @@ export default function ParentAttendancePage() {
       default: return 'default';
     }
   };
-  
-   const getStatusBadge = (status: string | undefined) => {
-      if (!status) return null;
-      const variant: "default" | "destructive" | "secondary" = status === 'present' ? 'default' : status === 'absent' ? 'destructive' : 'secondary';
-      return <Badge variant={variant} className="capitalize">{status}</Badge>;
+
+  if (studentLoading) {
+      return (
+          <div className="space-y-6">
+              <Skeleton className="h-8 w-1/3" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-96 w-full" />
+          </div>
+      )
   }
-
-
+  
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Attendance Record</h1>
         <p className="text-muted-foreground">
-          {student ? `Viewing attendance for ${student.name}` : 'Loading student information...'}
+          {selectedStudent ? `Viewing attendance for ${selectedStudent.name}` : 'Please select a child to view their attendance.'}
         </p>
       </div>
+
+      {!selectedStudent ? (
+           <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+              <p>Please select a child from the header to view their attendance record.</p>
+          </div>
+      ) : loading ? (
+          <Skeleton className="h-96 w-full" />
+      ) : (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div className="lg:col-span-2">
             <Card>
@@ -166,6 +141,7 @@ export default function ParentAttendancePage() {
           </Card>
         </div>
       </div>
+      )}
     </div>
   );
 }

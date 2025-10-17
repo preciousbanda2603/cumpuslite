@@ -20,18 +20,14 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { auth, database } from '@/lib/firebase';
-import { ref, onValue, get } from 'firebase/database';
-import type { User } from 'firebase/auth';
+import { database } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
 import { format } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { School } from 'lucide-react';
+import { useStudentSelection } from '@/hooks/use-student-selection';
+import { Skeleton } from '@/components/ui/skeleton';
 
-type Student = {
-  id: string;
-  name: string;
-  schoolId: string;
-};
 type Fee = {
   id: string;
   studentId: string;
@@ -42,94 +38,82 @@ type Fee = {
 };
 
 export default function ParentFeesPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [student, setStudent] = useState<Student | null>(null);
+  const { selectedStudent, loading: studentLoading } = useStudentSelection();
   const [fees, setFees] = useState<Fee[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const [isFreeEducation, setIsFreeEducation] = useState(false);
 
   useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => setUser(user));
-    return () => unsubscribeAuth();
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
+    if (!selectedStudent) {
+        setFees([]);
         setLoading(false);
         return;
-    };
+    }
     
     setLoading(true);
-    const schoolsRef = ref(database, 'schools');
-    get(schoolsRef).then(snapshot => {
-        if (snapshot.exists()) {
-            const schoolsData = snapshot.val();
-            let foundStudent: Student | null = null;
-            for (const schoolId in schoolsData) {
-                const students = schoolsData[schoolId].students || {};
-                for (const studentId in students) {
-                    if (students[studentId].parentUid === user.uid) {
-                        foundStudent = { id: studentId, name: students[studentId].name, schoolId };
-                        break;
-                    }
-                }
-                if (foundStudent) break;
-            }
-            
-            if(foundStudent) {
-                setStudent(foundStudent);
-                const feesRef = ref(database, `schools/${foundStudent.schoolId}/fees`);
-                const settingsRef = ref(database, `schools/${foundStudent.schoolId}/settings/fees`);
-                
-                onValue(settingsRef, (settingsSnap) => {
-                    setIsFreeEducation(settingsSnap.val()?.isFreeEducation || false);
-                });
-                
-                onValue(feesRef, (feesSnap) => {
-                    const data = feesSnap.val() || {};
-                    const list = Object.keys(data)
-                        .map(id => ({ id, ...data[id] }))
-                        .filter(fee => fee.studentId === foundStudent?.id)
-                        .map(fee => {
-                            if (fee.status === 'Pending' && new Date(fee.dueDate) < new Date()) {
-                                return { ...fee, status: 'Overdue' };
-                            }
-                            return fee;
-                        })
-                        .sort((a,b) => b.term.localeCompare(a.term));
-                    setFees(list);
-                });
-            }
-        }
-    }).finally(() => setLoading(false));
 
-  }, [user]);
+    const feesRef = ref(database, `schools/${selectedStudent.schoolId}/fees`);
+    const settingsRef = ref(database, `schools/${selectedStudent.schoolId}/settings/fees`);
+    
+    onValue(settingsRef, (settingsSnap) => {
+        setIsFreeEducation(settingsSnap.val()?.isFreeEducation || false);
+    });
+    
+    onValue(feesRef, (feesSnap) => {
+        const data = feesSnap.val() || {};
+        const list = Object.keys(data)
+            .map(id => ({ id, ...data[id] }))
+            .filter(fee => fee.studentId === selectedStudent.id)
+            .map(fee => {
+                if (fee.status === 'Pending' && new Date(fee.dueDate) < new Date()) {
+                    return { ...fee, status: 'Overdue' };
+                }
+                return fee;
+            })
+            .sort((a,b) => b.term.localeCompare(a.term));
+        setFees(list);
+        setLoading(false);
+    });
+
+  }, [selectedStudent]);
 
   const getStatusBadge = (fee: Fee) => {
       const variant: "default" | "destructive" | "secondary" = fee.status === 'Paid' ? 'default' : fee.status === 'Overdue' ? 'destructive' : 'secondary';
       return <Badge variant={variant}>{fee.status}</Badge>;
   }
+  
+  const PageSkeleton = () => (
+    <div className="space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-64 w-full" />
+    </div>
+  )
+
+  if (studentLoading) return <PageSkeleton />;
 
   return (
     <div className="flex flex-col gap-6">
         <div>
             <h1 className="text-3xl font-bold tracking-tight">Fee Information</h1>
             <CardDescription>
-                {student ? `Viewing fee history for ${student.name}` : 'Loading...'}
+                {selectedStudent ? `Viewing fee history for ${selectedStudent.name}` : 'Please select a child to view their fee history.'}
             </CardDescription>
         </div>
 
-        {isFreeEducation && (
+        {!selectedStudent ? (
+             <div className="flex items-center justify-center h-64 text-center text-muted-foreground">
+              <p>Please select a child from the header to view their fee information.</p>
+          </div>
+        ) : isFreeEducation ? (
             <Alert>
                 <School className="h-4 w-4" />
                 <AlertTitle>Free Education</AlertTitle>
                 <AlertDescription>
-                    This school provides free education. No fees are due.
+                    This school provides free education. No fees are due for {selectedStudent.name}.
                 </AlertDescription>
             </Alert>
-        )}
-
+        ) : (
         <Card>
             <CardContent className="p-0">
                 <Table>
@@ -158,12 +142,13 @@ export default function ParentFeesPage() {
                                 </TableRow>
                             ))
                         ) : (
-                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No fee records found.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No fee records found for {selectedStudent.name}.</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
             </CardContent>
         </Card>
+        )}
     </div>
   );
 }
