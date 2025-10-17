@@ -36,10 +36,9 @@ export default function ParentLoginPage() {
     const password = formData.get('password') as string;
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      // Verify this user is linked to a student
-      const user = auth.currentUser;
+      const user = userCredential.user;
       if (!user) throw new Error("Authentication failed.");
 
       const schoolsRef = ref(database, 'schools');
@@ -53,7 +52,6 @@ export default function ParentLoginPage() {
         for(const studentId in students) {
           if (students[studentId].parentUid === user.uid) {
             isParent = true;
-            // Store schoolId in local storage for the parent portal to use
             localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolId);
             break;
           }
@@ -64,6 +62,18 @@ export default function ParentLoginPage() {
       if (!isParent) {
         await auth.signOut();
         throw new Error("This account is not linked to any student. Please register first.");
+      }
+
+      // Create session cookie
+      const idToken = await userCredential.user.getIdToken();
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create session.');
       }
 
       toast({ title: "Success!", description: "Parent logged in." });

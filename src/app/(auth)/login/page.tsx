@@ -81,33 +81,47 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const loggedInUserUid = userCredential.user.uid;
 
+      let isAuthorized = false;
+
       // Check if the user is the admin for the selected school
       if (loggedInUserUid === schoolUid) {
-        localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolUid);
-        toast({ title: "Success!", description: "Admin logged in." });
-        router.push('/dashboard');
-        return;
+        isAuthorized = true;
       }
 
       // Check if the user is a teacher for the selected school
-      const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
-      const teacherSnapshot = await get(teachersRef);
+      if (!isAuthorized) {
+        const teachersRef = ref(database, `schools/${schoolUid}/teachers`);
+        const teacherSnapshot = await get(teachersRef);
 
-      if (teacherSnapshot.exists()) {
-        const teachersData = teacherSnapshot.val();
-        const isTeacherForSchool = Object.values(teachersData).some((teacher: any) => teacher.uid === loggedInUserUid);
-        
-        if (isTeacherForSchool) {
-            localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolUid);
-            toast({ title: "Success!", description: "Teacher logged in." });
-            router.push('/dashboard');
-            return;
+        if (teacherSnapshot.exists()) {
+          const teachersData = teacherSnapshot.val();
+          const isTeacherForSchool = Object.values(teachersData).some((teacher: any) => teacher.uid === loggedInUserUid);
+          if (isTeacherForSchool) {
+            isAuthorized = true;
+          }
         }
       }
+      
+      if (!isAuthorized) {
+        await auth.signOut();
+        throw new Error("Your account is not associated with the selected school.");
+      }
+      
+      // Create session cookie
+      const idToken = await userCredential.user.getIdToken();
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
 
-      // If not admin and not a teacher for the school, sign out and show error
-      await auth.signOut();
-      throw new Error("Your account is not associated with the selected school.");
+      if (!response.ok) {
+        throw new Error('Failed to create session.');
+      }
+      
+      localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolUid);
+      toast({ title: "Success!", description: "Logged in successfully." });
+      router.push('/dashboard');
 
     } catch (error: any) {
        console.error("Login failed:", error);

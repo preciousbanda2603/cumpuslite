@@ -96,6 +96,18 @@ export default function StudentLoginPage() {
           throw new Error("Your student account is not associated with the selected school.");
       }
       
+      // Create session cookie
+      const idToken = await userCredential.user.getIdToken();
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create session.');
+      }
+
       localStorage.setItem(SCHOOL_ID_LOCAL_STORAGE_KEY, schoolUid);
       toast({ title: "Success!", description: "Student logged in." });
       router.push('/student/dashboard');
