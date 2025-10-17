@@ -64,18 +64,6 @@ export default function ParentLoginPage() {
         throw new Error("This account is not linked to any student. Please register first.");
       }
 
-      // Create session cookie
-      const idToken = await userCredential.user.getIdToken();
-      const response = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create session.');
-      }
-
       toast({ title: "Success!", description: "Parent logged in." });
       router.push('/parent/dashboard');
 

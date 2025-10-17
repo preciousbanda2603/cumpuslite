@@ -74,7 +74,6 @@ export function AppHeader() {
   const handleLogout = async () => {
     try {
       await auth.signOut();
-      await fetch('/api/auth/session', { method: 'DELETE' });
       localStorage.removeItem(SCHOOL_ID_LOCAL_STORAGE_KEY);
       localStorage.removeItem('selected-student-id'); // Clear selected student on logout
       router.push('/login');
