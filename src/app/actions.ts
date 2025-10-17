@@ -21,6 +21,19 @@ const secondaryApp = getApps().find(app => app.name === 'secondary') || initiali
 const secondaryAuth = getAuth(secondaryApp);
 const database = getDatabase(secondaryApp);
 
+export async function getSchools() {
+  const dbRef = ref(database);
+  const snapshot = await get(ref(dbRef, 'schools'));
+  if (snapshot.exists()) {
+    const schoolsData = snapshot.val();
+    return Object.keys(schoolsData).map(key => ({
+      uid: key,
+      name: schoolsData[key].name,
+    }));
+  }
+  return [];
+}
+
 type CreateParentUserParams = {
   email: string;
   password: any;

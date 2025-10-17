@@ -25,8 +25,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { auth, database } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { ref, get, child } from "firebase/database";
+import { ref, get } from "firebase/database";
 import { SCHOOL_ID_LOCAL_STORAGE_KEY } from "@/hooks/use-school-id";
+import { getSchools } from "@/app/actions";
 
 type School = {
   uid: string;
@@ -42,18 +43,8 @@ export default function LoginPage() {
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const dbRef = ref(database);
-        const snapshot = await get(child(dbRef, 'schools'));
-        if (snapshot.exists()) {
-          const schoolsData = snapshot.val();
-          const schoolsList = Object.keys(schoolsData).map(key => ({
-            uid: key,
-            name: schoolsData[key].name,
-          }));
-          setSchools(schoolsList);
-        } else {
-          console.log("No schools data available");
-        }
+        const schoolsList = await getSchools();
+        setSchools(schoolsList);
       } catch (error) {
         console.error("Error fetching schools:", error);
         toast({
@@ -161,7 +152,7 @@ export default function LoginPage() {
                                 <SelectItem key={school.uid} value={school.uid}>{school.name}</SelectItem>
                             ))
                         ) : (
-                             <SelectItem value="no-schools" disabled>No schools available</SelectItem>
+                             <SelectItem value="no-schools" disabled>Loading schools...</SelectItem>
                         )}
                     </SelectContent>
                 </Select>
