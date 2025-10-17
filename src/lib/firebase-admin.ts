@@ -12,7 +12,7 @@ if (!admin.apps.length) {
   }
 }
 
-const dbAdmin = admin.database();
-const authAdmin = admin.auth();
+const dbAdmin = admin.apps.length ? admin.database() : undefined;
+const authAdmin = admin.apps.length ? admin.auth() : undefined;
 
 export { admin, dbAdmin, authAdmin };
