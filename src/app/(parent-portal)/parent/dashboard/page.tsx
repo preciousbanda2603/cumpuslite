@@ -19,7 +19,7 @@ import {
   FileText,
   CheckSquare
 } from 'lucide-react';
-import { database } from '@/lib/firebase';
+import { auth, database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { useSchoolId } from '@/hooks/use-school-id';
@@ -68,9 +68,21 @@ function LinkChildDialog() {
         const formData = new FormData(event.currentTarget);
         const schoolUid = formData.get('school') as string;
         const admissionNo = formData.get('admission-no') as string;
+        
+        const user = auth.currentUser;
+        if (!user) {
+             toast({
+                title: "Authentication Error",
+                description: "You must be logged in to link a child.",
+                variant: "destructive",
+            });
+            setLoading(false);
+            return;
+        }
 
         try {
-            const result = await linkChildToParent({ schoolUid, admissionNo });
+            const idToken = await user.getIdToken();
+            const result = await linkChildToParent({ schoolUid, admissionNo, idToken });
             if (result.success) {
                 toast({
                     title: "Success!",

@@ -48,22 +48,26 @@ export async function createParentUser(params: CreateParentUserParams) {
   try {
     // Step 1: Find the student by admission number within the specific school
     const studentsRef = ref(database, `schools/${schoolUid}/students`);
-    const studentQuery = query(studentsRef, orderByChild('admissionNo'), equalTo(admissionNo));
-    const studentSnapshot = await get(studentQuery);
-
+    const studentSnapshot = await get(studentsRef);
+    
     if (!studentSnapshot.exists()) {
-       throw new Error("No student found with that Admission Number at the selected school.");
+      throw new Error("No students found at the selected school.");
     }
     
+    const studentsData = studentSnapshot.val();
     let studentId: string | null = null;
     let studentData: any = null;
-    studentSnapshot.forEach((childSnapshot) => {
-        studentId = childSnapshot.key;
-        studentData = childSnapshot.val();
-    });
+
+    for (const id in studentsData) {
+        if (studentsData[id].admissionNo === admissionNo) {
+            studentId = id;
+            studentData = studentsData[id];
+            break;
+        }
+    }
 
     if (!studentId || !studentData) {
-       throw new Error("Could not retrieve student data.");
+       throw new Error("No student found with that Admission Number at the selected school.");
     }
 
     if (studentData.parentUid) {
@@ -95,18 +99,12 @@ export async function createParentUser(params: CreateParentUserParams) {
 type LinkChildParams = {
     schoolUid: string;
     admissionNo: string;
+    idToken: string;
 };
 
 export async function linkChildToParent(params: LinkChildParams) {
-    const { schoolUid, admissionNo } = params;
+    const { schoolUid, admissionNo, idToken } = params;
 
-    // 1. Get the parent's UID from their session token
-    const authorization = headers().get("Authorization");
-    if (!authorization?.startsWith("Bearer ")) {
-        return { success: false, error: "Unauthorized. Please log in again." };
-    }
-    const idToken = authorization.split("Bearer ")[1];
-    
     let parentUid: string;
     try {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
