@@ -27,6 +27,7 @@ import {
   CalendarCheck,
   Star,
   ShieldCheck,
+  School,
 } from 'lucide-react';
 
 export const navLinks = [
