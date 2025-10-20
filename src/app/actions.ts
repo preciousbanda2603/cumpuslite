@@ -8,6 +8,9 @@ import { customAlphabet } from 'nanoid';
 import type { User } from 'firebase/auth';
 import axios from 'axios';
 import https from 'https';
+import { config } from 'dotenv';
+
+config();
 
 // Initialize a secondary Firebase app for creating users without affecting admin session
 const secondaryAppConfig = {
