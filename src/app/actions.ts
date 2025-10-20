@@ -315,9 +315,9 @@ export async function initiateSubscriptionPayment(params: {
     });
 
     const PROBASE_BASE_DOMAIN = 'paymentservices.probasegroup.com';
-    const PROBASE_AUTH_TOKEN = 'your_auth_token_here';
-    const PROBASE_MERCHANT_ID = 'your_merchant_id_here';
-    const PROBASE_SERVICE_CODE = 'your_service_code_here';
+    const PROBASE_AUTH_TOKEN = 'test_token';
+    const PROBASE_MERCHANT_ID = '12345';
+    const PROBASE_SERVICE_CODE = 'TESTSERVICE';
     const PROBASE_COMPANY_NAME = 'Campus.ZM';
     const PROBASE_CALLBACK_URL = 'https://your-callback-url.com/probase/callback';
 
