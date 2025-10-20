@@ -366,7 +366,6 @@ export async function initiateSubscriptionPayment(params: {
         }
     } catch (error: any) {
         const errorMessage = error.response?.data?.message || error.message || "Network error during payment initiation.";
-        // Ensure we don't try to save an undefined value if the connection fails completely
         await update(paymentsRef, { status: 'failed', failureReason: errorMessage });
         console.error("Probase payment failed:", errorMessage);
         return { success: false, message: `Could not connect to payment gateway. ${errorMessage}` };
