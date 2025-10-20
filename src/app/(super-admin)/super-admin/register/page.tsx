@@ -17,13 +17,14 @@ import { Label } from "@/components/ui/label";
 import { GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
-export default function SuperAdminLoginPage() {
+export default function SuperAdminRegisterPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'superadmin@campus.zm';
+
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,21 +34,33 @@ export default function SuperAdminLoginPage() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    // A simple client-side check for the designated super admin email
     if (email !== superAdminEmail) {
-        toast({ title: "Access Denied", description: "This is not a recognized super admin account.", variant: "destructive" });
+        toast({ title: "Registration Not Allowed", description: "This email address is not permitted for super admin registration.", variant: "destructive" });
         setLoading(false);
         return;
     }
-    
+
     try {
-        await signInWithEmailAndPassword(auth, email, password);
-        toast({ title: "Success!", description: "Super admin logged in." });
-        router.push('/super-admin');
-    } catch (error) {
-        toast({ title: "Login Failed", description: "Invalid credentials for super admin account.", variant: "destructive" });
+      await createUserWithEmailAndPassword(auth, email, password);
+      toast({
+        title: "Success!",
+        description: "Super admin account created. Please log in.",
+      });
+      router.push('/super-admin-login');
+    } catch (error: any) {
+        let errorMessage = "An unexpected error occurred.";
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = "This email is already registered. Please log in instead.";
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = "The password is too weak. Please use at least 6 characters.";
+        }
+      toast({
+        title: "Registration Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -59,9 +72,9 @@ export default function SuperAdminLoginPage() {
        </Link>
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">Super Admin Login</CardTitle>
+          <CardTitle className="text-2xl">Register Super Admin</CardTitle>
           <CardDescription>
-            Enter your official credentials to access the management dashboard.
+            Create the primary administrator account for the platform.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,22 +94,17 @@ export default function SuperAdminLoginPage() {
               <Input id="password" name="password" type="password" required />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login to Super Admin Portal'}
+              {loading ? 'Creating Account...' : 'Create Super Admin Account'}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            Need an account?{" "}
-            <Link href="/super-admin/register" className="underline">
-              Register here
+            Already have an account?{" "}
+            <Link href="/super-admin-login" className="underline">
+              Log in
             </Link>
           </div>
         </CardContent>
       </Card>
-      <div className="mt-4 text-center text-sm">
-          <Link href="/login" className="underline">
-            Back to School Staff Login
-          </Link>
-        </div>
     </div>
   )
 }
