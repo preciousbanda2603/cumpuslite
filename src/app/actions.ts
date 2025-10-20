@@ -316,18 +316,18 @@ export async function initiateSubscriptionPayment(params: {
 
     const PROBASE_AUTH_TOKEN = 'X6vs7axNEPdCCXcE3wXJd6nmWdC8N9jMACXumn5q6W8M3q6b6WUVnxF8CJQ3wuj74w7Y4f3eHAVu65CUKhWqKsAe8RnCeN8wyNZVUfWUKTHCVc';
     
-    // NOTE: These are placeholder credentials. Replace with your actual Probase credentials.
+    // NOTE: These are hardcoded credentials.
     const PROBASE_BASE_DOMAIN = 'paymentservices.probasegroup.com';
-    const PROBASE_MERCHANT_ID = '12345';
-    const PROBASE_SERVICE_CODE = 'TESTSERVICE';
+    const PROBASE_MERCHANT_ID = '52';
+    const PROBASE_SERVICE_CODE = '0035';
     const PROBASE_COMPANY_NAME = 'Campus.ZM';
     const PROBASE_CALLBACK_URL = 'https://your-callback-url.com/probase/callback';
 
-    const merchantId = PROBASE_MERCHANT_ID ? parseInt(PROBASE_MERCHANT_ID, 10) : NaN;
+    const merchantId = parseInt(PROBASE_MERCHANT_ID, 10);
     const service_code = PROBASE_SERVICE_CODE;
     const domain = PROBASE_BASE_DOMAIN?.replace(/^(https?:\/\/)/, '');
 
-    if (!domain || !PROBASE_AUTH_TOKEN || isNaN(merchantId) || !service_code || PROBASE_AUTH_TOKEN === 'your_auth_token_here') {
+    if (!domain || !PROBASE_AUTH_TOKEN || isNaN(merchantId) || !service_code) {
         const errorMsg = "Probase payment gateway credentials are not configured correctly.";
         console.error(errorMsg);
         await update(paymentsRef, { status: 'failed', failureReason: errorMsg });
