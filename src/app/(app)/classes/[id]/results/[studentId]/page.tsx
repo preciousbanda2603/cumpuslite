@@ -32,6 +32,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { generateReportCardComments } from '@/ai/flows/report-card-assistant';
 import type { ReportCardData } from '@/ai/schemas/report-card-schemas';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useSubscription } from '@/hooks/use-subscription';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type Student = { id: string; name: string; classId: string; };
 type Subject = { id: string; name: string; grade: number; };
@@ -52,6 +54,7 @@ export default function ReportBookEditorPage() {
   const router = useRouter();
   const { toast } = useToast();
   const schoolId = useSchoolId();
+  const { subscription, loading: subscriptionLoading } = useSubscription();
 
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<UserRole>('other');
@@ -270,14 +273,14 @@ export default function ReportBookEditorPage() {
     }
   };
 
-  if (pageLoading) {
+  if (pageLoading || subscriptionLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-4 w-1/4" />
         <Card>
           <CardContent className="p-6">
-            <div className="text-center text-muted-foreground py-12">Loading student and subject data...</div>
+            <div className="text-center text-muted-foreground py-12">Loading...</div>
           </CardContent>
         </Card>
       </div>
@@ -484,10 +487,27 @@ export default function ReportBookEditorPage() {
                             <CardDescription>Provide overall comments for the student's report book.</CardDescription>
                         </div>
                         {canPerformActions && (
-                            <Button variant="outline" onClick={handleGenerateComments} disabled={isGenerating}>
-                            <Sparkles className="mr-2 h-4 w-4" />
-                            {isGenerating ? 'Generating...' : 'Generate with AI'}
-                            </Button>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="inline-block">
+                                            <Button 
+                                                variant="outline" 
+                                                onClick={handleGenerateComments} 
+                                                disabled={isGenerating || !subscription.canUseAi}
+                                            >
+                                                <Sparkles className="mr-2 h-4 w-4" />
+                                                {isGenerating ? 'Generating...' : 'Generate with AI'}
+                                            </Button>
+                                        </div>
+                                    </TooltipTrigger>
+                                    {!subscription.canUseAi && (
+                                        <TooltipContent>
+                                            <p>This feature requires a Basic or Premium subscription.</p>
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
+                            </TooltipProvider>
                         )}
                     </div>
                 </CardHeader>

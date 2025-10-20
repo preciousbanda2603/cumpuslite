@@ -31,6 +31,7 @@ import { ref, onValue, update } from 'firebase/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { deleteSchool, updateSchool } from '@/app/actions';
+import { subscriptionPlans, type SubscriptionPlan } from '@/lib/subscriptions';
 
 type SchoolData = {
   id: string;
@@ -39,7 +40,7 @@ type SchoolData = {
   studentCount: number;
   teacherCount: number;
   status?: 'active' | 'suspended';
-  subscription?: 'free' | 'basic' | 'premium';
+  subscription?: SubscriptionPlan;
 };
 
 export default function SuperAdminDashboard() {
@@ -199,9 +200,9 @@ export default function SuperAdminDashboard() {
                     <TableCell className="font-medium">{school.name}</TableCell>
                     <TableCell>{school.studentCount}</TableCell>
                     <TableCell>{school.teacherCount}</TableCell>
-                    <TableCell><Badge variant="secondary">{school.subscription}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary" className="capitalize">{school.subscription}</Badge></TableCell>
                     <TableCell>
-                        <Badge variant={school.status === 'active' ? 'default' : 'destructive'}>{school.status}</Badge>
+                        <Badge variant={school.status === 'active' ? 'default' : 'destructive'} className="capitalize">{school.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                        <DropdownMenu>
@@ -244,12 +245,12 @@ export default function SuperAdminDashboard() {
                   <div className="grid grid-cols-2 gap-4">
                        <div className="grid gap-2">
                            <Label htmlFor="subscription">Subscription</Label>
-                            <Select value={formState.subscription || 'free'} onValueChange={(value: 'free' | 'basic' | 'premium') => setFormState(p => ({...p, subscription: value}))}>
+                            <Select value={formState.subscription || 'free'} onValueChange={(value: SubscriptionPlan) => setFormState(p => ({...p, subscription: value}))}>
                                 <SelectTrigger id="subscription"><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="free">Free</SelectItem>
-                                    <SelectItem value="basic">Basic</SelectItem>
-                                    <SelectItem value="premium">Premium</SelectItem>
+                                    {subscriptionPlans.map(plan => (
+                                        <SelectItem key={plan} value={plan} className="capitalize">{plan}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                        </div>
