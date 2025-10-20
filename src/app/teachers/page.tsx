@@ -52,6 +52,13 @@ type Teacher = {
   totalLeaveDays?: number;
 };
 
+const teacherSampleData = [
+    { name: 'Alice Johnson', email: 'alice.j@example.com', subject: 'Mathematics', qualifications: 'M.Sc. Mathematics', salary: '9000', startDate: '2022-08-01', dob: '1985-03-12', gender: 'Female' },
+    { name: 'Bob Williams', email: 'bob.w@example.com', subject: 'Physics', qualifications: 'Ph.D. in Physics', salary: '9500', startDate: '2021-07-15', dob: '1980-11-25', gender: 'Male' },
+    { name: 'Charlie Brown', email: 'charlie.b@example.com', subject: 'English', qualifications: 'B.A. Literature', salary: '8000', startDate: '2023-01-10', dob: '1990-06-30', gender: 'Male' },
+    { name: 'Diana Miller', email: 'diana.m@example.com', subject: 'History', qualifications: 'M.A. History', salary: '8200', startDate: '2022-09-01', dob: '1988-09-18', gender: 'Female' },
+    { name: 'Ethan Davis', email: 'ethan.d@example.com', subject: 'Chemistry', qualifications: 'B.Sc. Chemistry', salary: '7800', startDate: '2023-08-20', dob: '1992-01-05', gender: 'Male' },
+];
 
 export default function TeachersPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -219,6 +226,7 @@ export default function TeachersPage() {
                     title="Import Teachers"
                     description="Upload a CSV file to bulk-add new teachers. The system will automatically generate passwords for each teacher."
                     templateHeaders={["name", "email", "subject", "qualifications", "salary", "startDate (YYYY-MM-DD)", "dob (YYYY-MM-DD)", "gender (Male/Female)"]}
+                    sampleData={teacherSampleData}
                     onImport={importTeachersFromCSV}
                     schoolId={schoolId!}
                     trigger={

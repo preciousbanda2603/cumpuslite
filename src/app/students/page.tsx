@@ -79,6 +79,14 @@ type Class = {
   name: string;
 };
 
+const studentSampleData = [
+    { name: 'John Doe', enrollmentDate: '2024-01-15', dob: '2010-05-20', gender: 'Male', classId: 'CLASS_ID_1', parentName: 'Jane Doe', parentPhone: '555-1234', parentEmail: 'jane.doe@example.com' },
+    { name: 'Alice Smith', enrollmentDate: '2024-01-15', dob: '2011-02-10', gender: 'Female', classId: 'CLASS_ID_2', parentName: 'Bob Smith', parentPhone: '555-5678', parentEmail: 'bob.smith@example.com' },
+    { name: 'Michael Johnson', enrollmentDate: '2024-01-16', dob: '2010-09-01', gender: 'Male', classId: 'CLASS_ID_1', parentName: 'Mary Johnson', parentPhone: '555-8765', parentEmail: 'mary.j@example.com' },
+    { name: 'Emily White', enrollmentDate: '2024-01-18', dob: '2012-11-30', gender: 'Female', classId: 'CLASS_ID_3', parentName: 'David White', parentPhone: '555-4321', parentEmail: 'd.white@example.com' },
+    { name: 'Chris Brown', enrollmentDate: '2024-01-20', dob: '2011-07-22', gender: 'Male', classId: 'CLASS_ID_2', parentName: 'Sarah Brown', parentPhone: '555-9900', parentEmail: 's.brown@example.com' },
+];
+
 export default function StudentsPage() {
   const [user, setUser] = useState<User | null>(null);
   const schoolId = useSchoolId();
@@ -264,6 +272,7 @@ export default function StudentsPage() {
                     title="Import Students"
                     description="Upload a CSV file to bulk-add new students. The system will automatically generate admission numbers and passwords for each student."
                     templateHeaders={["name", "enrollmentDate (YYYY-MM-DD)", "dob (YYYY-MM-DD)", "gender (Male/Female)", "classId", "parentName", "parentPhone", "parentEmail"]}
+                    sampleData={studentSampleData}
                     onImport={importStudentsFromCSV}
                     schoolId={schoolId!}
                     trigger={

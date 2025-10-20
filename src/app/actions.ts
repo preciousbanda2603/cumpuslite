@@ -19,7 +19,7 @@ const secondaryAppConfig = {
 
 const secondaryApp = getApps().find(app => app.name === 'secondary') || initializeApp(secondaryAppConfig, 'secondary');
 const secondaryAuth = getAuth(secondaryApp);
-const database = getDatabase(secondaryApp);
+const database = getDatabase(getApps()[0]); // Use the primary app's database instance
 
 const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
 
@@ -40,59 +40,65 @@ type CreateParentUserParams = {
   password: any;
   schoolUid: string;
   admissionNo: string;
+  parentName: string;
 };
 
 export async function createParentUser(params: CreateParentUserParams) {
-  const { email, password, schoolUid, admissionNo } = params;
+    const { email, password, schoolUid, admissionNo, parentName } = params;
 
-  try {
-    const studentsRef = ref(database, `schools/${schoolUid}/students`);
-    const studentQuery = query(studentsRef, orderByChild('admissionNo'), equalTo(admissionNo));
-    const studentSnapshot = await get(studentQuery);
-    
-    if (!studentSnapshot.exists()) {
-       throw new Error("No student found with that Admission Number at the selected school.");
+    try {
+        const studentsRef = ref(database, `schools/${schoolUid}/students`);
+        const snapshot = await get(studentsRef);
+        if (!snapshot.exists()) {
+            throw new Error("No students found at the selected school.");
+        }
+        
+        const studentsData = snapshot.val();
+        let studentId: string | null = null;
+        let studentData: any | null = null;
+        
+        for (const id in studentsData) {
+            if (studentsData[id].admissionNo === admissionNo) {
+                studentId = id;
+                studentData = studentsData[id];
+                break;
+            }
+        }
+        
+        if (!studentId || !studentData) {
+            throw new Error("No student found with that Admission Number at the selected school.");
+        }
+        
+        if (studentData.parentUid) {
+            throw new Error("This student is already linked to a parent account.");
+        }
+
+        const signInMethods = await fetchSignInMethodsForEmail(secondaryAuth, email);
+        let user;
+
+        if (signInMethods.length > 0) {
+            // This case should now be handled on the client, but keeping as a failsafe
+            throw new Error("This email is already in use. Please log in to link this child.");
+        } else {
+            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+            user = userCredential.user;
+        }
+
+        const studentUpdateRef = ref(database, `schools/${schoolUid}/students/${studentId}`);
+        await update(studentUpdateRef, { parentUid: user.uid, parentName: parentName });
+
+        return { success: true };
+    } catch (error: any) {
+        let errorMessage = "An unexpected error occurred. Please try again.";
+        if (error.code === 'auth/weak-password') {
+        errorMessage = "The password is too weak. Please choose a stronger password.";
+        } else if (error.message) {
+        errorMessage = error.message;
+        }
+        return { success: false, error: errorMessage };
     }
-    
-    let studentId: string | null = null;
-    let studentData: any | null = null;
-    studentSnapshot.forEach((child) => {
-        studentId = child.key;
-        studentData = child.val();
-    });
-
-    if (!studentId || !studentData) {
-        throw new Error("Could not retrieve student data.");
-    }
-    
-    if (studentData.parentUid) {
-      throw new Error("This student is already linked to a parent account.");
-    }
-
-    const signInMethods = await fetchSignInMethodsForEmail(secondaryAuth, email);
-    let user;
-
-    if (signInMethods.length > 0) {
-      throw new Error("This email is already in use. Please log in with your existing parent account and use the 'Link Another Child' feature from the dashboard.");
-    } else {
-        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-        user = userCredential.user;
-    }
-
-    const studentUpdateRef = ref(database, `schools/${schoolUid}/students/${studentId}`);
-    await update(studentUpdateRef, { parentUid: user.uid, parentName: user.displayName || email.split('@')[0] });
-
-    return { success: true };
-  } catch (error: any) {
-    let errorMessage = "An unexpected error occurred. Please try again.";
-    if (error.code === 'auth/weak-password') {
-      errorMessage = "The password is too weak. Please choose a stronger password.";
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    return { success: false, error: errorMessage };
-  }
 }
+
 
 type LinkChildParams = {
     schoolUid: string;
@@ -140,10 +146,7 @@ export async function linkChildToParent(params: LinkChildParams) {
         }
 
         const studentUpdateRef = ref(database, `schools/${schoolUid}/students/${studentId}`);
-        const parentUser = auth.currentUser;
-        const parentName = parentUser?.displayName || parentUser?.email?.split('@')[0] || 'Parent';
-
-        await update(studentUpdateRef, { parentUid: parentUid, parentName: parentName });
+        await update(studentUpdateRef, { parentUid: parentUid });
 
         return { success: true };
     } catch (error: any) {
@@ -168,13 +171,18 @@ export async function importStudentsFromCSV(schoolId: string, csvData: string) {
     try {
         const students = await parseCSV(csvData);
         let successCount = 0;
-        let failureCount = 0;
+        const errorMessages: string[] = [];
 
-        for (const student of students) {
+        for (const [index, student] of students.entries()) {
+            const rowNum = index + 2; // CSV is 1-indexed, and header is row 1
             try {
                 const { name, enrollmentDate, dob, gender, classId, parentName, parentPhone, parentEmail } = student;
+                if (!name || !classId) {
+                    throw new Error("Missing required fields: name and classId.");
+                }
+
                 const admissionNo = nanoid();
-                const password = nanoid(8); // Auto-generate password
+                const password = nanoid(8);
                 const studentEmail = `${admissionNo.toLowerCase()}@school.app`;
 
                 const userCredential = await createUserWithEmailAndPassword(secondaryAuth, studentEmail, password);
@@ -186,24 +194,29 @@ export async function importStudentsFromCSV(schoolId: string, csvData: string) {
                     name,
                     admissionNo,
                     classId,
-                    enrollmentDate,
-                    dob,
-                    gender,
-                    parentName,
-                    parentPhone,
-                    parentEmail,
+                    enrollmentDate: enrollmentDate || '',
+                    dob: dob || '',
+                    gender: gender || '',
+                    parentName: parentName || '',
+                    parentPhone: parentPhone || '',
+                    parentEmail: parentEmail || '',
                     status: 'Active',
                     createdAt: new Date().toISOString(),
                 });
                 successCount++;
-            } catch (e) {
-                console.error("Failed to import student row:", e, student);
-                failureCount++;
+            } catch (e: any) {
+                let reason = "An unknown error occurred.";
+                if (e.code === 'auth/email-already-in-use') {
+                    reason = `This student seems to have been added already.`;
+                } else if (e.message) {
+                    reason = e.message;
+                }
+                errorMessages.push(`Row ${rowNum} (${student.name || 'N/A'}): ${reason}`);
             }
         }
-        return { success: true, message: `Import complete. ${successCount} students added, ${failureCount} failed.` };
+        return { success: true, successCount, errorMessages };
     } catch (error: any) {
-        return { success: false, message: `CSV parsing failed: ${error.message}` };
+        return { success: false, successCount: 0, errorMessages: [`CSV parsing failed: ${error.message}`] };
     }
 }
 
@@ -211,11 +224,17 @@ export async function importTeachersFromCSV(schoolId: string, csvData: string) {
     try {
         const teachers = await parseCSV(csvData);
         let successCount = 0;
-        let failureCount = 0;
+        const errorMessages: string[] = [];
 
-        for (const teacher of teachers) {
+        for (const [index, teacher] of teachers.entries()) {
+             const rowNum = index + 2;
             try {
                 const { name, email, subject, qualifications, salary, startDate, dob, gender } = teacher;
+
+                if (!name || !email) {
+                    throw new Error("Missing required fields: name and email.");
+                }
+
                 const password = nanoid(8);
 
                 const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
@@ -226,22 +245,27 @@ export async function importTeachersFromCSV(schoolId: string, csvData: string) {
                     uid: teacherUser.uid,
                     name,
                     email,
-                    subject,
-                    qualifications,
+                    subject: subject || '',
+                    qualifications: qualifications || '',
                     salary: parseFloat(salary) || 0,
-                    startDate,
-                    dob,
-                    gender,
+                    startDate: startDate || '',
+                    dob: dob || '',
+                    gender: gender || '',
                     createdAt: new Date().toISOString(),
                 });
                 successCount++;
-            } catch (e) {
-                console.error("Failed to import teacher row:", e, teacher);
-                failureCount++;
+            } catch (e: any) {
+                 let reason = "An unknown error occurred.";
+                if (e.code === 'auth/email-already-in-use') {
+                    reason = `Email '${teacher.email}' is already in use.`;
+                } else if (e.message) {
+                    reason = e.message;
+                }
+                errorMessages.push(`Row ${rowNum} (${teacher.name || 'N/A'}): ${reason}`);
             }
         }
-        return { success: true, message: `Import complete. ${successCount} teachers added, ${failureCount} failed.` };
+        return { success: true, successCount, errorMessages };
     } catch (error: any) {
-        return { success: false, message: `CSV parsing failed: ${error.message}` };
+        return { success: false, successCount: 0, errorMessages: [`CSV parsing failed: ${error.message}`] };
     }
 }
