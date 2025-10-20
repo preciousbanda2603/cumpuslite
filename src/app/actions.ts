@@ -69,7 +69,13 @@ export async function createParentUser(params: CreateParentUserParams) {
         }
         
         if (studentData.parentUid) {
-            throw new Error("This student is already linked to a parent account.");
+            // If email already exists, just link it.
+             const signInMethods = await fetchSignInMethodsForEmail(secondaryAuth, email);
+             if (signInMethods.length > 0) {
+                 throw new Error("This student is already linked to a parent account.");
+             } else {
+                 throw new Error("This student is already linked to a parent account. Please contact the school to change the linked parent.");
+             }
         }
 
         const signInMethods = await fetchSignInMethodsForEmail(secondaryAuth, email);
@@ -154,9 +160,12 @@ export async function linkChildToParent(params: LinkChildParams) {
 
 async function parseCSV(csvData: string): Promise<any[]> {
     const lines = csvData.trim().split('\n');
-    const header = lines[0].split(',').map(h => h.trim());
+    const headerLine = lines[0].endsWith('\r') ? lines[0].slice(0, -1) : lines[0];
+    const header = headerLine.split(',').map(h => h.trim());
+    
     const data = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim());
+        const cleanedLine = line.endsWith('\r') ? line.slice(0, -1) : line;
+        const values = cleanedLine.split(',').map(v => v.trim());
         return header.reduce((obj, nextKey, index) => {
             obj[nextKey] = values[index];
             return obj;
