@@ -16,7 +16,7 @@ const secondaryAppConfig = {
   authDomain: "studio-2119893974-60441.firebaseapp.com",
   databaseURL: "https://studio-2119893974-60441-default-rtdb.firebaseio.com",
   projectId: "studio-2119893974-60441",
-  storageBucket: "studio-2119893974-60441.appspot.com",
+  storageBucket: "studio-211989-60441.appspot.com",
   messagingSenderId: "782301073730",
   appId: "1:782301073730:web:15eb1304f7b890411c38db"
 };
@@ -293,6 +293,14 @@ export async function deleteSchool(schoolId: string) {
 
 // --- Probase Payment Gateway Integration ---
 
+// Hardcoded credentials
+const PROBASE_BASE_DOMAIN = "https://paymentservices.probasegroup.com/";
+const PROBASE_AUTH_TOKEN = "X6vs7axNEPdCCXcE3wXJd6nmWdC8N9jMACXumn5q6W8M3q6b6WUVnxF8CJQ3wuj74w7Y4f3eHAVu65CUKhWqKsAe8RnCeN8wyNZVUfWUKTHCVc";
+const PROBASE_MERCHANT_ID = "52";
+const PROBASE_SERVICE_CODE = "0035";
+const PROBASE_COMPANY_NAME = "Campus.ZM";
+const PROBASE_CALLBACK_URL = ""; // This can be empty if not used for server-to-server callbacks
+
 export async function initiateSubscriptionPayment(params: {
     schoolId: string;
     plan: 'basic' | 'premium';
@@ -310,16 +318,16 @@ export async function initiateSubscriptionPayment(params: {
         createdAt: new Date().toISOString(),
     });
 
-    const PROBASE_AUTH_TOKEN = 'X6vs7axNEPdCCXcE3wXJd6nmWdC8N9jMACXumn5q6W8M3q6b6WUVnxF8CJQ3wuj74w7Y4f3eHAVu65CUKhWqKsAe8RnCeN8wyNZVUfWUKTHCVc';
-    const PROBASE_BASE_DOMAIN = 'paymentservices.probasegroup.com';
-    const PROBASE_MERCHANT_ID = '52';
-    const PROBASE_SERVICE_CODE = '0035';
-    const PROBASE_COMPANY_NAME = 'Campus.ZM';
-    const PROBASE_CALLBACK_URL = 'https://your-callback-url.com/probase/callback';
-
     const merchantId = parseInt(PROBASE_MERCHANT_ID, 10);
     const service_code = PROBASE_SERVICE_CODE;
     const domain = PROBASE_BASE_DOMAIN?.replace(/^(https?:\/\/)/, '');
+    
+    if (!domain || !PROBASE_AUTH_TOKEN || isNaN(merchantId) || !service_code) {
+        const errorMsg = "Probase mobile payment gateway credentials are not configured correctly.";
+        console.error(errorMsg);
+        await update(paymentsRef, { status: 'failed', failureReason: errorMsg });
+        return { success: false, message: errorMsg };
+    }
     
     const requestUrl = `https://${domain}/pbs/Payments/Api/V1/ProcessTransaction`; 
     
@@ -331,12 +339,11 @@ export async function initiateSubscriptionPayment(params: {
         merchantId: merchantId,
         paymentDescription: `${PROBASE_COMPANY_NAME || 'Campus.ZM Subscription'}: ${plan} plan`,
         paymentReference: transactionId,
-        callbackUrl: PROBASE_CALLBACK_URL || '',
     };
     
     try {
         const httpsAgent = new https.Agent({
-          rejectUnauthorized: false,
+          rejectUnauthorized: false, // Bypasses certificate validation.
         });
 
         const response = await axios.post(requestUrl, payload, {
@@ -358,18 +365,20 @@ export async function initiateSubscriptionPayment(params: {
             return { success: false, message: errorMessage };
         }
     } catch (error: any) {
-        const errorMessage = error.response?.data?.message || error.message || "Network error during payment initiation.";
-        console.error("Probase payment failed:", errorMessage);
+        const errorMessage = error.response?.data?.message || error.message || "Could not connect to payment gateway. Please check server logs.";
+        console.error("Probase payment initiation failed:", errorMessage);
         
         try {
              await update(paymentsRef, { 
                 status: 'failed', 
-                failureReason: `Could not connect to payment gateway. ${errorMessage}`
+                failureReason: `Connection Error: ${errorMessage}`
             });
         } catch (dbError: any) {
              console.error("Failed to update payment status after connection error:", dbError.message);
-             return { success: false, message: `Could not connect to payment gateway and failed to log the error.` };
+             // Return the original, more descriptive error to the user
+             return { success: false, message: `Could not connect to the payment gateway. The server logs may have more details.` };
         }
-        return { success: false, message: `Could not connect to payment gateway. ${errorMessage}` };
+
+        return { success: false, message: `Could not connect to the payment gateway. The server logs may have more details.` };
     }
 }
