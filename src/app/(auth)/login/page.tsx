@@ -209,12 +209,6 @@ export default function LoginPage() {
                 Register a School
                 </Link>
             </p>
-             <p>
-                Are you a platform administrator?{" "}
-                <Link href="/super-admin-login" className="underline">
-                Super Admin Login
-                </Link>
-            </p>
        </div>
     </div>
   )
