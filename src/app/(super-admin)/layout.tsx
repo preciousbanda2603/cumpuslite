@@ -16,7 +16,7 @@ function SuperAdminAuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
-      const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'superadmin@campus.zm';
+      const superAdminEmail = 'adminenock@gmail.com';
       if (user && user.email === superAdminEmail) {
         setIsAuthorized(true);
       } else {
