@@ -23,8 +23,6 @@ export default function SuperAdminRegisterPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'superadmin@campus.zm';
-
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,12 +31,6 @@ export default function SuperAdminRegisterPage() {
     const formData = new FormData(event.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
-
-    if (email !== superAdminEmail) {
-        toast({ title: "Registration Not Allowed", description: "This email address is not permitted for super admin registration.", variant: "destructive" });
-        setLoading(false);
-        return;
-    }
 
     try {
       await createUserWithEmailAndPassword(auth, email, password);
