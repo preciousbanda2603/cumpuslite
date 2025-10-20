@@ -23,7 +23,7 @@ const secondaryAppConfig = {
   authDomain: "studio-2119893974-60441.firebaseapp.com",
   databaseURL: "https://studio-2119893974-60441-default-rtdb.firebaseio.com",
   projectId: "studio-2119893974-60441",
-  storageBucket: "studio-211989-60441.appspot.com",
+  storageBucket: "studio-2119893974-60441.appspot.com",
   messagingSenderId: "782301073730",
   appId: "1:782301073730:web:15eb1304f7b890411c38db"
 };
@@ -300,18 +300,14 @@ export async function deleteSchool(schoolId: string) {
 
 // --- Probase Payment Gateway Integration ---
 
-const PROBASE_BASE_DOMAIN = "https://paymentservices.probasegroup.com/";
-const PROBASE_AUTH_TOKEN = "X6vs7axNEPdCCXcE3wXJd6nmWdC8N9jMACXumn5q6W8M3q6b6WUVnxF8CJQ3wuj74w7Y4f3eHAVu65CUKhWqKsAe8RnCeN8wyNZVUfWUKTHCVc";
-const PROBASE_MERCHANT_ID = "52";
-const PROBASE_SERVICE_CODE = "0035";
-const PROBASE_COMPANY_NAME = "Campus.ZM";
-const PROBASE_CALLBACK_URL = ""; 
-const PROBASE_SYSTEM_ID = "Clock Tick Invest Plus-9567";
-const PROBASE_PASSWORD = "54kRQe5Db5_fv6J#22ev";
-
-const agent = new https.Agent({
-  rejectUnauthorized: false,
-});
+const PROBASE_BASE_DOMAIN = process.env.PROBASE_BASE_DOMAIN;
+const PROBASE_AUTH_TOKEN = process.env.PROBASE_AUTH_TOKEN;
+const PROBASE_MERCHANT_ID = process.env.PROBASE_MERCHANT_ID;
+const PROBASE_SERVICE_CODE = process.env.PROBASE_SERVICE_CODE;
+const PROBASE_COMPANY_NAME = process.env.PROBASE_COMPANY_NAME;
+const PROBASE_CALLBACK_URL = process.env.PROBASE_CALLBACK_URL;
+const PROBASE_SYSTEM_ID = process.env.PROBASE_SYSTEM_ID;
+const PROBASE_PASSWORD = process.env.PROBASE_PASSWORD;
 
 
 export async function initiateSubscriptionPayment(params: {
@@ -333,7 +329,7 @@ export async function initiateSubscriptionPayment(params: {
             createdAt: new Date().toISOString(),
         });
 
-        const merchantId = parseInt(PROBASE_MERCHANT_ID, 10);
+        const merchantId = PROBASE_MERCHANT_ID ? parseInt(PROBASE_MERCHANT_ID, 10) : NaN;
         const service_code = PROBASE_SERVICE_CODE;
         const domain = PROBASE_BASE_DOMAIN?.replace(/^(https?:\/\/)/, '');
         
@@ -360,13 +356,13 @@ export async function initiateSubscriptionPayment(params: {
                 'auth_token': PROBASE_AUTH_TOKEN,
                 'Content-Type': 'application/json' 
             },
-            httpsAgent: agent,
         });
 
         const responseData = response.data;
+        const transid = responseData.transid;
 
         if (response.status === 200 && responseData.success === true && responseData.status === 0) {
-            await update(paymentsRef, { status: 'processing', gatewayReference: responseData.transid });
+            await update(paymentsRef, { status: 'processing', gatewayReference: transid });
             return { success: true, message: responseData.message || "Payment initiated. You will receive a prompt on your phone." };
         } else {
             const errorMessage = responseData.errorDescription || responseData.message || "Payment gateway rejected the request.";
@@ -417,7 +413,6 @@ export async function lookupTransaction(paymentReference: string): Promise<any> 
                 'auth_token': PROBASE_AUTH_TOKEN,
                 'Content-Type': 'application/json'
             },
-            httpsAgent: agent,
         });
 
         console.log("Probase Lookup Response:", response.data);
@@ -473,7 +468,6 @@ export async function initiateProbaseCardRedirect(
         'auth_token': PROBASE_AUTH_TOKEN,
         'Content-Type': 'application/json'
       },
-      httpsAgent: agent
     });
     
     const responseData = response.data;
