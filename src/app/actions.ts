@@ -10,7 +10,6 @@ import axios from 'axios';
 import https from 'https';
 
 // --- TYPE DEFINITIONS ---
-// This was missing from the previous implementation.
 export type UserProfile = {
   fullName: string;
   email: string;
@@ -371,11 +370,11 @@ export async function initiateSubscriptionPayment(params: {
             return { success: true, message: responseData.message || "Payment initiated. You will receive a prompt on your phone." };
         } else {
             const errorMessage = responseData.errorDescription || responseData.message || "Payment gateway rejected the request.";
+            await update(paymentsRef, { status: 'failed', failureReason: errorMessage });
             throw new Error(errorMessage);
         }
     } catch (error: any) {
         const errorMessage = error.response?.data?.message || error.message || "Could not connect to the payment gateway. Please check server logs.";
-        console.error("Probase payment initiation failed:", errorMessage);
         
         try {
              await update(paymentsRef, { 
@@ -498,3 +497,4 @@ export async function initiateProbaseCardRedirect(
     return { success: false, message: 'Could not connect to the payment gateway.' };
   }
 }
+
