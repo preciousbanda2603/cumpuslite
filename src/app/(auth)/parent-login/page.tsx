@@ -48,7 +48,12 @@ export default function ParentLoginPage() {
       let isParent = false;
       const schoolsData = schoolsSnap.val();
       for (const schoolId in schoolsData) {
-        const students = schoolsData[schoolId].students || {};
+        const schoolData = schoolsData[schoolId];
+        if (schoolData.status === 'suspended') {
+            continue; // Skip suspended schools
+        }
+        
+        const students = schoolData.students || {};
         for(const studentId in students) {
           if (students[studentId].parentUid === user.uid) {
             isParent = true;
@@ -61,7 +66,7 @@ export default function ParentLoginPage() {
       
       if (!isParent) {
         await auth.signOut();
-        throw new Error("This account is not linked to any student. Please register first.");
+        throw new Error("This account is not linked to any student or the school is suspended. Please register first.");
       }
 
       toast({ title: "Success!", description: "Parent logged in." });
