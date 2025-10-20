@@ -1,4 +1,3 @@
-
 'use server';
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
@@ -293,10 +292,6 @@ export async function deleteSchool(schoolId: string) {
 
 // --- Probase Payment Gateway Integration ---
 
-const agent = new https.Agent({
-  rejectUnauthorized: false,
-});
-
 export async function initiateSubscriptionPayment(params: {
     schoolId: string;
     plan: 'basic' | 'premium';
@@ -324,13 +319,6 @@ export async function initiateSubscriptionPayment(params: {
     const merchantId = parseInt(PROBASE_MERCHANT_ID, 10);
     const service_code = PROBASE_SERVICE_CODE;
     const domain = PROBASE_BASE_DOMAIN?.replace(/^(https?:\/\/)/, '');
-
-    if (!domain || !PROBASE_AUTH_TOKEN || isNaN(merchantId) || !service_code) {
-        const errorMsg = "Probase payment gateway credentials are not configured correctly.";
-        console.error(errorMsg);
-        await update(paymentsRef, { status: 'failed', failureReason: errorMsg });
-        return { success: false, message: errorMsg };
-    }
     
     const requestUrl = `https://${domain}/pbs/Payments/Api/V1/ProcessTransaction`; 
     
@@ -346,12 +334,16 @@ export async function initiateSubscriptionPayment(params: {
     };
     
     try {
+        const httpsAgent = new https.Agent({
+            rejectUnauthorized: false
+        });
+
         const response = await axios.post(requestUrl, payload, {
             headers: { 
                 'auth_token': PROBASE_AUTH_TOKEN,
                 'Content-Type': 'application/json' 
             },
-            httpsAgent: agent,
+            httpsAgent: httpsAgent,
         });
 
         const responseData = response.data;
@@ -366,8 +358,15 @@ export async function initiateSubscriptionPayment(params: {
         }
     } catch (error: any) {
         const errorMessage = error.response?.data?.message || error.message || "Network error during payment initiation.";
-        await update(paymentsRef, { status: 'failed', failureReason: errorMessage });
         console.error("Probase payment failed:", errorMessage);
+        // Ensure the update to Firebase does not contain undefined values
+        try {
+            await update(paymentsRef, { status: 'failed', failureReason: String(errorMessage) });
+        } catch (dbError: any) {
+            console.error("Failed to update payment status after connection error:", dbError.message);
+            // Return the original connection error to the user
+            return { success: false, message: `Could not connect to payment gateway. Please check server logs.` };
+        }
         return { success: false, message: `Could not connect to payment gateway. ${errorMessage}` };
     }
 }
