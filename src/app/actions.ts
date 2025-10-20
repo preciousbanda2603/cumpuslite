@@ -1,3 +1,4 @@
+
 'use server';
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
@@ -335,7 +336,7 @@ export async function initiateSubscriptionPayment(params: {
     
     try {
         const httpsAgent = new https.Agent({
-            rejectUnauthorized: false
+          rejectUnauthorized: false, // This is often necessary for self-signed or invalid certificates
         });
 
         const response = await axios.post(requestUrl, payload, {
@@ -359,13 +360,16 @@ export async function initiateSubscriptionPayment(params: {
     } catch (error: any) {
         const errorMessage = error.response?.data?.message || error.message || "Network error during payment initiation.";
         console.error("Probase payment failed:", errorMessage);
-        // Ensure the update to Firebase does not contain undefined values
+        
         try {
-            await update(paymentsRef, { status: 'failed', failureReason: String(errorMessage) });
+            await update(paymentsRef, { 
+                status: 'failed', 
+                failureReason: `Could not connect to payment gateway. ${errorMessage}`
+            });
         } catch (dbError: any) {
             console.error("Failed to update payment status after connection error:", dbError.message);
             // Return the original connection error to the user
-            return { success: false, message: `Could not connect to payment gateway. Please check server logs.` };
+            return { success: false, message: `Could not connect to payment gateway and failed to log the error.` };
         }
         return { success: false, message: `Could not connect to payment gateway. ${errorMessage}` };
     }
