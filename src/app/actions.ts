@@ -1,11 +1,13 @@
 
-
 'use server';
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { getDatabase, ref, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
 import { customAlphabet } from 'nanoid';
+import type { User } from 'firebase/auth';
+import axios from 'axios';
+import https from 'https';
 
 // Initialize a secondary Firebase app for creating users without affecting admin session
 const secondaryAppConfig = {
@@ -22,7 +24,7 @@ const secondaryApp = getApps().find(app => app.name === 'secondary') || initiali
 const secondaryAuth = getAuth(secondaryApp);
 const database = getDatabase(getApps()[0]); // Use the primary app's database instance
 
-const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
+const nanoid = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
 
 export async function getSchools() {
   const snapshot = await get(ref(database, 'schools'));
@@ -70,7 +72,6 @@ export async function createParentUser(params: CreateParentUserParams) {
         }
         
         if (studentData.parentUid) {
-            // If email already exists, just link it.
              const signInMethods = await fetchSignInMethodsForEmail(secondaryAuth, email);
              if (signInMethods.length > 0) {
                  throw new Error("This student is already linked to a parent account.");
@@ -90,7 +91,7 @@ export async function createParentUser(params: CreateParentUserParams) {
         }
 
         const studentUpdateRef = ref(database, `schools/${schoolUid}/students/${studentId}`);
-        await update(studentUpdateRef, { parentUid: user.uid, parentName: user.displayName || 'Parent' });
+        await update(studentUpdateRef, { parentUid: user.uid });
 
         return { success: true };
     } catch (error: any) {
@@ -182,7 +183,7 @@ export async function importStudentsFromCSV(schoolId: string, csvData: string) {
         const errorMessages: string[] = [];
 
         for (const [index, student] of students.entries()) {
-            const rowNum = index + 2; // CSV is 1-indexed, and header is row 1
+            const rowNum = index + 2;
             try {
                 const { name, enrollmentDate, dob, gender, classId, parentName, parentPhone, parentEmail } = student;
                 if (!name || !classId) {
@@ -286,7 +287,83 @@ export async function updateSchool(schoolId: string, updates: { name?: string; s
 
 export async function deleteSchool(schoolId: string) {
     const schoolRef = ref(database, `schools/${schoolId}`);
-    // Note: This does not delete associated Firebase Auth users automatically.
-    // A more complete solution would use a Firebase Function to handle user cleanup.
     return remove(schoolRef);
+}
+
+// --- Probase Payment Gateway Integration ---
+
+const PROBASE_BASE_DOMAIN = process.env.PROBASE_BASE_DOMAIN;
+const PROBASE_AUTH_TOKEN = process.env.PROBASE_AUTH_TOKEN;
+const PROBASE_MERCHANT_ID = process.env.PROBASE_MERCHANT_ID;
+const PROBASE_SERVICE_CODE = process.env.PROBASE_SERVICE_CODE;
+const PROBASE_COMPANY_NAME = process.env.PROBASE_COMPANY_NAME;
+const PROBASE_CALLBACK_URL = process.env.PROBASE_CALLBACK_URL;
+
+const agent = new https.Agent({
+  rejectUnauthorized: false,
+});
+
+export async function initiateSubscriptionPayment(params: {
+    schoolId: string;
+    plan: 'basic' | 'premium';
+    mobileNumber: string;
+    amount: number;
+}): Promise<{ success: boolean; message: string }> {
+    const { schoolId, plan, mobileNumber, amount } = params;
+    const transactionId = `SUB-${schoolId}-${plan.toUpperCase()}-${nanoid()}`;
+
+    const paymentsRef = ref(database, `schools/${schoolId}/payments/${transactionId}`);
+    await set(paymentsRef, {
+        plan,
+        amount,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+    });
+
+    const merchantId = PROBASE_MERCHANT_ID ? parseInt(PROBASE_MERCHANT_ID, 10) : NaN;
+    const service_code = PROBASE_SERVICE_CODE;
+    const domain = PROBASE_BASE_DOMAIN?.replace(/^(https?:\/\/)/, '');
+
+    if (!domain || !PROBASE_AUTH_TOKEN || isNaN(merchantId) || !service_code) {
+        const errorMsg = "Probase payment gateway credentials are not configured correctly.";
+        console.error(errorMsg);
+        await update(paymentsRef, { status: 'failed', failureReason: errorMsg });
+        return { success: false, message: errorMsg };
+    }
+    
+    const requestUrl = `https://${domain}/pbs/Payments/Api/V1/ProcessTransaction`; 
+    
+    const payload = {
+        amount: amount.toFixed(2),
+        service_code: service_code,
+        bss_notification: true,
+        mobile: mobileNumber,
+        merchantId: merchantId,
+        paymentDescription: `${PROBASE_COMPANY_NAME || 'Campus.ZM Subscription'}: ${plan} plan`,
+        paymentReference: transactionId,
+        callbackUrl: PROBASE_CALLBACK_URL || '',
+    };
+    
+    try {
+        const response = await axios.post(requestUrl, payload, {
+            headers: { 'auth_token': PROBASE_AUTH_TOKEN, 'Content-Type': 'application/json' },
+            httpsAgent: agent,
+        });
+
+        const responseData = response.data;
+
+        if (response.status === 200 && responseData.success === true && responseData.status === 0) {
+            await update(paymentsRef, { status: 'processing', gatewayReference: responseData.transid });
+            return { success: true, message: responseData.message || "Payment initiated. You will receive a prompt on your phone." };
+        } else {
+            const errorMessage = responseData.errorDescription || responseData.message || "Payment gateway rejected the request.";
+            await update(paymentsRef, { status: 'failed', failureReason: errorMessage });
+            return { success: false, message: errorMessage };
+        }
+    } catch (error: any) {
+        const errorMessage = error.response?.data?.message || error.message || "Network error during payment initiation.";
+        await update(paymentsRef, { status: 'failed', failureReason: errorMessage });
+        console.error("Probase payment failed:", errorMessage);
+        return { success: false, message: `Could not connect to payment gateway. ${errorMessage}` };
+    }
 }
