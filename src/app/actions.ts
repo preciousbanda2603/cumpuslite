@@ -314,7 +314,6 @@ export async function initiateSubscriptionPayment(params: {
         createdAt: new Date().toISOString(),
     });
 
-    // This token has been hardcoded with the value you provided.
     const PROBASE_AUTH_TOKEN = 'X6vs7axNEPdCCXcE3wXJd6nmWdC8N9jMACXumn5q6W8M3q6b6WUVnxF8CJQ3wuj74w7Y4f3eHAVu65CUKhWqKsAe8RnCeN8wyNZVUfWUKTHCVc';
     
     // NOTE: These are placeholder credentials. Replace with your actual Probase credentials.
@@ -346,11 +345,12 @@ export async function initiateSubscriptionPayment(params: {
         paymentDescription: `${PROBASE_COMPANY_NAME || 'Campus.ZM Subscription'}: ${plan} plan`,
         paymentReference: transactionId,
         callbackUrl: PROBASE_CALLBACK_URL || '',
+        auth_token: PROBASE_AUTH_TOKEN, // Added token to payload
     };
     
     try {
         const response = await axios.post(requestUrl, payload, {
-            headers: { 'auth_token': PROBASE_AUTH_TOKEN, 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
             httpsAgent: agent,
         });
 
