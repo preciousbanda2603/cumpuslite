@@ -9,6 +9,14 @@ import type { User } from 'firebase/auth';
 import axios from 'axios';
 import https from 'https';
 
+// --- TYPE DEFINITIONS ---
+// This was missing from the previous implementation.
+export type UserProfile = {
+  fullName: string;
+  email: string;
+  phoneNumber?: string;
+};
+
 
 // Initialize a secondary Firebase app for creating users without affecting admin session
 const secondaryAppConfig = {
@@ -293,13 +301,19 @@ export async function deleteSchool(schoolId: string) {
 
 // --- Probase Payment Gateway Integration ---
 
-// Hardcoded credentials
 const PROBASE_BASE_DOMAIN = "https://paymentservices.probasegroup.com/";
 const PROBASE_AUTH_TOKEN = "X6vs7axNEPdCCXcE3wXJd6nmWdC8N9jMACXumn5q6W8M3q6b6WUVnxF8CJQ3wuj74w7Y4f3eHAVu65CUKhWqKsAe8RnCeN8wyNZVUfWUKTHCVc";
 const PROBASE_MERCHANT_ID = "52";
 const PROBASE_SERVICE_CODE = "0035";
 const PROBASE_COMPANY_NAME = "Campus.ZM";
-const PROBASE_CALLBACK_URL = ""; // This can be empty if not used for server-to-server callbacks
+const PROBASE_CALLBACK_URL = ""; 
+const PROBASE_SYSTEM_ID = "Clock Tick Invest Plus-9567";
+const PROBASE_PASSWORD = "54kRQe5Db5_fv6J#22ev";
+
+const agent = new https.Agent({
+  rejectUnauthorized: false,
+});
+
 
 export async function initiateSubscriptionPayment(params: {
     schoolId: string;
@@ -311,47 +325,43 @@ export async function initiateSubscriptionPayment(params: {
     const transactionId = `SUB-${schoolId}-${plan.toUpperCase()}-${nanoid()}`;
 
     const paymentsRef = ref(database, `schools/${schoolId}/payments/${transactionId}`);
-    await set(paymentsRef, {
-        plan,
-        amount,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-    });
-
-    const merchantId = parseInt(PROBASE_MERCHANT_ID, 10);
-    const service_code = PROBASE_SERVICE_CODE;
-    const domain = PROBASE_BASE_DOMAIN?.replace(/^(https?:\/\/)/, '');
-    
-    if (!domain || !PROBASE_AUTH_TOKEN || isNaN(merchantId) || !service_code) {
-        const errorMsg = "Probase mobile payment gateway credentials are not configured correctly.";
-        console.error(errorMsg);
-        await update(paymentsRef, { status: 'failed', failureReason: errorMsg });
-        return { success: false, message: errorMsg };
-    }
-    
-    const requestUrl = `https://${domain}/pbs/Payments/Api/V1/ProcessTransaction`; 
-    
-    const payload = {
-        amount: amount.toFixed(2),
-        service_code: service_code,
-        bss_notification: true,
-        mobile: mobileNumber,
-        merchantId: merchantId,
-        paymentDescription: `${PROBASE_COMPANY_NAME || 'Campus.ZM Subscription'}: ${plan} plan`,
-        paymentReference: transactionId,
-    };
     
     try {
-        const httpsAgent = new https.Agent({
-          rejectUnauthorized: false, // Bypasses certificate validation.
+        await set(paymentsRef, {
+            plan,
+            amount,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
         });
+
+        const merchantId = parseInt(PROBASE_MERCHANT_ID, 10);
+        const service_code = PROBASE_SERVICE_CODE;
+        const domain = PROBASE_BASE_DOMAIN?.replace(/^(https?:\/\/)/, '');
+        
+        if (!domain || !PROBASE_AUTH_TOKEN || isNaN(merchantId) || !service_code) {
+            const errorMsg = "Probase mobile payment gateway credentials are not configured correctly.";
+            console.error(errorMsg);
+            throw new Error(errorMsg);
+        }
+        
+        const requestUrl = `https://${domain}/pbs/Payments/Api/V1/ProcessTransaction`; 
+        
+        const payload = {
+            amount: amount.toFixed(2),
+            service_code: service_code,
+            bss_notification: true,
+            mobile: mobileNumber,
+            merchantId: merchantId,
+            paymentDescription: `${PROBASE_COMPANY_NAME || 'Campus.ZM Subscription'}: ${plan} plan`,
+            paymentReference: transactionId,
+        };
 
         const response = await axios.post(requestUrl, payload, {
             headers: { 
                 'auth_token': PROBASE_AUTH_TOKEN,
                 'Content-Type': 'application/json' 
             },
-            httpsAgent,
+            httpsAgent: agent,
         });
 
         const responseData = response.data;
@@ -361,11 +371,10 @@ export async function initiateSubscriptionPayment(params: {
             return { success: true, message: responseData.message || "Payment initiated. You will receive a prompt on your phone." };
         } else {
             const errorMessage = responseData.errorDescription || responseData.message || "Payment gateway rejected the request.";
-            await update(paymentsRef, { status: 'failed', failureReason: errorMessage });
-            return { success: false, message: errorMessage };
+            throw new Error(errorMessage);
         }
     } catch (error: any) {
-        const errorMessage = error.response?.data?.message || error.message || "Could not connect to payment gateway. Please check server logs.";
+        const errorMessage = error.response?.data?.message || error.message || "Could not connect to the payment gateway. Please check server logs.";
         console.error("Probase payment initiation failed:", errorMessage);
         
         try {
@@ -375,10 +384,117 @@ export async function initiateSubscriptionPayment(params: {
             });
         } catch (dbError: any) {
              console.error("Failed to update payment status after connection error:", dbError.message);
-             // Return the original, more descriptive error to the user
-             return { success: false, message: `Could not connect to the payment gateway. The server logs may have more details.` };
         }
 
         return { success: false, message: `Could not connect to the payment gateway. The server logs may have more details.` };
     }
+}
+
+/**
+ * Looks up the status of a payment transaction.
+ * @param {string} paymentReference - The unique reference used for the payment.
+ * @returns {Promise<any>} The response data from the transaction lookup API.
+ */
+export async function lookupTransaction(paymentReference: string): Promise<any> {
+    const requestUrl = 'https://paymentservices.probasegroup.com/pbs/Payments/Api/V1/TransactionLookup';
+    
+    if (!PROBASE_AUTH_TOKEN) {
+        const errorMsg = "Probase auth token is not configured on the server.";
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+    }
+    
+    console.log(`Looking up Probase transaction ${paymentReference} at ${requestUrl}`);
+    
+    const payload = {
+        paymentReference: paymentReference,
+        systemId: PROBASE_SYSTEM_ID,
+        password: PROBASE_PASSWORD,
+    };
+
+    try {
+        const response = await axios.post(requestUrl, payload, {
+            headers: {
+                'auth_token': PROBASE_AUTH_TOKEN,
+                'Content-Type': 'application/json'
+            },
+            httpsAgent: agent,
+        });
+
+        console.log("Probase Lookup Response:", response.data);
+        return response.data;
+    } catch (error: any) {
+        if (axios.isAxiosError(error) && error.response) {
+            const errorMessage = error.response.data?.message || `Transaction lookup failed with status: ${error.response.status}.`;
+            console.error("Probase lookup failed:", errorMessage, "Status:", error.response.status, "Data:", error.response.data);
+            throw new Error(errorMessage);
+        }
+        console.error("Network error during Probase lookup:", error.message);
+        throw new Error(`Could not connect to the payment gateway for lookup. Error: ${error.message}`);
+    }
+}
+
+/**
+ * Initiates a card payment via Probase and returns a checkout URL.
+ * @param {number} amount - The amount to be paid.
+ * @param {string} transactionId - A unique reference for the payment.
+ * @param {UserProfile} userProfile - The profile of the user making the payment.
+ * @returns {Promise<{ success: boolean; checkoutUrl?: string; message?: string }>} The result of the card payment initiation.
+ */
+export async function initiateProbaseCardRedirect(
+  amount: number,
+  transactionId: string,
+  userProfile: UserProfile
+): Promise<{ success: boolean; checkoutUrl?: string; message?: string }> {
+
+  if (!PROBASE_BASE_DOMAIN || !PROBASE_AUTH_TOKEN || !PROBASE_MERCHANT_ID || !PROBASE_SERVICE_CODE) {
+    const errorMsg = "Probase card redirect gateway credentials are not configured on the server.";
+    console.error(errorMsg);
+    return { success: false, message: errorMsg };
+  }
+
+  const payload = {
+    amount: amount.toFixed(2),
+    service_code: PROBASE_SERVICE_CODE,
+    paymentReference: transactionId,
+    customerFirstName: userProfile.fullName.split(' ')[0],
+    customerLastName: userProfile.fullName.split(' ').slice(1).join(' ') || userProfile.fullName.split(' ')[0],
+    customerEmail: userProfile.email,
+    customerMobile: userProfile.phoneNumber || '',
+    merchantId: parseInt(PROBASE_MERCHANT_ID, 10),
+    paymentDescription: `${PROBASE_COMPANY_NAME || 'Payment'}: ${transactionId}`,
+  };
+  
+  const requestUrl = `https://${PROBASE_BASE_DOMAIN.replace(/^(https?:\/\/)/, '')}/pbs/checkout/v1/request`;
+  console.log(`Initiating Probase CARD payment for transaction ${transactionId} to ${requestUrl}`);
+
+  try {
+    const response = await axios.post(requestUrl, payload, {
+      headers: {
+        'auth_token': PROBASE_AUTH_TOKEN,
+        'Content-Type': 'application/json'
+      },
+      httpsAgent: agent
+    });
+    
+    const responseData = response.data;
+    console.log("Probase CARD Payment Response:", responseData);
+
+    if (response.status === 200 && responseData.success && responseData.checkoutUrl) {
+      return { success: true, checkoutUrl: responseData.checkoutUrl };
+    } else {
+      const errorMessage = responseData.message || 'Failed to get checkout URL from payment gateway.';
+      console.error("Probase card redirect failed:", errorMessage);
+      return { success: false, message: errorMessage };
+    }
+
+  } catch (error: any) {
+    if (axios.isAxiosError(error) && error.response) {
+      const errorMessage = error.response.data?.message || `Payment gateway returned an error: ${error.response.status}.`;
+      console.error("Probase card redirect failed:", errorMessage, "Status:", error.response.status, "Data:", error.response.data);
+      return { success: false, message: errorMessage };
+    }
+    console.error("Network error during Probase card redirect:", error.message);
+    return { success: false, message: 'Could not connect to the payment gateway.' };
+  }
 }
