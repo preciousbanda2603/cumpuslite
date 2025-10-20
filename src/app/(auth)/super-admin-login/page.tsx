@@ -23,8 +23,7 @@ export default function SuperAdminLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'superadmin@campus.zm';
-
+  
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -32,13 +31,6 @@ export default function SuperAdminLoginPage() {
     const formData = new FormData(event.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
-
-    // A simple client-side check for the designated super admin email
-    if (email !== superAdminEmail) {
-        toast({ title: "Access Denied", description: "This is not a recognized super admin account.", variant: "destructive" });
-        setLoading(false);
-        return;
-    }
     
     try {
         await signInWithEmailAndPassword(auth, email, password);
