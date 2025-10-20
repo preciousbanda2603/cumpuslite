@@ -13,34 +13,36 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 export default function FinancePage() {
   const { subscription, loading } = useSubscription();
 
+  // Construct sections with default permissions to avoid build errors.
+  // The correct permissions will be applied once `subscription` loads.
   const financeSections = [
     {
       title: 'Financial Overview',
       description: 'Analyze income, expenditure, and view financial summaries.',
       href: '/finance/overview',
       icon: Receipt,
-      permission: subscription.canViewFinance,
+      permission: subscription?.canViewFinance ?? false,
     },
     {
       title: 'Manual Income',
       description: 'Record income from sources other than school fees.',
       href: '/finance/income',
       icon: TrendingUp,
-      permission: subscription.canViewFinance,
+      permission: subscription?.canViewFinance ?? false,
     },
     {
       title: 'Payroll',
       description: 'Manage monthly salary payments for teachers.',
       href: '/finance/payroll',
       icon: DollarSign,
-      permission: subscription.canUsePayroll,
+      permission: subscription?.canUsePayroll ?? false,
     },
      {
       title: 'Fee Collection',
       description: 'Track student payments and generate invoices.',
       href: '/fees',
       icon: TrendingUp,
-      permission: subscription.canViewFinance,
+      permission: subscription?.canViewFinance ?? false,
     },
   ];
   

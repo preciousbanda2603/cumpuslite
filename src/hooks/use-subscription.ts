@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSchoolId } from './use-school-id';
 import { database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
@@ -11,10 +11,12 @@ type SubscriptionFeatures = {
     [key in keyof typeof featuresByPlan['free']]: boolean;
 };
 
+// Update the type to make the subscription property optional
 type SubscriptionInfo = {
+    subscription?: SubscriptionFeatures;
     plan: SubscriptionPlan;
     loading: boolean;
-} & SubscriptionFeatures;
+}
 
 export function useSubscription(): SubscriptionInfo {
     const schoolId = useSchoolId();
@@ -46,11 +48,11 @@ export function useSubscription(): SubscriptionInfo {
         return () => unsubscribe();
     }, [schoolId]);
 
-    const features = featuresByPlan[plan] || featuresByPlan.free;
+    const subscription = useMemo(() => featuresByPlan[plan] || featuresByPlan.free, [plan]);
 
     return {
         plan,
         loading,
-        ...features,
+        subscription,
     };
 }
