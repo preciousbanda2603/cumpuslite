@@ -78,6 +78,13 @@ export default function LoginPage() {
     }
 
     try {
+      // Check if the school is suspended
+      const schoolRef = ref(database, `schools/${schoolUid}`);
+      const schoolSnap = await get(schoolRef);
+      if (schoolSnap.exists() && schoolSnap.val().status === 'suspended') {
+          throw new Error("This school's account has been suspended. Please contact the administrator.");
+      }
+
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const loggedInUserUid = userCredential.user.uid;
 
