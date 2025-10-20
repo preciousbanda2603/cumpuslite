@@ -3,7 +3,7 @@
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
-import { getDatabase, ref, get, query, orderByChild, equalTo, update, push, set } from 'firebase/database';
+import { getDatabase, ref, get, query, orderByChild, equalTo, update, push, set, remove } from 'firebase/database';
 import { customAlphabet } from 'nanoid';
 
 // Initialize a secondary Firebase app for creating users without affecting admin session
@@ -40,11 +40,10 @@ type CreateParentUserParams = {
   password: any;
   schoolUid: string;
   admissionNo: string;
-  parentName: string;
 };
 
 export async function createParentUser(params: CreateParentUserParams) {
-    const { email, password, schoolUid, admissionNo, parentName } = params;
+    const { email, password, schoolUid, admissionNo } = params;
 
     try {
         const studentsRef = ref(database, `schools/${schoolUid}/students`);
@@ -77,15 +76,14 @@ export async function createParentUser(params: CreateParentUserParams) {
         let user;
 
         if (signInMethods.length > 0) {
-            // This case should now be handled on the client, but keeping as a failsafe
-            throw new Error("This email is already in use. Please log in to link this child.");
+            throw new Error("This email is already in use. Please log in to link this child from your dashboard.");
         } else {
             const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
             user = userCredential.user;
         }
 
         const studentUpdateRef = ref(database, `schools/${schoolUid}/students/${studentId}`);
-        await update(studentUpdateRef, { parentUid: user.uid, parentName: parentName });
+        await update(studentUpdateRef, { parentUid: user.uid, parentName: user.displayName || 'Parent' });
 
         return { success: true };
     } catch (error: any) {
@@ -268,4 +266,17 @@ export async function importTeachersFromCSV(schoolId: string, csvData: string) {
     } catch (error: any) {
         return { success: false, successCount: 0, errorMessages: [`CSV parsing failed: ${error.message}`] };
     }
+}
+
+// Super Admin Actions
+export async function updateSchool(schoolId: string, updates: { name?: string; status?: 'active' | 'suspended'; subscription?: 'free' | 'basic' | 'premium' }) {
+    const schoolRef = ref(database, `schools/${schoolId}`);
+    return update(schoolRef, updates);
+}
+
+export async function deleteSchool(schoolId: string) {
+    const schoolRef = ref(database, `schools/${schoolId}`);
+    // Note: This does not delete associated Firebase Auth users automatically.
+    // A more complete solution would use a Firebase Function to handle user cleanup.
+    return remove(schoolRef);
 }

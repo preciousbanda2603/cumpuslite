@@ -33,19 +33,19 @@ export default function SuperAdminLoginPage() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    // A simple check can be added here, but the ultimate authority is Firebase Auth rules
+    // A simple client-side check for the designated super admin email
     if (email !== superAdminEmail) {
-        toast({ title: "Access Denied", description: "This is not a recognized Ministry account.", variant: "destructive" });
+        toast({ title: "Access Denied", description: "This is not a recognized super admin account.", variant: "destructive" });
         setLoading(false);
         return;
     }
     
     try {
         await signInWithEmailAndPassword(auth, email, password);
-        toast({ title: "Success!", description: "Ministry official logged in." });
+        toast({ title: "Success!", description: "Super admin logged in." });
         router.push('/super-admin');
     } catch (error) {
-        toast({ title: "Login Failed", description: "Invalid credentials for Ministry account.", variant: "destructive" });
+        toast({ title: "Login Failed", description: "Invalid credentials for super admin account.", variant: "destructive" });
     } finally {
         setLoading(false);
     }
@@ -59,9 +59,9 @@ export default function SuperAdminLoginPage() {
        </Link>
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">Ministry Portal Login</CardTitle>
+          <CardTitle className="text-2xl">Super Admin Login</CardTitle>
           <CardDescription>
-            Enter your official credentials to access the national dashboard.
+            Enter your official credentials to access the management dashboard.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -72,7 +72,7 @@ export default function SuperAdminLoginPage() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="official@moe.gov.zm"
+                placeholder="superadmin@campus.zm"
                 required
               />
             </div>
@@ -81,15 +81,9 @@ export default function SuperAdminLoginPage() {
               <Input id="password" name="password" type="password" required />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login to Ministry Portal'}
+              {loading ? 'Logging in...' : 'Login to Super Admin Portal'}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            Don't have an account?{" "}
-            <Link href="/super-admin-register" className="underline">
-              Register here
-            </Link>
-          </div>
         </CardContent>
       </Card>
       <div className="mt-4 text-center text-sm">
@@ -100,4 +94,3 @@ export default function SuperAdminLoginPage() {
     </div>
   )
 }
-

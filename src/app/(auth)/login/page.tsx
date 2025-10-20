@@ -203,9 +203,9 @@ export default function LoginPage() {
                 </Link>
             </p>
              <p>
-                Ministry of Education?{" "}
+                Are you a platform administrator?{" "}
                 <Link href="/super-admin-login" className="underline">
-                Ministry Portal Login
+                Super Admin Login
                 </Link>
             </p>
        </div>
