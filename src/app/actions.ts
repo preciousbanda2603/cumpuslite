@@ -314,8 +314,10 @@ export async function initiateSubscriptionPayment(params: {
         createdAt: new Date().toISOString(),
     });
 
+    // NOTE: These are placeholder credentials. Replace with your actual Probase credentials.
+    // The auth token is especially important and must be correct for the API call to work.
     const PROBASE_BASE_DOMAIN = 'paymentservices.probasegroup.com';
-    const PROBASE_AUTH_TOKEN = 'test_token';
+    const PROBASE_AUTH_TOKEN = 'your_auth_token_here'; // <-- IMPORTANT: Replace this with your actual token
     const PROBASE_MERCHANT_ID = '12345';
     const PROBASE_SERVICE_CODE = 'TESTSERVICE';
     const PROBASE_COMPANY_NAME = 'Campus.ZM';
