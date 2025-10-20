@@ -336,7 +336,7 @@ export async function initiateSubscriptionPayment(params: {
     
     try {
         const httpsAgent = new https.Agent({
-          rejectUnauthorized: false, // This is often necessary for self-signed or invalid certificates
+          rejectUnauthorized: false,
         });
 
         const response = await axios.post(requestUrl, payload, {
@@ -344,7 +344,7 @@ export async function initiateSubscriptionPayment(params: {
                 'auth_token': PROBASE_AUTH_TOKEN,
                 'Content-Type': 'application/json' 
             },
-            httpsAgent: httpsAgent,
+            httpsAgent,
         });
 
         const responseData = response.data;
@@ -362,14 +362,13 @@ export async function initiateSubscriptionPayment(params: {
         console.error("Probase payment failed:", errorMessage);
         
         try {
-            await update(paymentsRef, { 
+             await update(paymentsRef, { 
                 status: 'failed', 
                 failureReason: `Could not connect to payment gateway. ${errorMessage}`
             });
         } catch (dbError: any) {
-            console.error("Failed to update payment status after connection error:", dbError.message);
-            // Return the original connection error to the user
-            return { success: false, message: `Could not connect to payment gateway and failed to log the error.` };
+             console.error("Failed to update payment status after connection error:", dbError.message);
+             return { success: false, message: `Could not connect to payment gateway and failed to log the error.` };
         }
         return { success: false, message: `Could not connect to payment gateway. ${errorMessage}` };
     }
