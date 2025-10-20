@@ -345,12 +345,14 @@ export async function initiateSubscriptionPayment(params: {
         paymentDescription: `${PROBASE_COMPANY_NAME || 'Campus.ZM Subscription'}: ${plan} plan`,
         paymentReference: transactionId,
         callbackUrl: PROBASE_CALLBACK_URL || '',
-        auth_token: PROBASE_AUTH_TOKEN, // Added token to payload
     };
     
     try {
         const response = await axios.post(requestUrl, payload, {
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'auth_token': PROBASE_AUTH_TOKEN,
+                'Content-Type': 'application/json' 
+            },
             httpsAgent: agent,
         });
 
