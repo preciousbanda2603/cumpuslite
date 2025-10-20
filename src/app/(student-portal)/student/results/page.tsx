@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Printer } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 type School = { name: string, address: string, contactPhone: string };
 type Student = { id: string; name: string; classId: string; admissionNo?: string, schoolId: string };
@@ -18,9 +20,9 @@ type Teacher = { name: string };
 type Subject = { id: string; name: string; grade: number; };
 type Results = { [subjectId: string]: { test1?: number; test2?: number; midTerm?: number; finalExam?: number; grade?: string; comment?: string; } };
 type ReportCardExtras = {
-    attendance?: { totalDays?: string; daysPresent?: string; daysAbsent?: string; punctuality?: string; };
-    development?: { participation?: string; homework?: string; sports?: string; behaviour?: string; };
-    comments?: { strengths?: string; improvements?: string; };
+    attendance?: { totalDays?: string; daysPresent?: string; punctuality?: string; };
+    development?: { participation?: string; homework?: string; behaviour?: string; };
+    comments?: { strengths?: string; improvements?: string; principalComment?: string; };
 };
 
 type PerformanceData = {
@@ -44,6 +46,8 @@ export default function StudentReportCardPage() {
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [extras, setExtras] = useState<ReportCardExtras>({});
   const [loading, setLoading] = useState(true);
+  const [availableTerms, setAvailableTerms] = useState<string[]>([]);
+  const [selectedTerm, setSelectedTerm] = useState('');
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => setUser(user));
@@ -76,7 +80,6 @@ export default function StudentReportCardPage() {
     findStudent().then(foundStudent => {
         if (foundStudent) {
             setStudent(foundStudent);
-            fetchData(foundStudent);
         } else {
              toast({ title: 'Error', description: 'Could not find your student data.', variant: 'destructive' });
              setLoading(false);
@@ -85,12 +88,54 @@ export default function StudentReportCardPage() {
 
   }, [user, toast]);
 
-  const fetchData = async (currentStudent: Student) => {
+  useEffect(() => {
+    if (!student) {
+        setLoading(false);
+        return;
+    }
+    
+    const findTerms = async () => {
+        const resultsRef = ref(database, `schools/${student.schoolId}/results/${student.id}`);
+        const resultsSnap = await get(resultsRef);
+        if (resultsSnap.exists()) {
+            const terms = Object.keys(resultsSnap.val());
+            const sortedTerms = terms.sort((a,b) => {
+                const yearA = parseInt(a.split(' ')[2]);
+                const termA = parseInt(a.split(' ')[1]);
+                const yearB = parseInt(b.split(' ')[2]);
+                const termB = parseInt(b.split(' ')[1]);
+                if (yearA !== yearB) return yearB - yearA;
+                return termB - termA;
+            });
+            setAvailableTerms(sortedTerms);
+            if (sortedTerms.length > 0 && !selectedTerm) {
+                setSelectedTerm(sortedTerms[0]);
+            }
+        } else {
+            setAvailableTerms([]);
+            setSelectedTerm('');
+            setLoading(false);
+        }
+    };
+
+    findTerms();
+
+  }, [student, selectedTerm]);
+
+  useEffect(() => {
+    if (!student || !selectedTerm) {
+      setLoading(false);
+      return;
+    }
+    fetchData(student, selectedTerm);
+  }, [student, selectedTerm]);
+
+  const fetchData = async (currentStudent: Student, term: string) => {
       const { schoolId, id: studentId } = currentStudent;
       setLoading(true);
       try {
         const schoolRef = ref(database, `schools/${schoolId}`);
-        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}`);
+        const extrasRef = ref(database, `schools/${schoolId}/reportCardExtras/${studentId}/${term}`);
         
         const [schoolSnap, extrasSnap] = await Promise.all([get(schoolRef), get(extrasRef)]);
         
@@ -100,7 +145,7 @@ export default function StudentReportCardPage() {
         }
 
         setSchool(schoolSnap.val());
-        if (extrasSnap.exists()) setExtras(extrasSnap.val());
+        setExtras(extrasSnap.exists() ? extrasSnap.val() : {});
 
         const classRef = ref(database, `schools/${schoolId}/classes/${currentStudent.classId}`);
         const classSnap = await get(classRef);
@@ -125,7 +170,7 @@ export default function StudentReportCardPage() {
           subjects = Object.keys(subjectsSnap.val() || {}).map(id => ({ id, ...subjectsSnap.val()[id] }));
         }
 
-        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}`);
+        const resultsRef = ref(database, `schools/${schoolId}/results/${studentId}/${term}`);
         const resultsSnap = await get(resultsRef);
         const results: Results = resultsSnap.exists() ? resultsSnap.val() : {};
 
@@ -158,19 +203,37 @@ export default function StudentReportCardPage() {
   
   const handlePrint = () => window.print();
 
-  if (loading) {
-      return <div className="p-8"><Skeleton className="h-[800px] w-full" /></div>
+  const daysAbsent = () => {
+    const present = extras.attendance?.daysPresent ? parseInt(extras.attendance.daysPresent, 10) : 0;
+    const total = extras.attendance?.totalDays ? parseInt(extras.attendance.totalDays, 10) : 0;
+    if (isNaN(present) || isNaN(total) || total === 0) return '-';
+    return total - present;
   }
   
-  if (!student) {
+  if (!student && !loading) {
       return <div className="p-8 text-center text-muted-foreground">No student data found for this account.</div>
   }
 
   return (
     <>
       <div className="bg-muted/40 p-4 print:hidden flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-lg font-semibold">My Report Card</h1>
-        <Button size="sm" onClick={handlePrint}>
+        <div className="flex items-center gap-4">
+            {availableTerms.length > 0 && (
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="term-select">Term</Label>
+                    <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                        <SelectTrigger id="term-select" className="w-[180px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableTerms.map(term => <SelectItem key={term} value={term}>{term}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+        </div>
+        <h1 className="text-lg font-semibold hidden md:block">My Report Card</h1>
+        <Button size="sm" onClick={handlePrint} disabled={!selectedTerm || loading}>
           <Printer className="mr-2 h-4 w-4" />
           Print Report
         </Button>
@@ -205,14 +268,22 @@ export default function StudentReportCardPage() {
           .report-card .signatures div { display: inline-block; width: 45%; margin-top: 40px; }
           .report-card .footer { text-align: center; font-size: 0.9em; color: #666; margin-top: 40px; }
       `}</style>
-
+      
+      {!selectedTerm && !loading ? (
+          <div className="text-center py-20 text-muted-foreground">
+              <p className="text-lg">No Results Found</p>
+              <p>There are no report cards available for you yet.</p>
+          </div>
+      ) : loading ? (
+        <div className="p-8"><Skeleton className="h-[800px] w-full" /></div>
+      ) : (
       <div className="print-container">
         <div className="report-card">
             <div className="school-info">
                 <h1>Ministry of Education - Zambia</h1>
                 <h2>{school?.name}</h2>
                 <p>{school?.address} • {school?.contactPhone}</p>
-                <h3>Term Report Card – Term 2 2024</h3>
+                <h3>Term Report Card – {selectedTerm}</h3>
             </div>
 
             <div className="student-info">
@@ -226,7 +297,7 @@ export default function StudentReportCardPage() {
                 <table>
                 <thead>
                     <tr>
-                        <th>Total Days</th>
+                        <th>Total School Days</th>
                         <th>Days Present</th>
                         <th>Days Absent</th>
                         <th>Punctuality</th>
@@ -236,7 +307,7 @@ export default function StudentReportCardPage() {
                     <tr>
                         <td>{extras.attendance?.totalDays || '-'}</td>
                         <td>{extras.attendance?.daysPresent || '-'}</td>
-                        <td>{extras.attendance?.daysAbsent || '-'}</td>
+                        <td>{daysAbsent()}</td>
                         <td>{extras.attendance?.punctuality || '-'}</td>
                     </tr>
                 </tbody>
@@ -257,7 +328,7 @@ export default function StudentReportCardPage() {
                         </tr>
                     </thead>
                     <tbody>
-                       {performanceData.map(p => (
+                       {performanceData.length > 0 ? performanceData.map(p => (
                          <tr key={p.subjectName}>
                             <td>{p.subjectName}</td>
                             <td>{p.continuousAssessment}</td>
@@ -266,7 +337,11 @@ export default function StudentReportCardPage() {
                             <td>{p.grade}</td>
                             <td>{p.comment}</td>
                         </tr>
-                       ))}
+                       )) : (
+                           <tr>
+                               <td colSpan={6} className="text-center h-24">No performance data available for this term.</td>
+                           </tr>
+                       )}
                     </tbody>
                 </table>
             </div>
@@ -283,16 +358,16 @@ export default function StudentReportCardPage() {
                 <tbody>
                     <tr><td>Class Participation</td><td>{extras.development?.participation || '-'}</td></tr>
                     <tr><td>Homework & Assignments</td><td>{extras.development?.homework || '-'}</td></tr>
-                    <tr><td>Sports & Games</td><td>{extras.development?.sports || '-'}</td></tr>
                     <tr><td>Behaviour / Social Skills</td><td>{extras.development?.behaviour || '-'}</td></tr>
                 </tbody>
                 </table>
             </div>
 
             <div className="comments">
-                <div className="section-title">Comments & Next Steps</div>
-                <p><strong>Strengths:</strong> {extras.comments?.strengths || ''}</p>
-                <p><strong>Areas for Improvement:</strong> {extras.comments?.improvements || ''}</p>
+                <div className="section-title">Final Comments</div>
+                <p><strong>Class Teacher's Comment on Strengths:</strong> {extras.comments?.strengths || ''}</p>
+                <p><strong>Class Teacher's Comment on Areas for Improvement:</strong> {extras.comments?.improvements || ''}</p>
+                 <p className="mt-4"><strong>Head Teacher / Principal's Comment:</strong> {extras.comments?.principalComment || ''}</p>
             </div>
 
             <div className="signatures">
@@ -311,6 +386,8 @@ export default function StudentReportCardPage() {
             </div>
         </div>
       </div>
+      )}
     </>
   );
 }
+
