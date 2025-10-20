@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from "next/link";
@@ -13,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Search, UserPlus, Edit } from "lucide-react";
+import { PlusCircle, Search, UserPlus, Edit, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { auth, database } from "@/lib/firebase";
@@ -33,6 +32,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { disabilityOptions } from "@/lib/disability-options";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ImportDialog } from "@/components/import-dialog";
+import { importTeachersFromCSV } from "@/app/actions";
 
 
 type Teacher = {
@@ -214,18 +215,31 @@ export default function TeachersPage() {
         </div>
         {isAdmin && (
             <div className="flex items-center gap-2">
-            <Link href="/teachers/add">
-                <Button className="flex items-center gap-2">
-                <PlusCircle />
-                Add Teacher
-                </Button>
-            </Link>
-            <Link href="/teachers/assign">
-                <Button variant="outline" className="flex items-center gap-2">
-                <UserPlus />
-                Assign Class Teacher
-                </Button>
-            </Link>
+                <ImportDialog
+                    title="Import Teachers"
+                    description="Upload a CSV file to bulk-add new teachers. The system will automatically generate passwords for each teacher."
+                    templateHeaders={["name", "email", "subject", "qualifications", "salary", "startDate (YYYY-MM-DD)", "dob (YYYY-MM-DD)", "gender (Male/Female)"]}
+                    onImport={importTeachersFromCSV}
+                    schoolId={schoolId!}
+                    trigger={
+                        <Button variant="outline">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import Teachers
+                        </Button>
+                    }
+                />
+                <Link href="/teachers/add">
+                    <Button className="flex items-center gap-2">
+                    <PlusCircle />
+                    Add Teacher
+                    </Button>
+                </Link>
+                <Link href="/teachers/assign">
+                    <Button variant="outline" className="flex items-center gap-2">
+                    <UserPlus />
+                    Assign Class Teacher
+                    </Button>
+                </Link>
             </div>
         )}
       </div>

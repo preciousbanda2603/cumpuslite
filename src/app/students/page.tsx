@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from "next/link";
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Upload } from "lucide-react";
 import { auth, database } from "@/lib/firebase";
 import { onValue, ref, set, remove, get, update } from "firebase/database";
 import type { User } from "firebase/auth";
@@ -51,6 +50,9 @@ import { useToast } from "@/hooks/use-toast";
 import { disabilityOptions } from "@/lib/disability-options";
 import { Textarea } from "@/components/ui/textarea";
 import { differenceInYears } from "date-fns";
+import { ImportDialog } from "@/components/import-dialog";
+import { importStudentsFromCSV } from "@/app/actions";
+
 
 type Student = {
   id: string;
@@ -257,12 +259,27 @@ export default function StudentsPage() {
           <CardDescription>Manage student information and records.</CardDescription>
         </div>
         {isAdmin && (
-            <Link href="/students/add">
-            <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Student
-            </Button>
-            </Link>
+            <div className="flex gap-2">
+                <ImportDialog
+                    title="Import Students"
+                    description="Upload a CSV file to bulk-add new students. The system will automatically generate admission numbers and passwords for each student."
+                    templateHeaders={["name", "enrollmentDate (YYYY-MM-DD)", "dob (YYYY-MM-DD)", "gender (Male/Female)", "classId", "parentName", "parentPhone", "parentEmail"]}
+                    onImport={importStudentsFromCSV}
+                    schoolId={schoolId!}
+                    trigger={
+                        <Button variant="outline">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import Students
+                        </Button>
+                    }
+                />
+                <Link href="/students/add">
+                    <Button>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Student
+                    </Button>
+                </Link>
+            </div>
         )}
       </div>
       <Card>
