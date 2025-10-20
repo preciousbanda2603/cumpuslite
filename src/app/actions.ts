@@ -293,13 +293,6 @@ export async function deleteSchool(schoolId: string) {
 
 // --- Probase Payment Gateway Integration ---
 
-const PROBASE_BASE_DOMAIN = process.env.PROBASE_BASE_DOMAIN;
-const PROBASE_AUTH_TOKEN = process.env.PROBASE_AUTH_TOKEN;
-const PROBASE_MERCHANT_ID = process.env.PROBASE_MERCHANT_ID;
-const PROBASE_SERVICE_CODE = process.env.PROBASE_SERVICE_CODE;
-const PROBASE_COMPANY_NAME = process.env.PROBASE_COMPANY_NAME;
-const PROBASE_CALLBACK_URL = process.env.PROBASE_CALLBACK_URL;
-
 const agent = new https.Agent({
   rejectUnauthorized: false,
 });
@@ -321,11 +314,18 @@ export async function initiateSubscriptionPayment(params: {
         createdAt: new Date().toISOString(),
     });
 
+    const PROBASE_BASE_DOMAIN = 'paymentservices.probasegroup.com';
+    const PROBASE_AUTH_TOKEN = 'your_auth_token_here';
+    const PROBASE_MERCHANT_ID = 'your_merchant_id_here';
+    const PROBASE_SERVICE_CODE = 'your_service_code_here';
+    const PROBASE_COMPANY_NAME = 'Campus.ZM';
+    const PROBASE_CALLBACK_URL = 'https://your-callback-url.com/probase/callback';
+
     const merchantId = PROBASE_MERCHANT_ID ? parseInt(PROBASE_MERCHANT_ID, 10) : NaN;
     const service_code = PROBASE_SERVICE_CODE;
     const domain = PROBASE_BASE_DOMAIN?.replace(/^(https?:\/\/)/, '');
 
-    if (!domain || !PROBASE_AUTH_TOKEN || isNaN(merchantId) || !service_code) {
+    if (!domain || !PROBASE_AUTH_TOKEN || isNaN(merchantId) || !service_code || PROBASE_AUTH_TOKEN === 'your_auth_token_here') {
         const errorMsg = "Probase payment gateway credentials are not configured correctly.";
         console.error(errorMsg);
         await update(paymentsRef, { status: 'failed', failureReason: errorMsg });
@@ -368,5 +368,3 @@ export async function initiateSubscriptionPayment(params: {
         return { success: false, message: `Could not connect to payment gateway. ${errorMessage}` };
     }
 }
-
-    
