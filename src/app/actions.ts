@@ -315,8 +315,6 @@ export async function initiateSubscriptionPayment(params: {
     });
 
     const PROBASE_AUTH_TOKEN = 'X6vs7axNEPdCCXcE3wXJd6nmWdC8N9jMACXumn5q6W8M3q6b6WUVnxF8CJQ3wuj74w7Y4f3eHAVu65CUKhWqKsAe8RnCeN8wyNZVUfWUKTHCVc';
-    
-    // NOTE: These are hardcoded credentials.
     const PROBASE_BASE_DOMAIN = 'paymentservices.probasegroup.com';
     const PROBASE_MERCHANT_ID = '52';
     const PROBASE_SERVICE_CODE = '0035';
@@ -368,6 +366,7 @@ export async function initiateSubscriptionPayment(params: {
         }
     } catch (error: any) {
         const errorMessage = error.response?.data?.message || error.message || "Network error during payment initiation.";
+        // Ensure we don't try to save an undefined value if the connection fails completely
         await update(paymentsRef, { status: 'failed', failureReason: errorMessage });
         console.error("Probase payment failed:", errorMessage);
         return { success: false, message: `Could not connect to payment gateway. ${errorMessage}` };
