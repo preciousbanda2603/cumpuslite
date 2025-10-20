@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
@@ -278,7 +279,7 @@ export async function importTeachersFromCSV(schoolId: string, csvData: string) {
 }
 
 // Super Admin Actions
-export async function updateSchool(schoolId: string, updates: { name?: string; status?: 'active' | 'suspended'; subscription?: 'free' | 'basic' | 'premium' }) {
+export async function updateSchool(schoolId: string, updates: { name?: string; status?: 'active' | 'suspended'; subscription?: 'free' | 'basic' | 'premium', settings?: any }) {
     const schoolRef = ref(database, `schools/${schoolId}`);
     return update(schoolRef, updates);
 }

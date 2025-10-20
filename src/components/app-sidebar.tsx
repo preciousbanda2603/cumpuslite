@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -10,16 +11,48 @@ import { navLinks as studentNavLinks } from '@/lib/student-nav-links';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from './ui/separator';
+import { useSchoolId } from '@/hooks/use-school-id';
+import { database } from '@/lib/firebase';
+import { ref, onValue } from 'firebase/database';
+import { useState, useEffect } from 'react';
+
+type ModuleSettings = { [key: string]: boolean };
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const schoolId = useSchoolId();
+  const [moduleSettings, setModuleSettings] = useState<ModuleSettings | null>(null);
+
   const isParentPortal = pathname.startsWith('/parent');
   const isStudentPortal = pathname.startsWith('/student');
   const navLinks = isParentPortal ? parentNavLinks : isStudentPortal ? studentNavLinks : adminNavLinks;
-
+  
   const dashboardHref = isParentPortal ? "/parent/dashboard" : isStudentPortal ? "/student/dashboard" : "/dashboard";
 
-  const visibleLinks = navLinks.filter(link => !link.isHidden);
+  useEffect(() => {
+    if (schoolId) {
+      const settingsRef = ref(database, `schools/${schoolId}/settings/modules`);
+      const unsubscribe = onValue(settingsRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setModuleSettings(snapshot.val());
+        } else {
+          setModuleSettings({}); // No settings means all are visible by default
+        }
+      });
+      return () => unsubscribe();
+    }
+  }, [schoolId]);
+
+  const visibleLinks = navLinks.filter(link => {
+    if (link.isHidden) return false;
+    if (moduleSettings) {
+      const moduleId = link.href.substring(1);
+      // If setting exists, use it. Otherwise, default to visible.
+      return moduleSettings[moduleId] !== false;
+    }
+    return true; // Show if settings haven't loaded yet or don't exist
+  });
+
   const mainLinks = visibleLinks.filter(link => !link.isSettings);
   const settingsLinks = visibleLinks.filter(link => link.isSettings);
 

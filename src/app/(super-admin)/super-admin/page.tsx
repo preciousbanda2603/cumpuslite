@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -32,7 +33,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { deleteSchool, updateSchool } from '@/app/actions';
 import { subscriptionPlans, type SubscriptionPlan } from '@/lib/subscriptions';
+import { Checkbox } from '@/components/ui/checkbox';
+import { navLinks } from '@/lib/nav-links';
 
+
+type ModuleSettings = { [key: string]: boolean };
 type SchoolData = {
   id: string;
   name: string;
@@ -41,7 +46,17 @@ type SchoolData = {
   teacherCount: number;
   status?: 'active' | 'suspended';
   subscription?: SubscriptionPlan;
+  settings?: {
+      modules?: ModuleSettings
+  }
 };
+
+const manageableModules = navLinks
+  .filter(link => !link.isHidden && !link.isSettings)
+  .map(link => ({
+      id: link.href.substring(1), // e.g. 'dashboard'
+      label: link.label,
+  }));
 
 export default function SuperAdminDashboard() {
   const [schools, setSchools] = useState<SchoolData[]>([]);
@@ -70,6 +85,7 @@ export default function SuperAdminDashboard() {
             address: school.address,
             status: school.status || 'active',
             subscription: school.subscription || 'free',
+            settings: school.settings,
             studentCount: school.students ? Object.keys(school.students).length : 0,
             teacherCount: school.teachers ? Object.keys(school.teachers).length : 0,
           };
@@ -90,6 +106,7 @@ export default function SuperAdminDashboard() {
         name: school.name,
         status: school.status,
         subscription: school.subscription,
+        settings: school.settings
     });
     setIsManageOpen(true);
   };
@@ -107,6 +124,7 @@ export default function SuperAdminDashboard() {
             name: formState.name,
             status: formState.status,
             subscription: formState.subscription,
+            settings: formState.settings,
         });
         toast({ title: 'Success', description: `${formState.name} has been updated.` });
         setIsManageOpen(false);
@@ -136,6 +154,19 @@ export default function SuperAdminDashboard() {
         toast({ title: 'Error', description: 'Failed to update school status.', variant: 'destructive' });
     }
   };
+  
+  const handleModuleVisibilityChange = (moduleId: string, isVisible: boolean) => {
+      setFormState(prevState => ({
+          ...prevState,
+          settings: {
+              ...prevState.settings,
+              modules: {
+                  ...prevState.settings?.modules,
+                  [moduleId]: isVisible
+              }
+          }
+      }))
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -232,12 +263,12 @@ export default function SuperAdminDashboard() {
       </Card>
       
       <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
               <DialogHeader>
                   <DialogTitle>Manage School</DialogTitle>
                   <DialogDescription>Update details for {selectedSchool?.name}.</DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
+              <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto pr-4">
                   <div className="grid gap-2">
                       <Label htmlFor="name">School Name</Label>
                       <Input id="name" value={formState.name || ''} onChange={(e) => setFormState(p => ({...p, name: e.target.value}))} />
@@ -265,6 +296,22 @@ export default function SuperAdminDashboard() {
                             </Select>
                        </div>
                   </div>
+                   <div className="space-y-2 border-t pt-4">
+                     <Label>Module Visibility</Label>
+                     <p className="text-sm text-muted-foreground">Select which modules are visible to this school.</p>
+                     <div className="grid grid-cols-2 gap-2 p-4 border rounded-md">
+                        {manageableModules.map(module => (
+                            <div key={module.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`module-${module.id}`}
+                                    checked={formState.settings?.modules?.[module.id] ?? true} // Default to visible if not set
+                                    onCheckedChange={(checked) => handleModuleVisibilityChange(module.id, !!checked)}
+                                />
+                                <Label htmlFor={`module-${module.id}`} className="font-normal">{module.label}</Label>
+                            </div>
+                        ))}
+                     </div>
+                   </div>
               </div>
               <DialogFooter>
                   <Button variant="outline" onClick={() => setIsManageOpen(false)}>Cancel</Button>

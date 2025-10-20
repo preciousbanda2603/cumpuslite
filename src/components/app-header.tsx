@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -35,6 +36,8 @@ import { Separator } from './ui/separator';
 import { useSchoolId, SCHOOL_ID_LOCAL_STORAGE_KEY } from '@/hooks/use-school-id';
 import { useStudentSelection } from '@/hooks/use-student-selection';
 
+type ModuleSettings = { [key: string]: boolean };
+
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
@@ -42,6 +45,7 @@ export function AppHeader() {
   const [schoolName, setSchoolName] = useState('Your School');
   const schoolId = useSchoolId();
   const { students, selectedStudent, selectStudent } = useStudentSelection();
+  const [moduleSettings, setModuleSettings] = useState<ModuleSettings | null>(null);
   
   const isParentPortal = pathname.startsWith('/parent');
   const isStudentPortal = pathname.startsWith('/student');
@@ -62,9 +66,12 @@ export function AppHeader() {
       const schoolRef = ref(database, `schools/${schoolId}`);
       const unsubscribe = onValue(schoolRef, (snapshot) => {
         if (snapshot.exists()) {
-          setSchoolName(snapshot.val().name);
+          const schoolData = snapshot.val();
+          setSchoolName(schoolData.name);
+          setModuleSettings(schoolData.settings?.modules || {});
         } else {
           setSchoolName('School Not Found');
+          setModuleSettings({});
         }
       });
       return () => unsubscribe();
@@ -82,7 +89,15 @@ export function AppHeader() {
     }
   };
 
-  const visibleLinks = navLinks.filter(link => !link.isHidden);
+  const visibleLinks = navLinks.filter(link => {
+    if (link.isHidden) return false;
+    if (moduleSettings) {
+      const moduleId = link.href.substring(1);
+      return moduleSettings[moduleId] !== false; // Default to visible if not set
+    }
+    return true; // Show if settings haven't loaded
+  });
+
   const mainLinks = visibleLinks.filter(link => !link.isSettings);
   const settingsLinks = visibleLinks.filter(link => link.isSettings);
 
