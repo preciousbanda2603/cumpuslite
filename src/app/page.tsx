@@ -93,7 +93,7 @@ export default function LandingPage() {
                 fill
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-black/60" />
+              <div className="absolute inset-0 bg-black/70" />
            </div>
           <div className="container px-4 md:px-6 text-white">
             <div className="max-w-3xl mx-auto space-y-4">
