@@ -87,9 +87,9 @@ export default function LandingPage() {
         <section className="relative w-full pt-24 pb-12 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 flex items-center justify-center text-center">
            <div className="absolute inset-0 -z-10">
               <Image
-                src="https://picsum.photos/seed/hero-students/1600/900"
-                data-ai-hint="happy students"
-                alt="Happy students in a classroom"
+                src="https://images.unsplash.com/photo-1620783770359-99c6a133102c?q=80&w=2070&auto=format&fit=crop"
+                data-ai-hint="smiling student"
+                alt="Smiling student in a classroom"
                 fill
                 className="object-cover"
               />
