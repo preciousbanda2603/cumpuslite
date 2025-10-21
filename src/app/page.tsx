@@ -10,7 +10,6 @@ import {
   CreditCard,
   MessagesSquare,
   ShieldCheck,
-  UserCog,
   BookUser,
   Heart,
 } from 'lucide-react';
