@@ -87,20 +87,20 @@ export default function LandingPage() {
         <section className="relative w-full pt-24 pb-12 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 flex items-center justify-center text-center">
            <div className="absolute inset-0 -z-10">
               <Image
-                src="https://images.unsplash.com/photo-1620783770359-99c6a133102c?q=80&w=2070&auto=format&fit=crop"
-                data-ai-hint="smiling student"
-                alt="Smiling student in a classroom"
+                src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop"
+                data-ai-hint="graduation students"
+                alt="Graduation ceremony"
                 fill
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-black/70" />
+              <div className="absolute inset-0 bg-white/60 dark:bg-black/70" />
            </div>
-          <div className="container px-4 md:px-6 text-white">
+          <div className="container px-4 md:px-6 text-foreground">
             <div className="max-w-3xl mx-auto space-y-4">
               <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
                 The All-In-One Platform to Manage Your School
               </h1>
-              <p className="text-lg text-gray-300 md:text-xl">
+              <p className="text-lg text-foreground/80 md:text-xl">
                 From student profiles and report cards to financial management and parent communication, Campus.ZM brings your entire school ecosystem into a single, easy-to-use platform.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
