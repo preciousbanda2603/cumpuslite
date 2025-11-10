@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, type User } from 'firebase/auth';
+import { cn } from '@/lib/utils';
 
 function SuperAdminAuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -53,16 +54,15 @@ export default function SuperAdminLayout({
   return (
     <ThemeProvider>
       <SuperAdminAuthGuard>
-        <div
-          className={`grid min-h-screen w-full md:grid-cols-[${
-            isSidebarCollapsed ? '80px' : '220px'
-          }_1fr] lg:grid-cols-[${isSidebarCollapsed ? '80px' : '280px'}_1fr] transition-[grid-template-columns] duration-300 ease-in-out`}
-        >
+        <div className="flex min-h-screen w-full">
           <AppSidebar
             isCollapsed={isSidebarCollapsed}
             setIsCollapsed={setIsSidebarCollapsed}
           />
-          <div className="flex flex-col">
+          <div className={cn(
+              "flex flex-col flex-1 transition-[margin-left] duration-300 ease-in-out",
+              isSidebarCollapsed ? "md:ml-[80px]" : "md:ml-[220px] lg:ml-[280px]"
+              )}>
             <AppHeader />
             <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 bg-muted/40 overflow-auto">
               {children}

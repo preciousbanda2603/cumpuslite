@@ -65,7 +65,11 @@ export function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarProps) {
 
   return (
     <TooltipProvider>
-      <div className={cn("hidden border-r bg-muted/40 md:block relative", isCollapsed ? "w-[80px]" : "w-[220px] lg:w-[280px]", "transition-[width] duration-300 ease-in-out")}>
+      <div className={cn(
+        "hidden md:fixed md:inset-y-0 md:left-0 md:z-10 md:flex flex-col border-r bg-muted/40", 
+        isCollapsed ? "w-[80px]" : "w-[220px] lg:w-[280px]", 
+        "transition-[width] duration-300 ease-in-out"
+        )}>
         <div className="flex h-full max-h-screen flex-col gap-2">
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href={dashboardHref} className="flex items-center gap-2 font-semibold">
