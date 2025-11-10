@@ -8,6 +8,8 @@ import {
   Search,
   School,
   ChevronDown,
+  User,
+  DoorOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEffect, useState, useCallback } from 'react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
-import type { User } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 import { Separator } from './ui/separator';
 import { useSchoolId, SCHOOL_ID_LOCAL_STORAGE_KEY } from '@/hooks/use-school-id';
 import { useStudentSelection } from '@/hooks/use-student-selection';
@@ -44,16 +46,24 @@ import {
 } from '@/components/ui/command';
 
 type ModuleSettings = { [key: string]: boolean };
+type Student = { id: string; name: string };
+type Class = { id: string; name: string };
+type Room = { id: string; name: string };
 
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [schoolName, setSchoolName] = useState('Your School');
   const schoolId = useSchoolId();
-  const { students, selectedStudent, selectStudent } = useStudentSelection();
+  const { students: parentStudents, selectedStudent, selectStudent } = useStudentSelection();
   const [moduleSettings, setModuleSettings] = useState<ModuleSettings | null>(null);
   const [openSearch, setOpenSearch] = useState(false);
+
+  // Data for search
+  const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   const isParentPortal = pathname.startsWith('/parent');
   const isStudentPortal = pathname.startsWith('/student');
@@ -82,7 +92,11 @@ export function AppHeader() {
   useEffect(() => {
     if (schoolId) {
       const schoolRef = ref(database, `schools/${schoolId}`);
-      const unsubscribe = onValue(schoolRef, (snapshot) => {
+      const studentsRef = ref(database, `schools/${schoolId}/students`);
+      const classesRef = ref(database, `schools/${schoolId}/classes`);
+      const roomsRef = ref(database, `schools/${schoolId}/rooms`);
+      
+      const unsubSchool = onValue(schoolRef, (snapshot) => {
         if (snapshot.exists()) {
           const schoolData = snapshot.val();
           setSchoolName(schoolData.name);
@@ -92,7 +106,26 @@ export function AppHeader() {
           setModuleSettings({});
         }
       });
-      return () => unsubscribe();
+      
+      const unsubStudents = onValue(studentsRef, (snapshot) => {
+          const data = snapshot.val() || {};
+          setStudents(Object.keys(data).map(id => ({ id, ...data[id] })));
+      });
+      const unsubClasses = onValue(classesRef, (snapshot) => {
+          const data = snapshot.val() || {};
+          setClasses(Object.keys(data).map(id => ({ id, ...data[id] })));
+      });
+       const unsubRooms = onValue(roomsRef, (snapshot) => {
+          const data = snapshot.val() || {};
+          setRooms(Object.keys(data).map(id => ({ id, ...data[id] })));
+      });
+
+      return () => {
+          unsubSchool();
+          unsubStudents();
+          unsubClasses();
+          unsubRooms();
+      };
     }
   }, [schoolId]);
 
@@ -207,7 +240,7 @@ export function AppHeader() {
               </Button>
            )}
 
-           {isParentPortal && students.length > 0 && (
+           {isParentPortal && parentStudents.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -218,7 +251,7 @@ export function AppHeader() {
               <DropdownMenuContent align="start">
                 <DropdownMenuLabel>My Children</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {students.map(student => (
+                {parentStudents.map(student => (
                   <DropdownMenuItem key={student.id} onSelect={() => selectStudent(student)}>
                     {student.name} ({student.className})
                   </DropdownMenuItem>
@@ -267,7 +300,7 @@ export function AppHeader() {
       </DropdownMenu>
     </header>
      <CommandDialog open={openSearch} onOpenChange={setOpenSearch}>
-        <CommandInput placeholder="Type a command or search..." />
+        <CommandInput placeholder="Search students, classes, rooms, or pages..." />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="Links">
@@ -281,6 +314,48 @@ export function AppHeader() {
               >
                 <link.icon className="mr-2 h-4 w-4" />
                 {link.label}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+           <CommandGroup heading="Students">
+            {students.map((student) => (
+              <CommandItem
+                key={student.id}
+                value={student.name}
+                onSelect={() => {
+                  runCommand(() => router.push(`/students`))
+                }}
+              >
+                <User className="mr-2 h-4 w-4" />
+                {student.name}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+           <CommandGroup heading="Classes">
+            {classes.map((cls) => (
+              <CommandItem
+                key={cls.id}
+                value={cls.name}
+                onSelect={() => {
+                  runCommand(() => router.push(`/classes/${cls.id}`))
+                }}
+              >
+                <GraduationCap className="mr-2 h-4 w-4" />
+                {cls.name}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+          <CommandGroup heading="Rooms">
+            {rooms.map((room) => (
+              <CommandItem
+                key={room.id}
+                value={room.name}
+                onSelect={() => {
+                  runCommand(() => router.push(`/rooms`))
+                }}
+              >
+                <DoorOpen className="mr-2 h-4 w-4" />
+                {room.name}
               </CommandItem>
             ))}
           </CommandGroup>
