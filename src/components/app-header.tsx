@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -28,13 +27,21 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { auth, database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import type { User } from 'firebase/auth';
 import { Separator } from './ui/separator';
 import { useSchoolId, SCHOOL_ID_LOCAL_STORAGE_KEY } from '@/hooks/use-school-id';
 import { useStudentSelection } from '@/hooks/use-student-selection';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 
 type ModuleSettings = { [key: string]: boolean };
 
@@ -46,13 +53,24 @@ export function AppHeader() {
   const schoolId = useSchoolId();
   const { students, selectedStudent, selectStudent } = useStudentSelection();
   const [moduleSettings, setModuleSettings] = useState<ModuleSettings | null>(null);
-  
+  const [openSearch, setOpenSearch] = useState(false);
+
   const isParentPortal = pathname.startsWith('/parent');
   const isStudentPortal = pathname.startsWith('/student');
   const navLinks = isParentPortal ? parentNavLinks : isStudentPortal ? studentNavLinks : adminNavLinks;
   
   const dashboardHref = isParentPortal ? '/parent/dashboard' : isStudentPortal ? '/student/dashboard' : '/dashboard';
 
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setOpenSearch((open) => !open)
+      }
+    }
+    document.addEventListener("keydown", down)
+    return () => document.removeEventListener("keydown", down)
+  }, [])
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -101,7 +119,13 @@ export function AppHeader() {
   const mainLinks = visibleLinks.filter(link => !link.isSettings);
   const settingsLinks = visibleLinks.filter(link => link.isSettings);
 
+  const runCommand = useCallback((command: () => unknown) => {
+    setOpenSearch(false)
+    command()
+  }, [])
+
   return (
+    <>
     <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
       <Sheet>
         <SheetTrigger asChild>
@@ -203,16 +227,22 @@ export function AppHeader() {
             </DropdownMenu>
            )}
           
-          <form className="ml-auto flex-1 sm:flex-initial">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
-              />
+            <div className="ml-auto flex-1 sm:flex-initial">
+                 <Button
+                    variant="outline"
+                    className={cn(
+                        "relative w-full justify-start text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64"
+                    )}
+                    onClick={() => setOpenSearch(true)}
+                    >
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <span className="hidden lg:inline-flex">Search...</span>
+                    <span className="inline-flex lg:hidden">Search...</span>
+                    <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                        <span className="text-xs">⌘</span>K
+                    </kbd>
+                </Button>
             </div>
-          </form>
         </div>
       </div>
       
@@ -236,5 +266,26 @@ export function AppHeader() {
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
+     <CommandDialog open={openSearch} onOpenChange={setOpenSearch}>
+        <CommandInput placeholder="Type a command or search..." />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Links">
+            {visibleLinks.map((link) => (
+              <CommandItem
+                key={link.href}
+                value={link.label}
+                onSelect={() => {
+                  runCommand(() => router.push(link.href as string))
+                }}
+              >
+                <link.icon className="mr-2 h-4 w-4" />
+                {link.label}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+    </>
   );
 }
