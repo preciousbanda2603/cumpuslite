@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -43,6 +44,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Users, BookUser, Edit, ArrowLeft, FileText, Printer, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSchoolId } from '@/hooks/use-school-id';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
+import { RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 
 type ClassInfo = { id: string; name: string; classTeacherId?: string; grade: number };
 type Teacher = { id: string; name: string; uid: string; };
@@ -53,6 +60,7 @@ type Student = {
   admissionNo: string;
   guardianshipStatus?: string;
   disabilities?: string;
+  gender?: 'Male' | 'Female';
 };
 type SubjectAssignment = {
   subjectId: string;
@@ -67,6 +75,20 @@ type DialogState = {
 };
 
 type UserRole = 'admin' | 'class_teacher' | 'subject_teacher' | 'other';
+
+const chartConfig = {
+  students: {
+    label: 'Students',
+  },
+  male: {
+    label: 'Male',
+    color: 'hsl(var(--chart-1))',
+  },
+  female: {
+    label: 'Female',
+    color: 'hsl(var(--chart-2))',
+  },
+};
 
 
 export default function ViewClassPage() {
@@ -175,6 +197,13 @@ export default function ViewClassPage() {
 
     fetchData();
   }, [user, schoolId, classId, router, toast]);
+  
+  const maleStudents = students.filter(s => s.gender === 'Male').length;
+  const femaleStudents = students.filter(s => s.gender === 'Female').length;
+  const genderChartData = [
+    { name: 'Male', value: maleStudents, fill: 'hsl(var(--chart-1))' },
+    { name: 'Female', value: femaleStudents, fill: 'hsl(var(--chart-2))' },
+  ];
 
   const openDialog = (type: 'classTeacher' | 'subjectTeacher', data: any) => {
     setSelectedTeacherId(data.teacherId || '');
@@ -279,7 +308,7 @@ export default function ViewClassPage() {
             </h1>
             <p className="text-muted-foreground">Detailed view of the class, teachers, and students.</p>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
@@ -324,6 +353,34 @@ export default function ViewClassPage() {
                         <p className="font-bold text-3xl">{students.length}</p>
                         <p className="text-sm text-muted-foreground">Currently enrolled</p>
                     </div>
+                </CardContent>
+            </Card>
+             <Card className="lg:col-span-2">
+                <CardHeader>
+                    <CardTitle>Gender Ratio</CardTitle>
+                </CardHeader>
+                <CardContent className="flex items-center justify-around gap-4">
+                     <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[150px]">
+                        <RadialBarChart
+                            data={genderChartData}
+                            startAngle={-90}
+                            endAngle={270}
+                            innerRadius="60%"
+                            outerRadius="100%"
+                            barSize={20}
+                        >
+                            <PolarAngleAxis type="number" domain={[0, students.length]} tick={false} />
+                            <RadialBar dataKey="value" background cornerRadius={10} />
+                            <ChartTooltip
+                                cursor={false}
+                                content={<ChartTooltipContent hideLabel nameKey="name" />}
+                            />
+                        </RadialBarChart>
+                    </ChartContainer>
+                     <div className="text-center">
+                      <p className="text-2xl font-bold">{maleStudents} Male</p>
+                      <p className="text-2xl font-bold">{femaleStudents} Female</p>
+                     </div>
                 </CardContent>
             </Card>
         </div>
