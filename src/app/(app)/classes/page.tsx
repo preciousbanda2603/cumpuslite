@@ -64,7 +64,7 @@ type Teacher = {
   name: string;
 }
 
-export default function GradesPage() {
+export default function ClassesPage() {
   const [user, setUser] = useState<User | null>(null);
   const schoolId = useSchoolId();
   const [classes, setClasses] = useState<Class[]>([]);
@@ -106,7 +106,7 @@ export default function GradesPage() {
         const [roomsSnap, teachersSnap, classesSnap, studentsSnap] = await Promise.all([
           get(roomsRef),
           get(teachersRef),
-          get(classesSnap),
+          get(classesRef),
           get(studentsRef)
         ]);
         
