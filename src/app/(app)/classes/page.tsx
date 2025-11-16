@@ -106,7 +106,7 @@ export default function GradesPage() {
         const [roomsSnap, teachersSnap, classesSnap, studentsSnap] = await Promise.all([
           get(roomsRef),
           get(teachersRef),
-          get(classesRef),
+          get(classesSnap),
           get(studentsRef)
         ]);
         

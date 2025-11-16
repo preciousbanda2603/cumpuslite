@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from "next/link";
@@ -20,9 +21,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2, Upload } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Upload, Download } from "lucide-react";
 import { auth, database } from "@/lib/firebase";
-import { onValue, ref, set, remove, get, update } from "firebase/database";
+import { onValue, ref, set, get, update } from "firebase/database";
 import type { User } from "firebase/auth";
 import { useSchoolId } from "@/hooks/use-school-id";
 import { Input } from "@/components/ui/input";
@@ -49,7 +50,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { disabilityOptions } from "@/lib/disability-options";
 import { Textarea } from "@/components/ui/textarea";
-import { differenceInYears } from "date-fns";
+import { differenceInYears, format } from "date-fns";
 import { ImportDialog } from "@/components/import-dialog";
 import { importStudentsFromCSV } from "@/app/actions";
 
@@ -259,6 +260,45 @@ export default function StudentsPage() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (filteredStudents.length === 0) {
+      toast({
+        title: 'No Data to Export',
+        description: 'There are no students matching the current filters.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const headers = ['Name', 'Admission No', 'Age', 'Gender', 'Class', 'Status', 'Guardianship', 'Disabilities', 'Parent Name', 'Parent Phone', 'Parent Email'];
+    
+    const rows = filteredStudents.map(student => [
+      `"${student.name}"`,
+      `"${student.admissionNo}"`,
+      student.age || 'N/A',
+      `"${student.gender || 'N/A'}"`,
+      `"${student.className || 'N/A'}"`,
+      `"${student.status}"`,
+      `"${student.guardianshipStatus || 'N/A'}"`,
+      `"${student.disabilities || 'None'}"`,
+      `"${student.parentName || 'N/A'}"`,
+      `"${student.parentPhone || 'N/A'}"`,
+      `"${student.parentEmail || 'N/A'}"`,
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `student_export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -268,6 +308,10 @@ export default function StudentsPage() {
         </div>
         {isAdmin && (
             <div className="flex gap-2">
+                <Button variant="outline" onClick={handleExportCSV}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export CSV
+                </Button>
                 <ImportDialog
                     title="Import Students"
                     description="Upload a CSV file to bulk-add new students. The system will automatically generate admission numbers and passwords for each student."
