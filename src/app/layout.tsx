@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Campus.ZM',
+  title: 'Compass Lite',
   description: 'A modern school management system.',
 };
 

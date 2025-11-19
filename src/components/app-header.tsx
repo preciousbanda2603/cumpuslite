@@ -175,7 +175,7 @@ export function AppHeader() {
                 className="flex items-center gap-2 text-lg font-semibold"
               >
                 <GraduationCap className="h-6 w-6 text-primary" />
-                <span>Campus.ZM</span>
+                <span>Compass Lite</span>
               </Link>
             </SheetTitle>
             <SheetDescription>

@@ -74,7 +74,7 @@ export function AppSidebar({ isCollapsed, setIsCollapsed }: AppSidebarProps) {
           <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
             <Link href={dashboardHref} className="flex items-center gap-2 font-semibold">
               <GraduationCap className="h-6 w-6 text-primary" />
-              {!isCollapsed && <span className="">Campus.ZM</span>}
+              {!isCollapsed && <span className="">Compass Lite</span>}
             </Link>
           </div>
           <div className="flex-1 overflow-auto">

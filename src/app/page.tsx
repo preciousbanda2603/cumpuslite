@@ -42,7 +42,7 @@ export default function LandingPage() {
       <header className="px-4 lg:px-6 h-14 flex items-center">
         <Link href="/" className="flex items-center justify-center">
           <GraduationCap className="h-6 w-6 text-primary" />
-          <span className="ml-2 text-xl font-bold">Campus.ZM</span>
+          <span className="ml-2 text-xl font-bold">Compass Lite</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6">
           <Link
@@ -143,7 +143,7 @@ export default function LandingPage() {
                 Ready to Modernize Your School?
               </h2>
               <p className="mx-auto max-w-[600px] text-slate-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-slate-400">
-                Join hundreds of Zambian schools already using Campus.ZM to save time and improve outcomes.
+                Join hundreds of Zambian schools already using Compass Lite to save time and improve outcomes.
               </p>
             </div>
             <div className="mx-auto w-full max-w-sm space-y-2">
@@ -160,7 +160,7 @@ export default function LandingPage() {
 
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          &copy; {new Date().getFullYear()} Campus.ZM. All rights reserved.
+          &copy; {new Date().getFullYear()} Compass Lite. All rights reserved.
         </p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link href="#" className="text-xs hover:underline underline-offset-4" prefetch={false}>

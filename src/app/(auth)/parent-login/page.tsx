@@ -95,7 +95,7 @@ export default function ParentLoginPage() {
     <div className="flex flex-col items-center justify-center min-h-screen">
        <Link href="/" className="mb-6 flex items-center gap-2 text-lg font-semibold">
           <GraduationCap className="h-7 w-7 text-primary" />
-          <span className="text-2xl font-bold">Campus.ZM</span>
+          <span className="text-2xl font-bold">Compass Lite</span>
        </Link>
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader>

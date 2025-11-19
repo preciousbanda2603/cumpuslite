@@ -347,7 +347,7 @@ export async function initiateSubscriptionPayment(params: {
             bss_notification: true,
             mobile: mobileNumber,
             merchantId: merchantId,
-            paymentDescription: `${PROBASE_COMPANY_NAME || 'Campus.ZM Subscription'}: ${plan} plan`,
+            paymentDescription: `${PROBASE_COMPANY_NAME || 'Compass Lite Subscription'}: ${plan} plan`,
             paymentReference: transactionId,
         };
 
@@ -491,4 +491,3 @@ export async function initiateProbaseCardRedirect(
     return { success: false, message: 'Could not connect to the payment gateway.' };
   }
 }
-
