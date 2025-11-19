@@ -19,13 +19,13 @@ export type UserProfile = {
 
 // Initialize a secondary Firebase app for creating users without affecting admin session
 const secondaryAppConfig = {
-  apiKey: "AIzaSyCQKGX0f8Q_59VuCmXvjyipaAE4BfaFHvE",
-  authDomain: "studio-2119893974-60441.firebaseapp.com",
-  databaseURL: "https://studio-2119893974-60441-default-rtdb.firebaseio.com",
-  projectId: "studio-2119893974-60441",
-  storageBucket: "studio-2119893974-60441.appspot.com",
-  messagingSenderId: "782301073730",
-  appId: "1:782301073730:web:15eb1304f7b890411c38db"
+  apiKey: "AIzaSyAzQTXfph0F_0Kz0TcqwBRABuPkUxSLpHE",
+  authDomain: "studio-1128359683-584e7.firebaseapp.com",
+  databaseURL: "https://studio-1128359683-584e7-default-rtdb.firebaseio.com",
+  projectId: "studio-1128359683-584e7",
+  storageBucket: "studio-1128359683-584e7.firebasestorage.app",
+  messagingSenderId: "259318221895",
+  appId: "1:259318221895:web:266ba401a76ed86e10f562"
 };
 
 const secondaryApp = getApps().find(app => app.name === 'secondary') || initializeApp(secondaryAppConfig, 'secondary');
